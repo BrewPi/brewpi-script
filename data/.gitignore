@@ -2,3 +2,5 @@
 *
 # Except this file
 !.gitignore
+# And Sample Data
+!Sample Data/*
