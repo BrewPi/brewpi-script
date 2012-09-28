@@ -515,6 +515,9 @@ while(run):
 	except socket.error, e:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 							"socket error: %s" % e)
+	except json.decoder.JSONDecodeError, e:
+		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+							"JSON decode error: %s" % e)
 
 ser.close()  # close port
 conn.shutdown(socket.SHUT_RDWR)  # close socket
