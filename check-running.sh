@@ -14,7 +14,7 @@ else
             echo "brewpi script not found running by CRON, restarting brewpi" >> /home/brewpi/logs/stderr.txt
             # overwrite stdout, append to stderr
             # -u flag causes stdout to write to file immediately and not cache output
-            # python -u /home/brewpi/brewpi.py 1> /home/brewpi/logs/stdout.txt 2>>/home/brewpi/logs/stderr.txt &
+            python -u /home/brewpi/brewpi.py 1> /home/brewpi/logs/stdout.txt 2>>/home/brewpi/logs/stderr.txt &
         else
             uptime=$(cat /proc/uptime)
             uptime=${uptime%%.*}
