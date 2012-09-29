@@ -57,9 +57,10 @@ def programArduino(boardType, hexFile, port, eraseEEPROM):
         programCommand = programCommand + ' -e'
 
     # open and close serial port at 1200 baud. This resets the Arduino Leonardo
-    ser = serial.Serial(port, 1200)
-    ser.close()
-    sleep(1)  # give the bootloader time to start up
+    if(boardType == 'leonardo'):
+        ser = serial.Serial(port, 1200)
+        ser.close()
+        sleep(1)  # give the bootloader time to start up
 
     p = sub.Popen(programCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
     output, errors = p.communicate()
