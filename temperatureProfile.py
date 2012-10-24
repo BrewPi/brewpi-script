@@ -51,4 +51,4 @@ def getNewTemp():
 
 	if(interpolatedTemp == -1):  # all setpoints in the past
 		interpolatedTemp = nextTemp
-	return round(interpolatedTemp, 1)  # retun temp in tenths of degrees
+	return round(interpolatedTemp, 2)  # retun temp in tenths of degrees

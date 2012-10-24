@@ -162,7 +162,14 @@ while(1):  # read all lines on serial interface
 	line = ser.readline()
 	if(line):  # line available?
 		if line[0] == 'S':
-			cs = json.loads(line[2:])
+			try:
+				cs = json.loads(line[2:])
+			except json.decoder.JSONDecodeError, e:
+				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+					"JSON decode error: %s" % e)
+				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
+				"Cannot receive settings from Arduino, script will exit.")
+				exit()
 			break
 	else:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
@@ -180,8 +187,14 @@ while(1):  # read all lines on serial interface
 	line = ser.readline()
 	if(line):  # line available?
 		if line[0] == 'C':
-			line = line + ser.readline()
-			cc = json.loads(line[2:])
+			try:
+				cc = json.loads(line[2:])
+			except json.decoder.JSONDecodeError, e:
+				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+					"JSON decode error: %s" % e)
+				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
+				"Cannot receive constants from Arduino, script will exit.")
+				exit()
 			break
 	else:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
@@ -442,62 +455,66 @@ while(run):
 		while(1):  # read all lines on serial interface
 			line = ser.readline()
 			if(line):  # line available?
-				if(line[0] == 'T'):
-					# process temperature line
-					newRow = json.loads(line[2:])
-					newRow['Time'] = datetime.today()  # add timestamp
-					# append new row to data table
-					# print it to stdout
-					print(newRow)
-					# write complete datatable to json file
+				try:
+					if(line[0] == 'T'):
+						# process temperature line
+						newRow = json.loads(line[2:])
+						newRow['Time'] = datetime.today()  # add timestamp
+						# append new row to data table
+						# print it to stdout
+						print(newRow)
+						# write complete datatable to json file
 
-					dataToAdd = [newRow]
-					dataTable.AppendData(dataToAdd)
-					jsonfile = open(localJsonFileName, 'w')
-					jsonfile.write(unicode(dataTable.ToJSon(columns_order=["Time",
-						"BeerTemp", "BeerSet", "BeerAnn",
-						"FridgeTemp", "FridgeSet", "FridgeAnn"])))
-					jsonfile.close()
+						dataToAdd = [newRow]
+						dataTable.AppendData(dataToAdd)
+						jsonfile = open(localJsonFileName, 'w')
+						jsonfile.write(unicode(dataTable.ToJSon(columns_order=["Time",
+							"BeerTemp", "BeerSet", "BeerAnn",
+							"FridgeTemp", "FridgeSet", "FridgeAnn"])))
+						jsonfile.close()
 
-					# copy to www dir.
-					# Do not write directly to www dir to prevent blocking www file.
-					shutil.copyfile(localJsonFileName, wwwJsonFileName)
+						# copy to www dir.
+						# Do not write directly to www dir to prevent blocking www file.
+						shutil.copyfile(localJsonFileName, wwwJsonFileName)
 
-					#write csv file too
-					csvFile = open(localCsvFileName, "a")
-					lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-						str(newRow['BeerTemp']) + ';' +
-						str(newRow['BeerSet']) + ';' +
-						str(newRow['BeerAnn']) + ';' +
-						str(newRow['FridgeTemp']) + ';' +
-						str(newRow['FridgeSet']) + ';' +
-						str(newRow['FridgeAnn']) + '\n')
-					csvFile.write(lineToWrite)
-					csvFile.close()
-					shutil.copyfile(localCsvFileName, wwwCsvFileName)
+						#write csv file too
+						csvFile = open(localCsvFileName, "a")
+						lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+							str(newRow['BeerTemp']) + ';' +
+							str(newRow['BeerSet']) + ';' +
+							str(newRow['BeerAnn']) + ';' +
+							str(newRow['FridgeTemp']) + ';' +
+							str(newRow['FridgeSet']) + ';' +
+							str(newRow['FridgeAnn']) + '\n')
+						csvFile.write(lineToWrite)
+						csvFile.close()
+						shutil.copyfile(localCsvFileName, wwwCsvFileName)
 
-					# store time of last new data for interval check
-					prevDataTime = time.time()
-				elif(line[0] == 'D'):
-					# debug message received
-					print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
-										+ "Arduino debug message: " + line[2:])
-				elif(line[0] == 'L'):
-					# lcd content received
-					lcdText = line[2:]
-				elif(line[0] == 'C'):
-					# Control constants received
-					cc = json.loads(line[2:])
+						# store time of last new data for interval check
+						prevDataTime = time.time()
+					elif(line[0] == 'D'):
+						# debug message received
+						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
+											+ "Arduino debug message: " + line[2:])
+					elif(line[0] == 'L'):
+						# lcd content received
+						lcdText = line[2:]
+					elif(line[0] == 'C'):
+						# Control constants received
+						cc = json.loads(line[2:])
 
-				elif(line[0] == 'S'):
-					# Control settings received
-					cs = json.loads(line[2:])
-				elif(line[0] == 'V'):
-					# Control settings received
-					cv = json.loads(line[2:])
-				else:
-					print >> sys.stderr, "Cannot process line from Arduino: " + line
-				# end or processing a line
+					elif(line[0] == 'S'):
+						# Control settings received
+						cs = json.loads(line[2:])
+					elif(line[0] == 'V'):
+						# Control settings received
+						cv = json.loads(line[2:])
+					else:
+						print >> sys.stderr, "Cannot process line from Arduino: " + line
+					# end or processing a line
+				except json.decoder.JSONDecodeError, e:
+					print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+							"JSON decode error: %s" % e)
 			else:
 				# no lines left to process
 				break
@@ -515,9 +532,7 @@ while(run):
 	except socket.error, e:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 							"socket error: %s" % e)
-	except json.decoder.JSONDecodeError, e:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"JSON decode error: %s" % e)
+
 
 ser.close()  # close port
 conn.shutdown(socket.SHUT_RDWR)  # close socket
