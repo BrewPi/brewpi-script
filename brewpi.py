@@ -297,6 +297,11 @@ while(run):
 									str(cs['beerSetting']) +
 									" degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
+			else:
+				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+									"Beer temperature setting" + str(newTemp) +
+									" is outside allowed range " +
+									str(cc['tempSettingMin']) + "-" + str(cc['tempSettingMax']))
 		elif messageType == "setFridge":  # new constant fridge temperature received
 			newTemp = float(value)
 			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
@@ -318,7 +323,7 @@ while(run):
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Profile mode enabled")
 			raise socket.timeout  # go to serial communication to update Arduino
-		elif messageType == "setOff":  # new constant fridge temperature received
+		elif messageType == "setOff":  # cs['mode'] set to OFF
 			cs['mode'] = 'o'
 			ser.write("j{mode:o}")
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
