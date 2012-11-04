@@ -18,7 +18,7 @@ from pprint import pprint
 import serial
 import time
 from datetime import datetime
-import gviz_api
+# import gviz_api
 import socket
 import sys
 import os
@@ -30,6 +30,7 @@ from configobj import ConfigObj
 #local imports
 import temperatureProfile
 import programArduino as programmer
+import brewpiJson
 
 # Temperature limit defines
 # To prevent invalid settings temperatures should be between these limits
@@ -135,6 +136,7 @@ def startBeer(beerName):
 			i = i + 1
 		jsonFileName = jsonFileName + '-' + str(i)
 	localJsonFileName = dataPath + jsonFileName + '.json'
+	brewpiJson.newEmptyFile(localJsonFileName)
 
 	# Define a location on the webserver to copy the file to after it is written
 	wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
@@ -156,6 +158,7 @@ print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 	"Notification: Script started for beer '" + config['beerName']) + "'"
 
 # read settings from Arduino
+ser.flush()
 ser.write('s')
 time.sleep(1)
 while(1):  # read all lines on serial interface
@@ -181,6 +184,7 @@ print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 pprint(cs, sys.stderr)
 
 # read control constants from Arduino
+ser.flush()
 ser.write('c')
 time.sleep(1)
 while(1):  # read all lines on serial interface
@@ -204,16 +208,6 @@ while(1):  # read all lines on serial interface
 print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"Constants loaded: ")
 pprint(cc, sys.stderr)
-
-# Define Google data table description and create empty data table
-description = {	"Time": 		("datetime", "Time"),
-				"BeerTemp": 	("number",	 "Beer temperature"),
-				"BeerSet":		("number",   "Beer setting"),
-				"BeerAnn":		("string",	 "Beer Annotate"),
-				"FridgeTemp":	("number",	 "Fridge temperature"),
-				"FridgeSet":	("number",	 "Fridge setting"),
-				"FridgeAnn":	("string",	 "Fridge Annotate")}
-dataTable = gviz_api.DataTable(description)
 
 
 #create a listening socket to communicate with PHP
@@ -247,13 +241,13 @@ while(run):
 	lastDay = day
 	day = time.strftime("%Y-%m-%d")
 	if lastDay != day:
-		# empty data table and write to new files
-		dataTable.LoadData([])
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 			"Notification: New day, dropping data table and creating new JSON file.")
 		jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
 		localJsonFileName = config['scriptPath'] + 'data/' + jsonFileName + '.json'
 		wwwJsonFileName = config['wwwPath'] + 'data/' + jsonFileName + '.json'
+		# create new empty json file
+		brewpiJson.newEmptyFile(localJsonFileName)
 
 	# Wait for incoming socket connections.
 	# When nothing is received, socket.timeout will be raised after
@@ -344,8 +338,6 @@ while(run):
 				config['beerName'] = newName
 				startBeer(newName)
 				config.write()
-
-				dataTable.LoadData([])  # discard data table
 
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: restarted for beer: " + newName)
@@ -464,19 +456,12 @@ while(run):
 					if(line[0] == 'T'):
 						# process temperature line
 						newRow = json.loads(line[2:])
-						newRow['Time'] = datetime.today()  # add timestamp
-						# append new row to data table
+
 						# print it to stdout
-						print(newRow)
+						print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
 						# write complete datatable to json file
 
-						dataToAdd = [newRow]
-						dataTable.AppendData(dataToAdd)
-						jsonfile = open(localJsonFileName, 'w')
-						jsonfile.write(unicode(dataTable.ToJSon(columns_order=["Time",
-							"BeerTemp", "BeerSet", "BeerAnn",
-							"FridgeTemp", "FridgeSet", "FridgeAnn"])))
-						jsonfile.close()
+						brewpiJson.addRow(localJsonFileName, newRow)
 
 						# copy to www dir.
 						# Do not write directly to www dir to prevent blocking www file.
