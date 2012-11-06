@@ -25,13 +25,13 @@ def addRow(jsonFileName, row):
     jsonFile.write("{\"v\":\"" + time.strftime("Date(%Y,%m,%d,%H,%M,%S)") + "\"},")
     jsonFile.write("{\"v\":" + str(row['BeerTemp']) + "},")
     jsonFile.write("{\"v\":" + str(row['BeerSet']) + "},")
-    if row['BeerAnn'] == None:
+    if row['BeerAnn'] is None:
         jsonFile.write("null,")
     else:
         jsonFile.write("{\"v\":\"" + str(row['BeerAnn']) + "\"},")
     jsonFile.write("{\"v\":" + str(row['FridgeTemp']) + "},")
     jsonFile.write("{\"v\":" + str(row['FridgeSet']) + "},")
-    if row['FridgeAnn'] == None:
+    if row['FridgeAnn'] is None:
         jsonFile.write("null")
     else:
         jsonFile.write("{\"v\":\"" + str(row['FridgeAnn']) + "\"}")
