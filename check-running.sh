@@ -21,7 +21,7 @@ else
 
             if [ $uptime -gt 600 ]; then
                 echo "Serial port not found by CRON, restarting Raspberry Pi" >> /home/brewpi/logs/stderr.txt
-                reboot
+                sudo reboot
             else
                 echo "Serial port not found by CRON, but will not reboot in first 10 minutes after boot" >> /home/brewpi/logs/stderr.txt
             fi

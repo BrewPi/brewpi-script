@@ -23,15 +23,32 @@ def addRow(jsonFileName, row):
     # {"c":[{"v":"Date(2012,8,26,0,1,0)"},{"v":18.96},{"v":19.0},null,{"v":19.94},{"v":19.6},null]},
     jsonFile.write("{\"c\":[")
     jsonFile.write("{\"v\":\"" + time.strftime("Date(%Y,%m,%d,%H,%M,%S)") + "\"},")
-    jsonFile.write("{\"v\":" + str(row['BeerTemp']) + "},")
-    jsonFile.write("{\"v\":" + str(row['BeerSet']) + "},")
-    if row['BeerAnn'] == None:
+    if row['BeerTemp'] is None:
+        jsonFile.write("null,")
+    else:
+        jsonFile.write("{\"v\":" + str(row['BeerTemp']) + "},")
+
+    if row['BeerSet'] is None:
+        jsonFile.write("null,")
+    else:
+        jsonFile.write("{\"v\":" + str(row['BeerSet']) + "},")
+
+    if row['BeerAnn'] is None:
         jsonFile.write("null,")
     else:
         jsonFile.write("{\"v\":\"" + str(row['BeerAnn']) + "\"},")
-    jsonFile.write("{\"v\":" + str(row['FridgeTemp']) + "},")
-    jsonFile.write("{\"v\":" + str(row['FridgeSet']) + "},")
-    if row['FridgeAnn'] == None:
+
+    if row['FridgeTemp'] is None:
+        jsonFile.write("null,")
+    else:
+        jsonFile.write("{\"v\":" + str(row['FridgeTemp']) + "},")
+
+    if row['FridgeSet'] is None:
+        jsonFile.write("null,")
+    else:
+        jsonFile.write("{\"v\":" + str(row['FridgeSet']) + "},")
+
+    if row['FridgeAnn'] is None:
         jsonFile.write("null")
     else:
         jsonFile.write("{\"v\":\"" + str(row['FridgeAnn']) + "\"}")
