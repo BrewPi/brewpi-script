@@ -22,9 +22,9 @@ def addRow(jsonFileName, row):
     # insert something like this into the file:
     # {"c":[{"v":"Date(2012,8,26,0,1,0)"},{"v":18.96},{"v":19.0},null,{"v":19.94},{"v":19.6},null]},
     jsonFile.write("{\"c\":[")
-    now = datetime.now();
-    jsonFile.write("{\"v\":\"" +  "Date(%d,%d,%d,%d,%d,%d)" % (
-            now.year, now.month - 1, now.day, now.hour, now.minute, now.second) + "\"},")
+    now = datetime.now()
+    jsonFile.write("{{\"v\":\"Date({y},{M},{d},{h},{m},{s})\"}},".format(
+            y=now.year, M=(now.month - 1), d=now.day, h=now.hour, m=now.minute, s=now.second))
     if row['BeerTemp'] is None:
         jsonFile.write("null,")
     else:
