@@ -156,7 +156,8 @@ except serial.SerialException, e:
 
 print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 	"Notification: Script started for beer '" + config['beerName']) + "'"
-
+# wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
+time.sleep(10)
 # read settings from Arduino
 ser.flush()
 ser.write('s')
