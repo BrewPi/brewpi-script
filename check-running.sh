@@ -1,28 +1,30 @@
-#!/bin/sh
+#!/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games
 
 # Set config file
 if [ "$#" -eq 0 ]; then
-	configFile=/home/brewpi/settings/config.cfg
-	if [ ! -f $configFile ]; then
-		echo "ERROR: Config file \"${configFile}\" does not exist."
-		echo "Specify the config file by running \"check-running.sh <config file full path>\"."
-		exit 1
-	fi
+    configFile=/home/brewpi/settings/config.cfg
+    if [ ! -f $configFile ]; then
+        echo "ERROR: Config file \"${configFile}\" does not exist."
+        echo "Specify the config file by running \"check-running.sh <config file full path>\"."
+        exit 1
+    fi
 else
-	configFile=$1
-	if [ ! -f $configFile ]; then
-		echo "ERROR: Config file \"${configFile}\" does not exist."
-		echo "Please specify the full path to a valid config file."
-		exit 1
-	fi
+    configFile=$1
+    if [ ! -f $configFile ]; then
+        echo "ERROR: Config file \"${configFile}\" does not exist."
+        echo "Please specify the full path to a valid config file."
+        exit 1
+    fi
 fi
 
-# Strip whitespace from around '=' in config file, add quotes, and read it in
-PID=$$
-sed -e 's/^\(\w\+\)\s*=\s*"\?\([^"]\+\)"\?$/\1="\2"/g' $configFile > /tmp/${PID}-config.txt
-. /tmp/${PID}-config.txt
-rm /tmp/${PID}-config.txt
+# Read in config file
+while read line; do
+    if [ -z "$line" ]; then continue; fi
+    var=$(echo $line | cut -d '=' -f1)
+    val=$(echo $line | cut -d '=' -f2)
+    declare "$(echo $var)=$(echo $val)"
+done < $configFile
 
 if [ "$(ps ax | grep -v grep | grep brewpi.py)" != "" ]; then
     echo "brewpi running, everything is fine"
