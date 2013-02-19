@@ -165,7 +165,7 @@ except serial.SerialException, e:
 print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 	"Notification: Script started for beer '" + config['beerName']) + "'"
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
-time.sleep(10)
+time.sleep(float(config['startupDelay']))
 # read settings from Arduino
 ser.flush()
 ser.write('s')
@@ -218,16 +218,22 @@ print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"Constants loaded: ")
 pprint(cc, sys.stderr)
 
-
 #create a listening socket to communicate with PHP
-if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
-	# if socket already exists, remove it
-	os.remove(config['scriptPath'] + 'BEERSOCKET')
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
-# set all permissions for socket
-os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
+useInetSocket = (config['useInetSocket']=='true');
+if (useInetSocket):
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	s.bind((config['socketHost'], int(config['socketPort'])))
+else:
+	if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
+		# if socket already exists, remove it
+		os.remove(config['scriptPath'] + 'BEERSOCKET')
+	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
+	# set all permissions for socket
+	os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
+
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(5)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
