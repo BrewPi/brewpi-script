@@ -302,7 +302,7 @@ while(run):
 			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
 				cs['mode'] = 'f'
 				cs['fridgeSetting'] = round(newTemp, 2)
-				ser.write("j{mode:f, beerSetting:" + str(cs['fridgeSetting']))
+				ser.write("j{mode:f, fridgeSetting:" + str(cs['fridgeSetting']))
 				time.sleep(1)  # sleep shortly, or something could be added to the string
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Fridge temperature set to " +
