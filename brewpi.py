@@ -355,10 +355,10 @@ while(run):
 			ser.close  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
 			programParameters = json.loads(value)
-			hexFile = '/var/www/uploads/brewpi_avr.hex'
-			boardType = 'leonardo'
-			port = '/dev/ttyACM0'
-			eraseEEPROM = True
+			hexFile = programParameters['fileName']
+			boardType = programParameters['boardType']
+			port = config['port']
+			eraseEEPROM = programParameters['eraseEEPROM']
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"New program uploaded to Arduino, script will restart")
 			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)

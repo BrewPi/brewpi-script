@@ -34,6 +34,7 @@ def programArduino(boardType, hexFile, port, eraseEEPROM):
             boardSettings[key] = val
 
     avrsizeCommand = 'avr-size ' + hexFile
+    returnString = returnString + avrsizeCommand + '\n'
     # check program size against maximum size
     p = sub.Popen(avrsizeCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
     output, errors = p.communicate()
@@ -55,6 +56,8 @@ def programArduino(boardType, hexFile, port, eraseEEPROM):
 
     if(eraseEEPROM):
         programCommand = programCommand + ' -e'
+
+    returnString = returnString + programCommand + '\n'
 
     # open and close serial port at 1200 baud. This resets the Arduino Leonardo
     if(boardType == 'leonardo'):
