@@ -170,54 +170,9 @@ time.sleep(10)
 ser.flush()
 ser.write('s')
 time.sleep(1)
-while(1):  # read all lines on serial interface
-	line = ser.readline()
-	if(line):  # line available?
-		if line[0] == 'S':
-			try:
-				cs = json.loads(line[2:])
-			except json.decoder.JSONDecodeError, e:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-					"JSON decode error: %s" % e)
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
-				"Cannot receive settings from Arduino, script will exit.")
-				exit()
-			break
-	else:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
-				"Cannot receive settings from Arduino, script will exit.")
-		exit()
-
-print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-						"Settings loaded: ")
-pprint(cs, sys.stderr)
-
-# read control constants from Arduino
-ser.flush()
 ser.write('c')
 time.sleep(1)
-while(1):  # read all lines on serial interface
-	line = ser.readline()
-	if(line):  # line available?
-		if line[0] == 'C':
-			try:
-				cc = json.loads(line[2:])
-			except json.decoder.JSONDecodeError, e:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-					"JSON decode error: %s" % e)
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
-				"Cannot receive constants from Arduino, script will exit.")
-				exit()
-			break
-	else:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
-				"Cannot receive constants from Arduino, Script will exit.")
-		exit()
-
-print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-						"Constants loaded: ")
-pprint(cc, sys.stderr)
-
+# answer from Arduino is received asynchronously later.
 
 #create a listening socket to communicate with PHP
 if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
@@ -310,7 +265,7 @@ while(run):
 			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
 				cs['mode'] = 'f'
 				cs['fridgeSetting'] = round(newTemp, 2)
-				ser.write("j{mode:f, beerSetting:" + str(cs['fridgeSetting']))
+				ser.write("j{mode:f, fridgeSetting:" + str(cs['fridgeSetting']))
 				time.sleep(1)  # sleep shortly, or something could be added to the string
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Fridge temperature set to " +
@@ -408,10 +363,10 @@ while(run):
 			ser.close  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
 			programParameters = json.loads(value)
-			hexFile = config['wwwPath'] + 'uploads/brewpi_avr.hex'
-			boardType = config['boardType']
+			hexFile = programParameters['fileName']
+			boardType = programParameters['boardType']
 			port = config['port']
-			eraseEEPROM = True
+			eraseEEPROM = programParameters['eraseEEPROM']
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"New program uploaded to Arduino, script will restart")
 			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
@@ -501,13 +456,20 @@ while(run):
 					elif(line[0] == 'C'):
 						# Control constants received
 						cc = json.loads(line[2:])
+						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+							"Control constants received: ")
+						pprint(cc, sys.stderr)
 
 					elif(line[0] == 'S'):
 						# Control settings received
 						cs = json.loads(line[2:])
+						# do not print this to the log file. This is requested continuously.
 					elif(line[0] == 'V'):
 						# Control settings received
 						cv = json.loads(line[2:])
+						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+							"Control variables received: ")
+						pprint(cv, sys.stderr)
 					else:
 						print >> sys.stderr, "Cannot process line from Arduino: " + line
 					# end or processing a line
