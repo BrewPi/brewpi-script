@@ -372,7 +372,7 @@ while(run):
 			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
-			#							config['wwwPath'] + 'uploads/' + programParameters['fileName'],
+			#							programParameters['fileName'],
 			#							config['port'],
 			#							programParameters['eraseEEPROM'])
 			conn.send(result)
