@@ -81,13 +81,19 @@ cv = {	'beerDiff': 0,
 		'negPeak': 0,
 		'posPeak': 0}
 
-# Read in command line arguments
-if len(sys.argv) < 2:
-	sys.exit('Usage: %s <config file full path>' % sys.argv[0])
-if not os.path.exists(sys.argv[1]):
-	sys.exit('ERROR: Config file "%s" was not found!' % sys.argv[1])
+def getDefaultConfigFile():
+    currentScript = os.path.abspath( __file__ )
+    currentDir = os.path.dirname(currentScript)
+    configFile = os.path.abspath(currentDir + '/settings/config.cfg')
+    return configFile
 
-configFile = sys.argv[1]
+configFile = getDefaultConfigFile()
+# Read in command line arguments
+if len(sys.argv) >= 2:
+    configFile = sys.argv[1];
+
+if not os.path.exists(configFile):
+    sys.exit('ERROR: Config file "%s" was not found!' % configFile)
 
 # global variables, will be initialized by startBeer()
 config = ConfigObj(configFile)
@@ -109,6 +115,14 @@ def changeWwwSetting(settingName, value):
 	wwwSettingsFile.truncate()
 	wwwSettingsFile.close()
 
+def log(msg):
+	print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + msg)
+
+def debug(msg):
+   global config
+   if (config['debug']):
+		log(msg)
+	
 
 def startBeer(beerName):
 	global config
@@ -186,11 +200,13 @@ while(1):  # read all lines on serial interface
 	else:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
 				"Cannot receive settings from Arduino, script will exit.")
-		exit()
+		debug("received line from Arduino:"+line)
+#		exit()
 
 print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"Settings loaded: ")
 pprint(cs, sys.stderr)
+
 
 # read control constants from Arduino
 ser.flush()
@@ -212,7 +228,7 @@ while(1):  # read all lines on serial interface
 	else:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") + "Error: "
 				"Cannot receive constants from Arduino, Script will exit.")
-		exit()
+		#exit()
 
 print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"Constants loaded: ")
@@ -413,6 +429,7 @@ while(run):
 		elif messageType == "programArduino":
 			ser.close  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
+                        print value
 			programParameters = json.loads(value)
 			hexFile = config['wwwPath'] + 'uploads/brewpi_avr.hex'
 			boardType = config['boardType']
@@ -420,7 +437,7 @@ while(run):
 			eraseEEPROM = True
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 						"New program uploaded to Arduino, script will restart")
-			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
+			result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
 			#							config['wwwPath'] + 'uploads/' + programParameters['fileName'],
@@ -475,7 +492,6 @@ while(run):
 						# print it to stdout
 						print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
 						# write complete datatable to json file
-
 						brewpiJson.addRow(localJsonFileName, newRow)
 
 						# copy to www dir.
