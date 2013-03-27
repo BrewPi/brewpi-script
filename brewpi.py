@@ -81,8 +81,16 @@ cv = {	'beerDiff': 0,
 		'negPeak': 0,
 		'posPeak': 0}
 
+# Read in command line arguments
+if len(sys.argv) < 2:
+	sys.exit('Usage: %s <config file full path>' % sys.argv[0])
+if not os.path.exists(sys.argv[1]):
+	sys.exit('ERROR: Config file "%s" was not found!' % sys.argv[1])
+
+configFile = sys.argv[1]
+
 # global variables, will be initialized by startBeer()
-config = ConfigObj('/home/brewpi/settings/config.cfg')
+config = ConfigObj(configFile)
 localJsonFileName = ""
 localCsvFileName = ""
 wwwJsonFileName = ""
@@ -167,14 +175,14 @@ time.sleep(1)
 # answer from Arduino is received asynchronously later.
 
 #create a listening socket to communicate with PHP
-if os.path.exists(config['scriptPath'] + '/BEERSOCKET'):
+if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
 	# if socket already exists, remove it
-	os.remove(config['scriptPath'] + '/BEERSOCKET')
+	os.remove(config['scriptPath'] + 'BEERSOCKET')
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(config['scriptPath'] + '/BEERSOCKET')  # Bind BEERSOCKET
+s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
 # set all permissions for socket
-os.chmod(config['scriptPath'] + '/BEERSOCKET', 0777)
+os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(5)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
@@ -267,7 +275,7 @@ while(run):
 		elif messageType == "setProfile":  # cs['mode'] set to profile
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
-			cs['beerSetting'] = temperatureProfile.getNewTemp()
+			cs['beerSetting'] = temperatureProfile.getNewTemp(config['scriptPath'])
 			ser.write("j{mode:p, beerSetting:" + str(cs['beerSetting']))
 			time.sleep(1)  # sleep shortly, or something could be added to the string
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
@@ -306,7 +314,7 @@ while(run):
 			profileUrl = ("https://spreadsheets.google.com/tq?key=" +
 				config['profileKey'] +
 				"&tq=select D,E&tqx=out:csv")  # select the right cells and CSV format
-			profileFileName = '/home/brewpi/' + 'settings/tempProfile.csv'
+			profileFileName = config['scriptPath'] + 'settings/tempProfile.csv'
 			if os.path.isfile(profileFileName + '.old'):
 				os.remove(profileFileName + '.old')
 			os.rename(profileFileName, profileFileName + '.old')
@@ -364,7 +372,7 @@ while(run):
 			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
-			#							'/var/www/uploads/' + programParameters['fileName'],
+			#							programParameters['fileName'],
 			#							config['port'],
 			#							programParameters['eraseEEPROM'])
 			conn.send(result)
@@ -474,11 +482,11 @@ while(run):
 
 		# Check for update from temperature profile
 		if(cs['mode'] == 'p'):
-			newTemp = temperatureProfile.getNewTemp()
+			newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
 			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
 				if(newTemp != cs['beerSetting']):
 					# if temperature has to be updated send settings to arduino
-					cs['beerSetting'] = temperatureProfile.getNewTemp()
+					cs['beerSetting'] = temperatureProfile.getNewTemp(config['scriptPath'])
 					ser.write("j{beerSetting:" + str(cs['beerSetting']))
 					time.sleep(1)  # sleep or something could be added to the string
 
