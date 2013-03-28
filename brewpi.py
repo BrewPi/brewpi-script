@@ -97,7 +97,6 @@ wwwCsvFileName = ""
 lastDay = ""
 day = ""
 
-
 # wwwSettings.json is a copy of some of the settings for the web server
 def changeWwwSetting(settingName, value):
 	wwwSettingsFile = open(config['wwwPath'] + 'wwwSettings.json', 'r+b')
@@ -195,7 +194,6 @@ prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
 
 run = 1
-lcdText = "Script starting up"
 
 startBeer(config['beerName'])
 
@@ -286,7 +284,7 @@ while(run):
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Temperature control disabled")
 		elif messageType == "lcd":  # lcd contents requested
-			conn.send(lcdText)
+			conn.send(json.dumps(lcdText))
 		elif messageType == "interval":  # new interval received
 			newInterval = int(value)
 			if(newInterval > 5 and newInterval < 5000):
@@ -452,7 +450,9 @@ while(run):
 											+ "Arduino debug message: " + line[2:])
 					elif(line[0] == 'L'):
 						# lcd content received
-						lcdText = line[2:]
+						lcdTextReplaced = line[2:].replace('\xb0','&deg') #replace degree sign with &deg
+						print lcdTextReplaced
+						lcdText = json.loads(lcdTextReplaced)
 					elif(line[0] == 'C'):
 						# Control constants received
 						cc = json.loads(line[2:])
