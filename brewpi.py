@@ -451,7 +451,6 @@ while(run):
 					elif(line[0] == 'L'):
 						# lcd content received
 						lcdTextReplaced = line[2:].replace('\xb0','&deg') #replace degree sign with &deg
-						print lcdTextReplaced
 						lcdText = json.loads(lcdTextReplaced)
 					elif(line[0] == 'C'):
 						# Control constants received
