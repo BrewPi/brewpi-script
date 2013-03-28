@@ -32,12 +32,8 @@ import temperatureProfile
 import programArduino as programmer
 import brewpiJson
 
-# Temperature limit defines
-# To prevent invalid settings temperatures should be between these limits
-# Comment what you don't need, C or F
-
 # Settings will be read from Arduino, initialize with same defaults as Arduino
-# This is mainly to show what's expected. Will all be overwritten
+# This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
 # Control Settings
 cs = {	'mode': 'b',
@@ -45,41 +41,44 @@ cs = {	'mode': 'b',
 		'fridgeSetting': 20.0,
 		'heatEstimator': 0.2,
 		'coolEstimator': 5}
+
 # Control Constants
-cc = {	'tempFormat': 'C',
-		'tempSettingMin': 4.0,
-		'tempSettingMax': 30.0,
-		'KpHeat': 10.000,
-		'KpCool': 5.000,
-		'Ki': 0.020,
-		'KdCool': -10.000,
-		'KdHeat': -5.000,
-		'iMaxSlope': 0.05,
-		'iMinSlope': -0.1,
-		'iMaxError': 0.5,
-		'idleRangeHigh': 0.500,
-		'idleRangeLow': -0.500,
-		'heatingTargetUpper': 0.199,
-		'heatingTargetLower': -0.100,
-		'coolingTargetUpper': 0.100,
-		'coolingTargetLower': -0.199,
-		'maxHeatTimeForEstimate': 600,
-		'maxCoolTimeForEstimate': 1200}
+cc = {	"tempFormat":"C",
+		"tempSetMin": 1.0,
+		"tempSetMax": 30.0,
+		"Kp": 20.000,
+		"Ki": 0.600,
+		"Kd":-3.000,
+		"iMaxErr": 0.500,
+		"idleRangeH": 1.000,
+		"idleRangeL":-1.000,
+		"heatTargetH": 0.301,
+		"heatTargetL":-0.199,
+		"coolTargetH": 0.199,
+		"coolTargetL":-0.301,
+		"maxHeatTimeForEst":"600",
+		"maxCoolTimeForEst":"1200",
+		"fridgeFastFilt":"1",
+		"fridgeSlowFilt":"4",
+		"fridgeSlopeFilt":"3",
+		"beerFastFilt":"3",
+		"beerSlowFilt":"5",
+		"beerSlopeFilt":"4"}
+
 # Control variables
-cv = {	'beerDiff': 0,
-		'fridgeDiff': 0,
-		'diffIntegral': 0,
-		'beerSlope': 0,
-		'p': 0,
-		'i': 0,
-		'd': 0,
-		'Kp': 0,
-		'Kd': 0,
-		'estimatedPeak': 0,
-		'negPeakSetting': 0,
-		'posPeakSetting': 0,
-		'negPeak': 0,
-		'posPeak': 0}
+cv = {	"beerDiff": 0.000,
+		"diffIntegral": 0.000,
+		"beerSlope": 0.000,
+		"p": 0.000,
+		"i": 0.000,
+		"d": 0.000,
+		"estPeak": 0.000,
+		"negPeakEst": 0.000,
+		"posPeakEst": 0.000,
+		"negPeak": 0.000,
+		"posPeak": 0.000}
+
+lcdText = ['Script starting up',' ',' ',' ']
 
 # Read in command line arguments
 if len(sys.argv) < 2:
@@ -166,7 +165,7 @@ print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 	"Notification: Script started for beer '" + config['beerName']) + "'"
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
 time.sleep(10)
-# read settings from Arduino
+# request settings from Arduino, processed later when reply is received
 ser.flush()
 ser.write('s')
 time.sleep(1)
@@ -239,44 +238,44 @@ while(run):
 		elif messageType == "getMode":  # echo cs['mode'] setting
 			conn.send(cs['mode'])
 		elif messageType == "getFridge":  # echo fridge temperature setting
-			conn.send(str(cs['fridgeSetting']))
+			conn.send(str(cs['fridgeSet']))
 		elif messageType == "getBeer":  # echo fridge temperature setting
-			conn.send(str(cs['beerSetting']))
+			conn.send(str(cs['beerSet']))
 		elif messageType == "setBeer":  # new constant beer temperature received
 			newTemp = float(value)
-			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
+			if(newTemp > cc['tempSetMin'] and newTemp < cc['tempSetMax']):
 				cs['mode'] = 'b'
 				# round to 2 dec, python will otherwise produce 6.999999999
-				cs['beerSetting'] = round(newTemp, 2)
-				ser.write("j{mode:b, beerSetting:" + str(cs['beerSetting']))
+				cs['beerSet'] = round(newTemp, 2)
+				ser.write("j{mode:b, beerSet:" + str(cs['beerSet']))
 				time.sleep(1)  # sleep shortly, or something could be added to the string
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Beer temperature set to " +
-									str(cs['beerSetting']) +
+									str(cs['beerSet']) +
 									" degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
 			else:
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Beer temperature setting" + str(newTemp) +
 									" is outside allowed range " +
-									str(cc['tempSettingMin']) + "-" + str(cc['tempSettingMax']))
+									str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
 		elif messageType == "setFridge":  # new constant fridge temperature received
 			newTemp = float(value)
-			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
+			if(newTemp > cc['tempSetMin'] and newTemp < cc['tempSetMax']):
 				cs['mode'] = 'f'
-				cs['fridgeSetting'] = round(newTemp, 2)
-				ser.write("j{mode:f, fridgeSetting:" + str(cs['fridgeSetting']))
+				cs['fridgeSet'] = round(newTemp, 2)
+				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']))
 				time.sleep(1)  # sleep shortly, or something could be added to the string
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Fridge temperature set to " +
-									str(cs['fridgeSetting']) +
+									str(cs['fridgeSet']) +
 									" degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "setProfile":  # cs['mode'] set to profile
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
-			cs['beerSetting'] = temperatureProfile.getNewTemp(config['scriptPath'])
-			ser.write("j{mode:p, beerSetting:" + str(cs['beerSetting']))
+			cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
+			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']))
 			time.sleep(1)  # sleep shortly, or something could be added to the string
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Profile mode enabled")
@@ -439,7 +438,8 @@ while(run):
 							str(newRow['BeerAnn']) + ';' +
 							str(newRow['FridgeTemp']) + ';' +
 							str(newRow['FridgeSet']) + ';' +
-							str(newRow['FridgeAnn']) + '\n')
+							str(newRow['FridgeAnn']) + ';' +
+							str(newRow['State']) + '\n')
 						csvFile.write(lineToWrite)
 						csvFile.close()
 						shutil.copyfile(localCsvFileName, wwwCsvFileName)
@@ -483,11 +483,11 @@ while(run):
 		# Check for update from temperature profile
 		if(cs['mode'] == 'p'):
 			newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
-			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
-				if(newTemp != cs['beerSetting']):
+			if(newTemp > cc['tempSetMin'] and newTemp < cc['tempSetMax']):
+				if(newTemp != cs['beerSet']):
 					# if temperature has to be updated send settings to arduino
-					cs['beerSetting'] = temperatureProfile.getNewTemp(config['scriptPath'])
-					ser.write("j{beerSetting:" + str(cs['beerSetting']))
+					cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
+					ser.write("j{beerSet:" + str(cs['beerSet']))
 					time.sleep(1)  # sleep or something could be added to the string
 
 	except socket.error, e:
