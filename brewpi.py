@@ -35,6 +35,8 @@ import brewpiJson
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
+compatibleBrewpiVersion = "0.1.0"
+
 # Control Settings
 cs = {	'mode': 'b',
 		'beerSetting': 20.0,
@@ -166,11 +168,34 @@ except serial.SerialException, e:
 
 logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
-time.sleep(10)
-# request settings from Arduino, processed later when reply is received
+
 ser.flush()
-ser.write('s')
-ser.write('c')
+retries = 0
+while(1):  # read all lines on serial interface
+	line = ser.readline()
+	if(line):  # line available?
+		if(line[0] == 'N'):
+			brewpiVersion = line[2:].strip('\n');
+			if(brewpiVersion == compatibleBrewpiVersion):
+				print "Found BrewPi version " + brewpiVersion
+			else:
+				logMessage("Warning: BrewPi version compatible with this script is " + 
+					compatibleBrewpiVersion + 
+					" but version number received is " + brewpiVersion)
+			break
+	else:
+		ser.write('n')
+		time.sleep(1);
+		retries = retries + 1
+		if(retries > 5):
+			print ("Warning: Cannot receive version number from Arduino. " + 
+				"Script might not be compatible.")
+			break;
+
+ser.flush()
+# request settings from Arduino, processed later when reply is received
+ser.write('s') # request control settings cs
+ser.write('c') # request control constans cc
 # answer from Arduino is received asynchronously later.
 
 #create a listening socket to communicate with PHP
@@ -437,6 +462,8 @@ while(run):
 						cv = json.loads(line[2:])
 						logMessage("Control variables received: ")
 						pprint(cv, sys.stderr)
+					elif(line[0] == 'N'):
+						pass # version number received. Do nothing, just ignore
 					else:
 						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
