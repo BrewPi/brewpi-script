@@ -153,6 +153,10 @@ def startBeer(beerName):
 	changeWwwSetting('beerName', beerName)
 
 
+def logMessage(message):
+	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
+
 # open serial port
 try:
 	ser = serial.Serial(config['port'], 57600, timeout=1)
@@ -160,8 +164,7 @@ except serial.SerialException, e:
 	print e
 	exit()
 
-print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-	"Notification: Script started for beer '" + config['beerName']) + "'"
+logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
 time.sleep(10)
 # request settings from Arduino, processed later when reply is received
@@ -196,8 +199,7 @@ while(run):
 	lastDay = day
 	day = time.strftime("%Y-%m-%d")
 	if lastDay != day:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-			"Notification: New day, dropping data table and creating new JSON file.")
+		logMessage("Notification: New day, dropping data table and creating new JSON file.")
 		jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
 		localJsonFileName = config['scriptPath'] + 'data/' + jsonFileName + '.json'
 		wwwJsonFileName = config['wwwPath'] + 'data/' + jsonFileName + '.json'
@@ -254,40 +256,35 @@ while(run):
 				# round to 2 dec, python will otherwise produce 6.999999999
 				cs['beerSet'] = round(newTemp, 2)
 				ser.write("j{mode:b, beerSet:" + str(cs['beerSet']) + "}")
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Beer temperature set to " +
-									str(cs['beerSet']) +
-									" degrees in web interface")
+				logMessage(	"Notification: Beer temperature set to " +
+							str(cs['beerSet']) +
+							" degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
 			else:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Beer temperature setting" + str(newTemp) +
-									" is outside allowed range " +
-									str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
+				logMessage("Beer temperature setting" + str(newTemp) +
+							" is outside allowed range " +
+							str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
 		elif messageType == "setFridge":  # new constant fridge temperature received
 			newTemp = float(value)
 			if(newTemp > cc['tempSetMin'] and newTemp < cc['tempSetMax']):
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
 				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "+")
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Fridge temperature set to " +
-									str(cs['fridgeSet']) +
-									" degrees in web interface")
+				logMessage("Notification: Fridge temperature set to " +
+							str(cs['fridgeSet']) +
+							" degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "setProfile":  # cs['mode'] set to profile
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
 			cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
 			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']) + "}")
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Profile mode enabled")
+			logMessage("Notification: Profile mode enabled")
 			raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "setOff":  # cs['mode'] set to OFF
 			cs['mode'] = 'o'
 			ser.write("j{mode:o}")
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Temperature control disabled")
+			logMessage("Notification: Temperature control disabled")
 			raise socket.timeout
 		elif messageType == "setParameters":
 			# receive JSON key:value pairs to set parameters on the Arduino
@@ -295,8 +292,7 @@ while(run):
 				decoded = json.loads(value)
 				ser.write("j" + json.dumps(decoded))
 			except json.JSONDecodeError:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-					"Error: invalid json string received: " + value)
+				logMessage("Error: invalid json string received: " + value)
 			raise socket.timeout
 		elif messageType == "stopScript":  # exit instruction received. Stop script.
 			run = 0
@@ -311,18 +307,15 @@ while(run):
 			if(newInterval > 5 and newInterval < 5000):
 				config['interval'] = float(newInterval)
 				config.write()
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Interval changed to " +
-									str(newInterval) + " seconds")
+				logMessage("Notification: Interval changed to " +
+							str(newInterval) + " seconds")
 		elif messageType == "name":  # new beer name
 			newName = value
 			if(len(newName) > 3):	 # shorter names are probably invalid
 				config['beerName'] = newName
 				startBeer(newName)
 				config.write()
-
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: restarted for beer: " + newName)
+				logMessage("Notification: restarted for beer: " + newName)
 		elif messageType == "profileKey":
 			config['profileKey'] = value
 			config.write()
@@ -349,8 +342,7 @@ while(run):
 			boardType = programParameters['boardType']
 			port = config['port']
 			eraseEEPROM = programParameters['eraseEEPROM']
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-						"New program uploaded to Arduino, script will restart")
+			logMessage("New program uploaded to Arduino, script will restart")
 			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
@@ -363,8 +355,7 @@ while(run):
 			python = sys.executable
 			os.execl(python, python, * sys.argv)
 		else:
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-								"Error: Received invalid message on socket: " + message)
+			logMessage("Error: Received invalid message on socket: " + message)
 
 		if (time.time() - prevTimeOut) < config['serialCheckInterval']:
 			continue
@@ -388,8 +379,7 @@ while(run):
 		elif((time.time() - prevDataTime) > float(config['interval']) +
 										2 * float(config['interval'])):
 			#something is wrong: arduino is not responding to data requests
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
-								+ "Error: Arduino is not responding to new data requests")
+			logMessage("Error: Arduino is not responding to new data requests")
 
 		while(1):  # read all lines on serial interface
 			line = ser.readline()
@@ -427,8 +417,7 @@ while(run):
 						prevDataTime = time.time()
 					elif(line[0] == 'D'):
 						# debug message received
-						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
-											+ "Arduino debug message: " + line[2:])
+						logMessage("Arduino debug message: " + line[2:])
 					elif(line[0] == 'L'):
 						# lcd content received
 						lcdTextReplaced = line[2:].replace('\xb0','&deg') #replace degree sign with &deg
@@ -436,8 +425,7 @@ while(run):
 					elif(line[0] == 'C'):
 						# Control constants received
 						cc = json.loads(line[2:])
-						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"Control constants received: ")
+						logMessage("Control constants received: ")
 						pprint(cc, sys.stderr)
 
 					elif(line[0] == 'S'):
@@ -447,15 +435,13 @@ while(run):
 					elif(line[0] == 'V'):
 						# Control settings received
 						cv = json.loads(line[2:])
-						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"Control variables received: ")
+						logMessage("Control variables received: ")
 						pprint(cv, sys.stderr)
 					else:
-						print >> sys.stderr, "Cannot process line from Arduino: " + line
+						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
 				except json.decoder.JSONDecodeError, e:
-					print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"JSON decode error: %s" % e)
+					logMessage("JSON decode error: %s" % e)
 			else:
 				# no lines left to process
 				break
@@ -470,8 +456,7 @@ while(run):
 					ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
 
 	except socket.error, e:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"socket error: %s" % e)
+		logMessage("socket error: %s" % e)
 
 
 ser.close()  # close port
