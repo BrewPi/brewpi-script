@@ -216,23 +216,37 @@ while(run):
 			messageType, value = message.split("=", 1)
 		else:
 			messageType = message
-
-		if messageType == "stopScript":  # exit instruction received. Stop script.
-			run = 0
-			# voluntary shutdown.
-			# write a file to prevent the cron job from restarting the script
-			dontrunfile = open(config['wwwPath'] + 'do_not_run_brewpi', "w")
-			dontrunfile.write("1")
-			dontrunfile.close()
-			continue
-		elif messageType == "ack":  # acknowledge request
+		if messageType == "ack":  # acknowledge request
 			conn.send('ack')
+		elif messageType == "lcd":  # lcd contents requested
+			conn.send(json.dumps(lcdText))
 		elif messageType == "getMode":  # echo cs['mode'] setting
 			conn.send(cs['mode'])
 		elif messageType == "getFridge":  # echo fridge temperature setting
 			conn.send(str(cs['fridgeSet']))
 		elif messageType == "getBeer":  # echo fridge temperature setting
 			conn.send(str(cs['beerSet']))
+		elif messageType == "getControlConstants":
+			conn.send(json.dumps(cc))
+		elif messageType == "getControlSettings":
+			conn.send(json.dumps(cs))
+		elif messageType == "getControlVariables":
+			conn.send(json.dumps(cv))
+		elif messageType == "refreshControlConstants":
+			ser.write("c")
+			raise socket.timeout
+		elif messageType == "refreshControlSettings":
+			ser.write("s")
+			raise socket.timeout
+		elif messageType == "refreshControlVariables":
+			ser.write("v")
+			raise socket.timeout
+		elif messageType == "loadDefaultControlSettings":
+			ser.write("S")
+			raise socket.timeout
+		elif messageType == "loadDefaultControlConstants":
+			ser.write("C")
+			raise socket.timeout
 		elif messageType == "setBeer":  # new constant beer temperature received
 			newTemp = float(value)
 			if(newTemp > cc['tempSetMin'] and newTemp < cc['tempSetMax']):
@@ -274,8 +288,24 @@ while(run):
 			ser.write("j{mode:o}")
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Temperature control disabled")
-		elif messageType == "lcd":  # lcd contents requested
-			conn.send(json.dumps(lcdText))
+			raise socket.timeout
+		elif messageType == "setParameters":
+			# receive JSON key:value pairs to set parameters on the Arduino
+			try:
+				decoded = json.loads(value)
+				ser.write("j" + json.dumps(decoded))
+			except json.JSONDecodeError:
+				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
+					"Error: invalid json string received: " + value)
+			raise socket.timeout
+		elif messageType == "stopScript":  # exit instruction received. Stop script.
+			run = 0
+			# voluntary shutdown.
+			# write a file to prevent the cron job from restarting the script
+			dontrunfile = open(config['wwwPath'] + 'do_not_run_brewpi', "w")
+			dontrunfile.write("1")
+			dontrunfile.close()
+			continue
 		elif messageType == "interval":  # new interval received
 			newInterval = int(value)
 			if(newInterval > 5 and newInterval < 5000):
@@ -311,36 +341,6 @@ while(run):
 				conn.send("Profile successfuly updated")
 			else:
 				conn.send("Failed to update profile")
-		elif messageType == "getControlConstants":
-			conn.send(json.dumps(cc))
-		elif messageType == "getControlSettings":
-			conn.send(json.dumps(cs))
-		elif messageType == "getControlVariables":
-			conn.send(json.dumps(cv))
-		elif messageType == "refreshControlConstants":
-			ser.write("c")
-			raise socket.timeout
-		elif messageType == "refreshControlSettings":
-			ser.write("s")
-			raise socket.timeout
-		elif messageType == "refreshControlVariables":
-			ser.write("v")
-			raise socket.timeout
-		elif messageType == "loadDefaultControlSettings":
-			ser.write("S")
-			raise socket.timeout
-		elif messageType == "loadDefaultControlConstants":
-			ser.write("C")
-			raise socket.timeout
-		elif messageType == "setParameters":
-			# receive JSON key:value pairs to set parameters on the Arduino
-			try:
-				decoded = json.loads(value)
-				ser.write("j" + json.dumps(decoded))
-			except json.JSONDecodeError:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-					"Error: invalid json string received: " + value)
-			raise socket.timeout
 		elif messageType == "programArduino":
 			ser.close  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
