@@ -23,7 +23,9 @@ while read line; do
     if [ -z "$line" ]; then continue; fi
     var=$(echo $line | cut -d '=' -f1)
     val=$(echo $line | cut -d '=' -f2)
-    declare "$(echo $var)=$(echo $val)"
+    value=$(echo $val) # remove whitespace around =
+    variable=$(echo $var) 
+    eval "$variable=\"$value\""
 done < $configFile
 
 if [ "$(ps ax | grep -v grep | grep brewpi.py)" != "" ]; then
