@@ -167,9 +167,7 @@ time.sleep(10)
 # request settings from Arduino, processed later when reply is received
 ser.flush()
 ser.write('s')
-time.sleep(1)
 ser.write('c')
-time.sleep(1)
 # answer from Arduino is received asynchronously later.
 
 #create a listening socket to communicate with PHP
@@ -185,10 +183,6 @@ s.setblocking(1)  # set socket functions to be blocking
 s.listen(5)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(float(config['serialCheckInterval']))
-
-# The arduino nano resets when linux connects to the serial port.
-# Delay to give it time to restart.
-# time.sleep(8)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
@@ -245,8 +239,7 @@ while(run):
 				cs['mode'] = 'b'
 				# round to 2 dec, python will otherwise produce 6.999999999
 				cs['beerSet'] = round(newTemp, 2)
-				ser.write("j{mode:b, beerSet:" + str(cs['beerSet']))
-				time.sleep(1)  # sleep shortly, or something could be added to the string
+				ser.write("j{mode:b, beerSet:" + str(cs['beerSet']) + "}")
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Beer temperature set to " +
 									str(cs['beerSet']) +
@@ -262,8 +255,7 @@ while(run):
 			if(newTemp > cc['tempSetMin'] and newTemp < cc['tempSetMax']):
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
-				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']))
-				time.sleep(1)  # sleep shortly, or something could be added to the string
+				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "+")
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Fridge temperature set to " +
 									str(cs['fridgeSet']) +
@@ -273,8 +265,7 @@ while(run):
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
 			cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
-			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']))
-			time.sleep(1)  # sleep shortly, or something could be added to the string
+			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']) + "}")
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 									"Notification: Profile mode enabled")
 			raise socket.timeout  # go to serial communication to update Arduino
@@ -328,30 +319,24 @@ while(run):
 			conn.send(json.dumps(cv))
 		elif messageType == "refreshControlConstants":
 			ser.write("c")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "refreshControlSettings":
 			ser.write("s")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "refreshControlVariables":
 			ser.write("v")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "loadDefaultControlSettings":
 			ser.write("S")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "loadDefaultControlConstants":
 			ser.write("C")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "setParameters":
 			# receive JSON key:value pairs to set parameters on the Arduino
 			try:
 				decoded = json.loads(value)
 				ser.write("j" + json.dumps(decoded))
-				time.sleep(1)  # sleep shortly, or something could be added to the string
 			except json.JSONDecodeError:
 				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
 					"Error: invalid json string received: " + value)
@@ -393,11 +378,9 @@ while(run):
 
 		# request new LCD text
 		ser.write('l')
-		time.sleep(1)  # give the arduino time to respond
 		# request Settings from Arduino to stay up to date
 		ser.write('s')
-		time.sleep(1)  # give the arduino time to respond
-
+		
 		# if no new data has been received for serialRequestInteval seconds
 		if((time.time() - prevDataTime) >= float(config['interval'])):
 			ser.write("t")  # request new from arduino
@@ -407,8 +390,6 @@ while(run):
 			#something is wrong: arduino is not responding to data requests
 			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
 								+ "Error: Arduino is not responding to new data requests")
-
-		time.sleep(1)  # give the arduino time to respond
 
 		while(1):  # read all lines on serial interface
 			line = ser.readline()
@@ -486,8 +467,7 @@ while(run):
 				if(newTemp != cs['beerSet']):
 					# if temperature has to be updated send settings to arduino
 					cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
-					ser.write("j{beerSet:" + str(cs['beerSet']))
-					time.sleep(1)  # sleep or something could be added to the string
+					ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
 
 	except socket.error, e:
 		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
