@@ -18,9 +18,9 @@ import time
 import csv
 
 
-def getNewTemp():
+def getNewTemp(scriptPath):
 	temperatureReader = csv.reader(
-		open('/home/brewpi/settings/tempProfile.csv', 'rb'),
+		open(scriptPath + 'settings/tempProfile.csv', 'rb'),
 									delimiter=',', quoting=csv.QUOTE_ALL)
 	temperatureReader.next()  # discard the first row, which is the table header
 	prevTemp = -1

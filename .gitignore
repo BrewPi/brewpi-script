@@ -29,3 +29,4 @@ pip-log.txt
 # make sure an empty logs directory is created
 logs/
 !.gitignore
+sftp-config.json
