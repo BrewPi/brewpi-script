@@ -34,6 +34,6 @@ boardType = config['boardType']
 port = config['port']
 eraseEEPROM = True
 
-result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
+result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
 
 print result
