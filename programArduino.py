@@ -18,7 +18,6 @@ import os.path
 import subprocess as sub
 import serial
 from time import sleep
-import logging
 import pprint
 
 def fetchBoardSettings(boardsFile, boardType):
