@@ -176,13 +176,16 @@ while(1):  # read all lines on serial interface
 	line = ser.readline()
 	if(line):  # line available?
 		if(line[0] == 'N'):
-			brewpiVersion = line[2:].strip('\n');
+			data = line.strip('\n').split(':')
+			brewpiVersion = data[1]
 			if(brewpiVersion == compatibleBrewpiVersion):
 				print "Found BrewPi version " + brewpiVersion
 			else:
 				logMessage("Warning: BrewPi version compatible with this script is " + 
 					compatibleBrewpiVersion + 
 					" but version number received is " + brewpiVersion)
+            if (len(data)>2):
+				print data[2]
 			break
 	else:
 		ser.write('n')
