@@ -1,3 +1,4 @@
+import os.path
 # Copyright 2012 BrewPi/Elco Jacobs.
 # This file is part of BrewPi.
 
@@ -17,23 +18,42 @@
 import subprocess as sub
 import serial
 from time import sleep
+import pprint
 
-
-def programArduino(boardType, hexFile, port, eraseEEPROM):
-    avrconf = '/usr/share/arduino/hardware/tools/avrdude.conf'
-    boardsFile = open('/usr/share/arduino/hardware/arduino/boards.txt',
-        'rb').readlines()
+def fetchBoardSettings(boardsFile, boardType):
     boardSettings = {}
-    returnString = ""
-
     for line in boardsFile:
         if(line.startswith(boardType)):
               # strip board name, period and \n
             setting = line.replace(boardType + '.', '', 1).strip()
             [key, sign, val] = setting.rpartition('=')
             boardSettings[key] = val
+    return boardSettings
 
-    avrsizeCommand = 'avr-size ' + hexFile
+def loadBoardsFile(avrhome):
+    return open(avrhome+'hardware/arduino/boards.txt', 'rb').readlines()
+
+def programArduino(config, boardType, hexFile, port, eraseEEPROM):
+    avrhome = config.get('avrHome', '/usr/share/arduino/')				# location of Arduino sdk
+    avrtools = avrhome + 'hardware/tools/avr/'	# location of avr tools
+    avrconf = avrtools + 'etc/avrdude.conf'		# location of global avr conf
+    avrbin = avrtools + 'bin/'			# location of executables
+    returnString = ""
+    print boardType+" "+hexFile
+
+    boardsFile = loadBoardsFile(avrhome)
+    boardSettings = fetchBoardSettings(boardsFile, boardType)
+    #pprint.pprint(boardsFile)
+
+    for line in boardsFile:
+        if(line.startswith(boardType)):
+            print line
+              # strip board name, period and \n
+            setting = line.replace(boardType + '.', '', 1).strip()
+            [key, sign, val] = setting.rpartition('=')
+            boardSettings[key] = val
+
+    avrsizeCommand = avrbin + 'avr-size ' + hexFile
     returnString = returnString + avrsizeCommand + '\n'
     # check program size against maximum size
     p = sub.Popen(avrsizeCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
@@ -45,13 +65,16 @@ def programArduino(boardType, hexFile, port, eraseEEPROM):
     returnString = returnString + ('Progam size: ' + output.split()[7] +
         ' bytes out of max ' + boardSettings['upload.maximum_size'] + '\n')
 
-    programCommand = ('avrdude' +
+    hexFileDir = os.path.dirname(hexFile)
+    hexFileLocal = os.path.basename(hexFile)
+
+    programCommand = (avrbin + 'avrdude' +
                 ' -F ' +
                 ' -p ' + boardSettings['build.mcu'] +
                 ' -c ' + boardSettings['upload.protocol'] +
                 ' -b ' + boardSettings['upload.speed'] +
                 ' -P ' + port +
-                ' -U ' + 'flash:w:' + hexFile +
+                ' -U ' + 'flash:w:' + hexFileLocal +
                 ' -C ' + avrconf)
 
     if(eraseEEPROM):
@@ -65,7 +88,7 @@ def programArduino(boardType, hexFile, port, eraseEEPROM):
         ser.close()
         sleep(1)  # give the bootloader time to start up
 
-    p = sub.Popen(programCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
+    p = sub.Popen(programCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True,cwd=hexFileDir)
     output, errors = p.communicate()
     # avrdude only uses stderr, append it
     returnString = returnString + errors
