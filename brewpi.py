@@ -210,11 +210,11 @@ else:
 	if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
 	# if socket already exists, remove it
 		os.remove(config['scriptPath'] + 'BEERSOCKET')
-        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
-        # set all permissions for socket
-        os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
+    # set all permissions for socket
+    os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(5)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
