@@ -30,3 +30,5 @@ pip-log.txt
 logs/
 !.gitignore
 sftp-config.json
+brewpi-script.iml
+requirements.txt
