@@ -215,7 +215,7 @@ else:
 	# set all permissions for socket
 	os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
 s.setblocking(1)  # set socket functions to be blocking
-s.listen(5)  # Create a backlog queue for up to 5 connections
+s.listen(10)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(float(config['serialCheckInterval']))
 
