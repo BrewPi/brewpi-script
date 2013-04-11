@@ -26,6 +26,8 @@ pip-log.txt
 #Mr Developer
 .mr.developer.cfg
 
+start.bat
+
 # make sure an empty logs directory is created
 logs/
 !.gitignore

@@ -167,6 +167,7 @@ except serial.SerialException, e:
 
 logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
+time.sleep(float(config.get('startupDelay', 10)))
 
 ser.flush()
 retries = 0
@@ -198,14 +199,21 @@ ser.write('c')  # request control constans cc
 # answer from Arduino is received asynchronously later.
 
 #create a listening socket to communicate with PHP
-if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
+is_windows = sys.platform.startswith('win')
+useInetSocket = bool(config.get('useInetSocket', is_windows));
+if (useInetSocket):
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	s.bind((config.get('socketHost', 'localhost'), int(config.get('socketPort', 6332))))
+else:
+	if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
 	# if socket already exists, remove it
-	os.remove(config['scriptPath'] + 'BEERSOCKET')
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
-# set all permissions for socket
-os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
+		os.remove(config['scriptPath'] + 'BEERSOCKET')
+	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
+	# set all permissions for socket
+	os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(5)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
@@ -367,7 +375,7 @@ while run:
 			port = config['port']
 			eraseEEPROM = programParameters['eraseEEPROM']
 			logMessage("New program uploaded to Arduino, script will restart")
-			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
+			result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
 			#							programParameters['fileName'],
