@@ -82,11 +82,14 @@ lcdText = ['Script starting up', ' ', ' ', ' ']
 
 # Read in command line arguments
 if len(sys.argv) < 2:
-	sys.exit('Usage: %s <config file full path>' % sys.argv[0])
-if not os.path.exists(sys.argv[1]):
-	sys.exit('ERROR: Config file "%s" was not found!' % sys.argv[1])
+	print >> sys.stderr, 'Using default config path ./settings/config.cfg, to override use : %s <config file full path>' % sys.argv[0]
+	configFile = './settings/config.cfg'
+else:
+	configFile = sys.argv[1]
 
-configFile = sys.argv[1]
+if not os.path.exists(configFile):
+	sys.exit('ERROR: Config file "%s" was not found!' % configFile)
+
 
 # global variables, will be initialized by startBeer()
 config = ConfigObj(configFile)
