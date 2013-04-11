@@ -369,7 +369,10 @@ while run:
 		elif messageType == "programArduino":
 			ser.close  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
-			programParameters = json.loads(value)
+			try:
+				programParameters = json.loads(value)
+			except json.JSONDecodeError:
+				logMessage("Error: cannot decode programming parameters: " + value)
 			hexFile = programParameters['fileName']
 			boardType = programParameters['boardType']
 			port = config['port']
@@ -470,6 +473,7 @@ while run:
 					# end or processing a line
 				except json.decoder.JSONDecodeError, e:
 					logMessage("JSON decode error: %s" % e)
+					logMessage("Line received was: " + line)
 			else:
 				# no lines left to process
 				break
