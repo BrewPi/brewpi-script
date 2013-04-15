@@ -92,7 +92,20 @@ if not os.path.exists(configFile):
 
 
 # global variables, will be initialized by startBeer()
-config = ConfigObj(configFile)
+defaultConfig = ConfigObj('./settings/defaults.cfg')
+userConfig = ConfigObj(configFile)
+config = defaultConfig
+config.merge(userConfig)
+
+
+def configSet(settingName, value):
+	global userConfig
+	global config
+	config[settingName] = value
+	userConfig[settingName] = value
+	userConfig.write()
+
+
 localJsonFileName = ""
 localCsvFileName = ""
 wwwJsonFileName = ""
@@ -340,20 +353,17 @@ while run:
 		elif messageType == "interval":  # new interval received
 			newInterval = int(value)
 			if 5 < newInterval < 5000:
-				config['interval'] = float(newInterval)
-				config.write()
+				configSet('interval',float(newInterval))
 				logMessage("Notification: Interval changed to " +
 						   str(newInterval) + " seconds")
 		elif messageType == "name":  # new beer name
 			newName = value
 			if len(newName) > 3:     # shorter names are probably invalid
-				config['beerName'] = newName
+				configSet('beerName', newName)
 				startBeer(newName)
-				config.write()
 				logMessage("Notification: restarted for beer: " + newName)
 		elif messageType == "profileKey":
-			config['profileKey'] = value
-			config.write()
+			configSet('profileKey', value)
 			changeWwwSetting('profileKey', value)
 		elif messageType == "uploadProfile":
 			# use urllib to download the profile as a CSV file
