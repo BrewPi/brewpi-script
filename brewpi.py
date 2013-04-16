@@ -454,10 +454,10 @@ while run:
 										   str(newRow['FridgeSet']) + ';' +
 										   str(newRow['FridgeAnn']) + ';' +
 										   str(newRow['State']) + '\n')
+							csvFile.write(lineToWrite)
 						except KeyError, e:
 							logMessage("KeyError in line from Arduino: %s" % e)
 
-						csvFile.write(lineToWrite)
 						csvFile.close()
 						shutil.copyfile(localCsvFileName, wwwCsvFileName)
 						# store time of last new data for interval check
