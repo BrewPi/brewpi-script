@@ -445,14 +445,18 @@ while run:
 						shutil.copyfile(localJsonFileName, wwwJsonFileName)
 						#write csv file too
 						csvFile = open(localCsvFileName, "a")
-						lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-									   str(newRow['BeerTemp']) + ';' +
-									   str(newRow['BeerSet']) + ';' +
-									   str(newRow['BeerAnn']) + ';' +
-									   str(newRow['FridgeTemp']) + ';' +
-									   str(newRow['FridgeSet']) + ';' +
-									   str(newRow['FridgeAnn']) + ';' +
-									   str(newRow['State']) + '\n')
+						try:
+							lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+										   str(newRow['BeerTemp']) + ';' +
+										   str(newRow['BeerSet']) + ';' +
+										   str(newRow['BeerAnn']) + ';' +
+										   str(newRow['FridgeTemp']) + ';' +
+										   str(newRow['FridgeSet']) + ';' +
+										   str(newRow['FridgeAnn']) + ';' +
+										   str(newRow['State']) + '\n')
+						except KeyError, e:
+							logMessage("KeyError in line from Arduino: %s" % e)
+
 						csvFile.write(lineToWrite)
 						csvFile.close()
 						shutil.copyfile(localCsvFileName, wwwCsvFileName)
