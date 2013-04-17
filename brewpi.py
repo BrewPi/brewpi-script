@@ -204,7 +204,7 @@ while 1:  # read all lines on serial interface
 		time.sleep(1)
 		retries += 1
 		if retries > 5:
-			print ("Warning: Cannot receive version number from Arduino. " +
+			logMessage("Warning: Cannot receive version number from Arduino. " +
 				   "Script might not be compatible.")
 			break
 
