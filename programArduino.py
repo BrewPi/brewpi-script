@@ -39,15 +39,12 @@ def programArduino(config, boardType, hexFile, port, eraseEEPROM):
     avrconf = avrtools + 'etc/avrdude.conf'		# location of global avr conf
     avrbin = avrtools + 'bin/'			# location of executables
     returnString = ""
-    print boardType+" "+hexFile
 
     boardsFile = loadBoardsFile(avrhome)
     boardSettings = fetchBoardSettings(boardsFile, boardType)
-    #pprint.pprint(boardsFile)
 
     for line in boardsFile:
         if(line.startswith(boardType)):
-            print line
               # strip board name, period and \n
             setting = line.replace(boardType + '.', '', 1).strip()
             [key, sign, val] = setting.rpartition('=')
