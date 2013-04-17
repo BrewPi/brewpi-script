@@ -339,6 +339,8 @@ while run:
 			try:
 				decoded = json.loads(value)
 				ser.write("j" + json.dumps(decoded))
+				if 'tempFormat' in decoded:
+					changeWwwSetting('tempFormat', decoded['tempFormat'])  # change in web interface settings too.
 			except json.JSONDecodeError:
 				logMessage("Error: invalid json string received: " + value)
 			raise socket.timeout
