@@ -17,8 +17,6 @@
 from pprint import pprint
 import serial
 import time
-from datetime import datetime
-# import gviz_api
 import socket
 import sys
 import os
@@ -32,64 +30,88 @@ import temperatureProfile
 import programArduino as programmer
 import brewpiJson
 
-# Temperature limit defines
-# To prevent invalid settings temperatures should be between these limits
-# Comment what you don't need, C or F
-
 # Settings will be read from Arduino, initialize with same defaults as Arduino
-# This is mainly to show what's expected. Will all be overwritten
+# This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
+
+compatibleBrewpiVersion = "0.1.0"
 
 # Control Settings
-cs = {	'mode': 'b',
-		'beerSetting': 20.0,
-		'fridgeSetting': 20.0,
-		'heatEstimator': 0.2,
-		'coolEstimator': 5}
+cs = {'mode': 'b',
+	  'beerSetting': 20.0,
+	  'fridgeSetting': 20.0,
+	  'heatEstimator': 0.2,
+	  'coolEstimator': 5}
+
 # Control Constants
-cc = {	'tempFormat': 'C',
-		'tempSettingMin': 4.0,
-		'tempSettingMax': 30.0,
-		'KpHeat': 10.000,
-		'KpCool': 5.000,
-		'Ki': 0.020,
-		'KdCool': -10.000,
-		'KdHeat': -5.000,
-		'iMaxSlope': 0.05,
-		'iMinSlope': -0.1,
-		'iMaxError': 0.5,
-		'idleRangeHigh': 0.500,
-		'idleRangeLow': -0.500,
-		'heatingTargetUpper': 0.199,
-		'heatingTargetLower': -0.100,
-		'coolingTargetUpper': 0.100,
-		'coolingTargetLower': -0.199,
-		'maxHeatTimeForEstimate': 600,
-		'maxCoolTimeForEstimate': 1200}
+cc = {"tempFormat": "C",
+	  "tempSetMin": 1.0,
+	  "tempSetMax": 30.0,
+	  "Kp": 20.000,
+	  "Ki": 0.600,
+	  "Kd": -3.000,
+	  "iMaxErr": 0.500,
+	  "idleRangeH": 1.000,
+	  "idleRangeL": -1.000,
+	  "heatTargetH": 0.301,
+	  "heatTargetL": -0.199,
+	  "coolTargetH": 0.199,
+	  "coolTargetL": -0.301,
+	  "maxHeatTimeForEst": "600",
+	  "maxCoolTimeForEst": "1200",
+	  "fridgeFastFilt": "1",
+	  "fridgeSlowFilt": "4",
+	  "fridgeSlopeFilt": "3",
+	  "beerFastFilt": "3",
+	  "beerSlowFilt": "5",
+	  "beerSlopeFilt": "4"}
+
 # Control variables
-cv = {	'beerDiff': 0,
-		'fridgeDiff': 0,
-		'diffIntegral': 0,
-		'beerSlope': 0,
-		'p': 0,
-		'i': 0,
-		'd': 0,
-		'Kp': 0,
-		'Kd': 0,
-		'estimatedPeak': 0,
-		'negPeakSetting': 0,
-		'posPeakSetting': 0,
-		'negPeak': 0,
-		'posPeak': 0}
+cv = {"beerDiff": 0.000,
+	  "diffIntegral": 0.000,
+	  "beerSlope": 0.000,
+	  "p": 0.000,
+	  "i": 0.000,
+	  "d": 0.000,
+	  "estPeak": 0.000,
+	  "negPeakEst": 0.000,
+	  "posPeakEst": 0.000,
+	  "negPeak": 0.000,
+	  "posPeak": 0.000}
+
+lcdText = ['Script starting up', ' ', ' ', ' ']
+
+# Read in command line arguments
+if len(sys.argv) < 2:
+	print >> sys.stderr, 'Using default config path ./settings/config.cfg, to override use : %s <config file full path>' % sys.argv[0]
+	configFile = './settings/config.cfg'
+else:
+	configFile = sys.argv[1]
+
+if not os.path.exists(configFile):
+	sys.exit('ERROR: Config file "%s" was not found!' % configFile)
+
 
 # global variables, will be initialized by startBeer()
-config = ConfigObj('/home/brewpi/settings/config.cfg')
+defaultConfig = ConfigObj('./settings/defaults.cfg')
+userConfig = ConfigObj(configFile)
+config = defaultConfig
+config.merge(userConfig)
+
+
+def configSet(settingName, value):
+	global userConfig
+	global config
+	config[settingName] = value
+	userConfig[settingName] = value
+	userConfig.write()
+
+
 localJsonFileName = ""
 localCsvFileName = ""
 wwwJsonFileName = ""
 wwwCsvFileName = ""
 lastDay = ""
 day = ""
-
 
 # wwwSettings.json is a copy of some of the settings for the web server
 def changeWwwSetting(settingName, value):
@@ -131,14 +153,13 @@ def startBeer(beerName):
 	#if a file for today already existed, add suffix
 	if os.path.isfile(dataPath + jsonFileName + '.json'):
 		i = 1
-		while(os.path.isfile(
-				dataPath + jsonFileName + '-' + str(i) + '.json')):
-			i = i + 1
+		while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
+			i += 1
 		jsonFileName = jsonFileName + '-' + str(i)
 	localJsonFileName = dataPath + jsonFileName + '.json'
 	brewpiJson.newEmptyFile(localJsonFileName)
 
-	# Define a location on the webserver to copy the file to after it is written
+	# Define a location on the web server to copy the file to after it is written
 	wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
 
 	# Define a CSV file to store the data as CSV (might be useful one day)
@@ -147,6 +168,12 @@ def startBeer(beerName):
 	changeWwwSetting('beerName', beerName)
 
 
+def logMessage(message):
+	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
+
+ser = 0
+con = 0
 # open serial port
 try:
 	ser = serial.Serial(config['port'], 57600, timeout=1)
@@ -154,51 +181,73 @@ except serial.SerialException, e:
 	print e
 	exit()
 
-print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-	"Notification: Script started for beer '" + config['beerName']) + "'"
+logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
-time.sleep(10)
-# read settings from Arduino
+time.sleep(float(config.get('startupDelay', 10)))
+
 ser.flush()
-ser.write('s')
-time.sleep(1)
-ser.write('c')
-time.sleep(1)
+retries = 0
+while 1:  # read all lines on serial interface
+	line = ser.readline()
+	if line:  # line available?
+		if line[0] == 'N':
+			brewpiVersion = line[2:].strip('\n')
+			if brewpiVersion == compatibleBrewpiVersion:
+				print "Found BrewPi version " + brewpiVersion
+			else:
+				logMessage("Warning: BrewPi version compatible with this script is " +
+						   compatibleBrewpiVersion +
+						   " but version number received is " + brewpiVersion)
+			break
+	else:
+		ser.write('n')
+		time.sleep(1)
+		retries += 1
+		if retries > 5:
+			logMessage("Warning: Cannot receive version number from Arduino. " +
+				   "Script might not be compatible.")
+			break
+
+ser.flush()
+# request settings from Arduino, processed later when reply is received
+ser.write('s')  # request control settings cs
+ser.write('c')  # request control constans cc
 # answer from Arduino is received asynchronously later.
 
 #create a listening socket to communicate with PHP
-if os.path.exists(config['scriptPath'] + '/BEERSOCKET'):
+is_windows = sys.platform.startswith('win')
+useInetSocket = bool(config.get('useInetSocket', is_windows));
+if (useInetSocket):
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	s.bind((config.get('socketHost', 'localhost'), int(config.get('socketPort', 6332))))
+else:
+	if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
 	# if socket already exists, remove it
-	os.remove(config['scriptPath'] + '/BEERSOCKET')
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(config['scriptPath'] + '/BEERSOCKET')  # Bind BEERSOCKET
-# set all permissions for socket
-os.chmod(config['scriptPath'] + '/BEERSOCKET', 0777)
+		os.remove(config['scriptPath'] + 'BEERSOCKET')
+	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
+	# set all permissions for socket
+	os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
 s.setblocking(1)  # set socket functions to be blocking
-s.listen(5)  # Create a backlog queue for up to 5 connections
+s.listen(10)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(float(config['serialCheckInterval']))
-
-# The arduino nano resets when linux connects to the serial port.
-# Delay to give it time to restart.
-# time.sleep(8)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
 
 run = 1
-lcdText = "Script starting up"
 
 startBeer(config['beerName'])
 
-while(run):
-	# Check wheter it is a new day
+while run:
+	# Check whether it is a new day
 	lastDay = day
 	day = time.strftime("%Y-%m-%d")
 	if lastDay != day:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-			"Notification: New day, dropping data table and creating new JSON file.")
+		logMessage("Notification: New day, dropping data table and creating new JSON file.")
 		jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
 		localJsonFileName = config['scriptPath'] + 'data/' + jsonFileName + '.json'
 		wwwJsonFileName = config['wwwPath'] + 'data/' + jsonFileName + '.json'
@@ -217,104 +266,16 @@ while(run):
 			messageType, value = message.split("=", 1)
 		else:
 			messageType = message
-
-		if messageType == "stopScript":  # exit instruction received. Stop script.
-			run = 0
-			# voluntary shutdown.
-			# write a file to prevent the cron job from restarting the script
-			dontrunfile = open(config['wwwPath'] + 'do_not_run_brewpi', "w")
-			dontrunfile.write("1")
-			dontrunfile.close()
-			continue
-		elif messageType == "ack":  # acknowledge request
+		if messageType == "ack":  # acknowledge request
 			conn.send('ack')
+		elif messageType == "lcd":  # lcd contents requested
+			conn.send(json.dumps(lcdText))
 		elif messageType == "getMode":  # echo cs['mode'] setting
 			conn.send(cs['mode'])
 		elif messageType == "getFridge":  # echo fridge temperature setting
-			conn.send(str(cs['fridgeSetting']))
+			conn.send(str(cs['fridgeSet']))
 		elif messageType == "getBeer":  # echo fridge temperature setting
-			conn.send(str(cs['beerSetting']))
-		elif messageType == "setBeer":  # new constant beer temperature received
-			newTemp = float(value)
-			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
-				cs['mode'] = 'b'
-				# round to 2 dec, python will otherwise produce 6.999999999
-				cs['beerSetting'] = round(newTemp, 2)
-				ser.write("j{mode:b, beerSetting:" + str(cs['beerSetting']))
-				time.sleep(1)  # sleep shortly, or something could be added to the string
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Beer temperature set to " +
-									str(cs['beerSetting']) +
-									" degrees in web interface")
-				raise socket.timeout  # go to serial communication to update Arduino
-			else:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Beer temperature setting" + str(newTemp) +
-									" is outside allowed range " +
-									str(cc['tempSettingMin']) + "-" + str(cc['tempSettingMax']))
-		elif messageType == "setFridge":  # new constant fridge temperature received
-			newTemp = float(value)
-			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
-				cs['mode'] = 'f'
-				cs['fridgeSetting'] = round(newTemp, 2)
-				ser.write("j{mode:f, fridgeSetting:" + str(cs['fridgeSetting']))
-				time.sleep(1)  # sleep shortly, or something could be added to the string
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Fridge temperature set to " +
-									str(cs['fridgeSetting']) +
-									" degrees in web interface")
-				raise socket.timeout  # go to serial communication to update Arduino
-		elif messageType == "setProfile":  # cs['mode'] set to profile
-			# read temperatures from currentprofile.csv
-			cs['mode'] = 'p'
-			cs['beerSetting'] = temperatureProfile.getNewTemp()
-			ser.write("j{mode:p, beerSetting:" + str(cs['beerSetting']))
-			time.sleep(1)  # sleep shortly, or something could be added to the string
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Profile mode enabled")
-			raise socket.timeout  # go to serial communication to update Arduino
-		elif messageType == "setOff":  # cs['mode'] set to OFF
-			cs['mode'] = 'o'
-			ser.write("j{mode:o}")
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Temperature control disabled")
-		elif messageType == "lcd":  # lcd contents requested
-			conn.send(lcdText)
-		elif messageType == "interval":  # new interval received
-			newInterval = int(value)
-			if(newInterval > 5 and newInterval < 5000):
-				config['interval'] = float(newInterval)
-				config.write()
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: Interval changed to " +
-									str(newInterval) + " seconds")
-		elif messageType == "name":  # new beer name
-			newName = value
-			if(len(newName) > 3):	 # shorter names are probably invalid
-				config['beerName'] = newName
-				startBeer(newName)
-				config.write()
-
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-									"Notification: restarted for beer: " + newName)
-		elif messageType == "profileKey":
-			config['profileKey'] = value
-			config.write()
-			changeWwwSetting('profileKey', value)
-		elif messageType == "uploadProfile":
-			# use urllib to download the profile as a CSV file
-			profileUrl = ("https://spreadsheets.google.com/tq?key=" +
-				config['profileKey'] +
-				"&tq=select D,E&tqx=out:csv")  # select the right cells and CSV format
-			profileFileName = '/home/brewpi/' + 'settings/tempProfile.csv'
-			if os.path.isfile(profileFileName + '.old'):
-				os.remove(profileFileName + '.old')
-			os.rename(profileFileName, profileFileName + '.old')
-			urllib.urlretrieve(profileUrl, profileFileName)
-			if os.path.isfile(profileFileName):
-				conn.send("Profile successfuly updated")
-			else:
-				conn.send("Failed to update profile")
+			conn.send(str(cs['beerSet']))
 		elif messageType == "getControlConstants":
 			conn.send(json.dumps(cc))
 		elif messageType == "getControlSettings":
@@ -323,58 +284,128 @@ while(run):
 			conn.send(json.dumps(cv))
 		elif messageType == "refreshControlConstants":
 			ser.write("c")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "refreshControlSettings":
 			ser.write("s")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "refreshControlVariables":
 			ser.write("v")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "loadDefaultControlSettings":
 			ser.write("S")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
 			raise socket.timeout
 		elif messageType == "loadDefaultControlConstants":
 			ser.write("C")
-			time.sleep(1)  # sleep shortly, or something could be added to the string
+			raise socket.timeout
+		elif messageType == "setBeer":  # new constant beer temperature received
+			newTemp = float(value)
+			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+				cs['mode'] = 'b'
+				# round to 2 dec, python will otherwise produce 6.999999999
+				cs['beerSet'] = round(newTemp, 2)
+				ser.write("j{mode:b, beerSet:" + str(cs['beerSet']) + "}")
+				logMessage("Notification: Beer temperature set to " +
+						   str(cs['beerSet']) +
+						   " degrees in web interface")
+				raise socket.timeout  # go to serial communication to update Arduino
+			else:
+				logMessage("Beer temperature setting" + str(newTemp) +
+						   " is outside allowed range " +
+						   str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
+		elif messageType == "setFridge":  # new constant fridge temperature received
+			newTemp = float(value)
+			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+				cs['mode'] = 'f'
+				cs['fridgeSet'] = round(newTemp, 2)
+				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "+")
+				logMessage("Notification: Fridge temperature set to " +
+						   str(cs['fridgeSet']) +
+						   " degrees in web interface")
+				raise socket.timeout  # go to serial communication to update Arduino
+		elif messageType == "setProfile":  # cs['mode'] set to profile
+			# read temperatures from currentprofile.csv
+			cs['mode'] = 'p'
+			cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
+			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']) + "}")
+			logMessage("Notification: Profile mode enabled")
+			raise socket.timeout  # go to serial communication to update Arduino
+		elif messageType == "setOff":  # cs['mode'] set to OFF
+			cs['mode'] = 'o'
+			ser.write("j{mode:o}")
+			logMessage("Notification: Temperature control disabled")
 			raise socket.timeout
 		elif messageType == "setParameters":
 			# receive JSON key:value pairs to set parameters on the Arduino
 			try:
 				decoded = json.loads(value)
 				ser.write("j" + json.dumps(decoded))
-				time.sleep(1)  # sleep shortly, or something could be added to the string
+				if 'tempFormat' in decoded:
+					changeWwwSetting('tempFormat', decoded['tempFormat'])  # change in web interface settings too.
 			except json.JSONDecodeError:
-				print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-					"Error: invalid json string received: " + value)
+				logMessage("Error: invalid json string received: " + value)
 			raise socket.timeout
+		elif messageType == "stopScript":  # exit instruction received. Stop script.
+			run = 0
+			# voluntary shutdown.
+			# write a file to prevent the cron job from restarting the script
+			dontrunfile = open(config['wwwPath'] + 'do_not_run_brewpi', "w")
+			dontrunfile.write("1")
+			dontrunfile.close()
+			continue
+		elif messageType == "interval":  # new interval received
+			newInterval = int(value)
+			if 5 < newInterval < 5000:
+				configSet('interval',float(newInterval))
+				logMessage("Notification: Interval changed to " +
+						   str(newInterval) + " seconds")
+		elif messageType == "name":  # new beer name
+			newName = value
+			if len(newName) > 3:     # shorter names are probably invalid
+				configSet('beerName', newName)
+				startBeer(newName)
+				logMessage("Notification: restarted for beer: " + newName)
+		elif messageType == "profileKey":
+			configSet('profileKey', value)
+			changeWwwSetting('profileKey', value)
+		elif messageType == "uploadProfile":
+			# use urllib to download the profile as a CSV file
+			profileUrl = ("https://spreadsheets.google.com/tq?key=" +
+						  config['profileKey'] +
+						  "&tq=select D,E&tqx=out:csv")  # select the right cells and CSV format
+			profileFileName = config['scriptPath'] + 'settings/tempProfile.csv'
+			if os.path.isfile(profileFileName + '.old'):
+				os.remove(profileFileName + '.old')
+			os.rename(profileFileName, profileFileName + '.old')
+			urllib.urlretrieve(profileUrl, profileFileName)
+			if os.path.isfile(profileFileName):
+				conn.send("Profile successfuly updated")
+			else:
+				conn.send("Failed to update profile")
 		elif messageType == "programArduino":
 			ser.close  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
-			programParameters = json.loads(value)
+			try:
+				programParameters = json.loads(value)
+			except json.JSONDecodeError:
+				logMessage("Error: cannot decode programming parameters: " + value)
 			hexFile = programParameters['fileName']
 			boardType = programParameters['boardType']
 			port = config['port']
 			eraseEEPROM = programParameters['eraseEEPROM']
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-						"New program uploaded to Arduino, script will restart")
-			result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
+			logMessage("New program uploaded to Arduino, script will restart")
+			result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
-			#							'/var/www/uploads/' + programParameters['fileName'],
+			#							programParameters['fileName'],
 			#							config['port'],
 			#							programParameters['eraseEEPROM'])
 			conn.send(result)
 			# restart the script when done. This replaces this process with the new one
 			time.sleep(5)  # give the Arduino time to reboot
 			python = sys.executable
-			os.execl(python, python, * sys.argv)
+			os.execl(python, python, *sys.argv)
 		else:
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-								"Error: Received invalid message on socket: " + message)
+			logMessage("Error: Received invalid message on socket: " + message)
 
 		if (time.time() - prevTimeOut) < config['serialCheckInterval']:
 			continue
@@ -388,105 +419,98 @@ while(run):
 
 		# request new LCD text
 		ser.write('l')
-		time.sleep(1)  # give the arduino time to respond
 		# request Settings from Arduino to stay up to date
 		ser.write('s')
-		time.sleep(1)  # give the arduino time to respond
 
 		# if no new data has been received for serialRequestInteval seconds
-		if((time.time() - prevDataTime) >= float(config['interval'])):
+		if (time.time() - prevDataTime) >= float(config['interval']):
 			ser.write("t")  # request new from arduino
 
-		elif((time.time() - prevDataTime) > float(config['interval']) +
-										2 * float(config['interval'])):
+		elif ((time.time() - prevDataTime) > float(config['interval']) +
+			  2 * float(config['interval'])):
 			#something is wrong: arduino is not responding to data requests
-			print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
-								+ "Error: Arduino is not responding to new data requests")
+			logMessage("Error: Arduino is not responding to new data requests")
 
-		time.sleep(1)  # give the arduino time to respond
-
-		while(1):  # read all lines on serial interface
+		while 1:  # read all lines on serial interface
 			line = ser.readline()
-			if(line):  # line available?
+			if line:  # line available?
 				try:
-					if(line[0] == 'T'):
+					if line[0] == 'T':
 						# process temperature line
 						newRow = json.loads(line[2:])
-
 						# print it to stdout
 						print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
-						# write complete datatable to json file
-
+						# add to JSON file
 						brewpiJson.addRow(localJsonFileName, newRow)
-
 						# copy to www dir.
 						# Do not write directly to www dir to prevent blocking www file.
 						shutil.copyfile(localJsonFileName, wwwJsonFileName)
-
 						#write csv file too
 						csvFile = open(localCsvFileName, "a")
-						lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-							str(newRow['BeerTemp']) + ';' +
-							str(newRow['BeerSet']) + ';' +
-							str(newRow['BeerAnn']) + ';' +
-							str(newRow['FridgeTemp']) + ';' +
-							str(newRow['FridgeSet']) + ';' +
-							str(newRow['FridgeAnn']) + '\n')
-						csvFile.write(lineToWrite)
+						try:
+							lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+										   str(newRow['BeerTemp']) + ';' +
+										   str(newRow['BeerSet']) + ';' +
+										   str(newRow['BeerAnn']) + ';' +
+										   str(newRow['FridgeTemp']) + ';' +
+										   str(newRow['FridgeSet']) + ';' +
+										   str(newRow['FridgeAnn']) + ';' +
+										   str(newRow['State']) + '\n')
+							csvFile.write(lineToWrite)
+						except KeyError, e:
+							logMessage("KeyError in line from Arduino: %s" % e)
+
 						csvFile.close()
 						shutil.copyfile(localCsvFileName, wwwCsvFileName)
-
 						# store time of last new data for interval check
 						prevDataTime = time.time()
-					elif(line[0] == 'D'):
+					elif line[0] == 'D':
 						# debug message received
-						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ")
-											+ "Arduino debug message: " + line[2:])
-					elif(line[0] == 'L'):
+						logMessage("Arduino debug message: " + line[2:])
+					elif line[0] == 'L':
 						# lcd content received
-						lcdText = line[2:]
-					elif(line[0] == 'C'):
+						lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
+						lcdText = json.loads(lcdTextReplaced)
+					elif line[0] == 'C':
 						# Control constants received
 						cc = json.loads(line[2:])
-						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"Control constants received: ")
+						logMessage("Control constants received: ")
 						pprint(cc, sys.stderr)
-
-					elif(line[0] == 'S'):
+					elif line[0] == 'S':
 						# Control settings received
 						cs = json.loads(line[2:])
-						# do not print this to the log file. This is requested continuously.
-					elif(line[0] == 'V'):
+					# do not print this to the log file. This is requested continuously.
+					elif line[0] == 'V':
 						# Control settings received
 						cv = json.loads(line[2:])
-						print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"Control variables received: ")
+						logMessage("Control variables received: ")
 						pprint(cv, sys.stderr)
+					elif line[0] == 'N':
+						pass  # version number received. Do nothing, just ignore
 					else:
-						print >> sys.stderr, "Cannot process line from Arduino: " + line
+						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
 				except json.decoder.JSONDecodeError, e:
-					print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"JSON decode error: %s" % e)
+					logMessage("JSON decode error: %s" % e)
+					logMessage("Line received was: " + line)
 			else:
 				# no lines left to process
 				break
 
 		# Check for update from temperature profile
-		if(cs['mode'] == 'p'):
-			newTemp = temperatureProfile.getNewTemp()
-			if(newTemp > cc['tempSettingMin'] and newTemp < cc['tempSettingMax']):
-				if(newTemp != cs['beerSetting']):
+		if cs['mode'] == 'p':
+			newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
+			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+				if newTemp != cs['beerSet']:
 					# if temperature has to be updated send settings to arduino
-					cs['beerSetting'] = temperatureProfile.getNewTemp()
-					ser.write("j{beerSetting:" + str(cs['beerSetting']))
-					time.sleep(1)  # sleep or something could be added to the string
+					cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
+					ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
 
 	except socket.error, e:
-		print >> sys.stderr, (time.strftime("%b %d %Y %H:%M:%S   ") +
-							"socket error: %s" % e)
+		logMessage("socket error: %s" % e)
 
-
-ser.close()  # close port
-conn.shutdown(socket.SHUT_RDWR)  # close socket
-conn.close()
+if ser:
+	ser.close()  # close port
+if conn:
+	conn.shutdown(socket.SHUT_RDWR)  # close socket
+	conn.close()

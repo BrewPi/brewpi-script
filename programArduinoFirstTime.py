@@ -14,13 +14,26 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import sys
+from configobj import ConfigObj
+
 import programArduino as programmer
 
-hexFile = '/var/www/uploads/brewpi_avr.hex'
-boardType = 'leonardo'
-port = '/dev/ttyACM0'
+# Read in command line arguments
+if len(sys.argv) < 2:
+	sys.exit('Usage: %s <config file full path>' % sys.argv[0])
+if not os.path.exists(sys.argv[1]):
+	sys.exit('ERROR: Config file "%s" was not found!' % sys.argv[1])
+
+configFile = sys.argv[1]
+config = ConfigObj(configFile)
+
+hexFile = config['wwwPath'] + 'uploads/brewpi_avr.hex'
+boardType = config['boardType']
+port = config['port']
 eraseEEPROM = True
 
-result = programmer.programArduino(boardType, hexFile, port, eraseEEPROM)
+result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
 
 print result

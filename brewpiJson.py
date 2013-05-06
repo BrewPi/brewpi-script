@@ -1,5 +1,6 @@
 from datetime import datetime
 import time
+import os
 
 jsonCols = ("\"cols\":[{\"type\":\"datetime\",\"id\":\"Time\",\"label\":\"Time\"}," +
         "{\"type\":\"number\",\"id\":\"BeerTemp\",\"label\":\"Beer temperature\"}," +
@@ -12,8 +13,12 @@ jsonCols = ("\"cols\":[{\"type\":\"datetime\",\"id\":\"Time\",\"label\":\"Time\"
 
 def addRow(jsonFileName, row):
     jsonFile = open(jsonFileName, "r+")
-    jsonFile.seek(-3, 2)  # Go insert point to add the last row
-    if jsonFile.read(1) != '[':
+    jsonFile.seek(-3, 2)  # Go insert point to add the last row    
+    ch = jsonFile.read(1)
+    jsonFile.seek(0, os.SEEK_CUR);
+    # when alternating between reads and writes, the file contents should be flushed, see
+    # http://bugs.python.org/issue3207. This prevents IOError, Errno 0    
+    if ch != '[':
         # not the first item
         jsonFile.write(',')
     newRow = {}
