@@ -34,3 +34,4 @@ logs/
 sftp-config.json
 brewpi-script.iml
 requirements.txt
+settings/tempProfile.csv.old
