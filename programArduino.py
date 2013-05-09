@@ -30,20 +30,19 @@ def fetchBoardSettings(boardsFile, boardType):
             boardSettings[key] = val
     return boardSettings
 
-def loadBoardsFile(avrhome):
-    return open(avrhome+'hardware/arduino/boards.txt', 'rb').readlines()
+def loadBoardsFile(arduinohome):
+    return open(arduinohome+'hardware/arduino/boards.txt', 'rb').readlines()
 
 def programArduino(config, boardType, hexFile, port, eraseEEPROM):
-    avrhome = config.get('avrHome', '/usr/share/arduino/')				# location of Arduino sdk
-    avrtools = avrhome + 'hardware/tools/avr/'	# location of avr tools
-    avrconf = avrtools + 'etc/avrdude.conf'		# location of global avr conf
-    avrbin = avrtools + 'bin/'			# location of executables
+    arduinohome = config.get('arduinoHome', '/usr/share/arduino/')  # location of Arduino sdk
+    avrdudehome = config.get('avrdudeHome', arduinohome + 'hardware/tools/')  # location of avr tools
+    avrsizehome = config.get('avrsizeHome', '')  # default to empty string because avrsize is on path
+    avrconf = config.get('avrConf', avrdudehome + 'avrdude.conf')  # location of global avr conf
     returnString = ""
     print boardType+" "+hexFile
 
-    boardsFile = loadBoardsFile(avrhome)
+    boardsFile = loadBoardsFile(arduinohome)
     boardSettings = fetchBoardSettings(boardsFile, boardType)
-    #pprint.pprint(boardsFile)
 
     for line in boardsFile:
         if(line.startswith(boardType)):
@@ -53,7 +52,7 @@ def programArduino(config, boardType, hexFile, port, eraseEEPROM):
             [key, sign, val] = setting.rpartition('=')
             boardSettings[key] = val
 
-    avrsizeCommand = avrbin + 'avr-size ' + hexFile
+    avrsizeCommand = avrsizehome + 'avr-size ' + hexFile
     returnString = returnString + avrsizeCommand + '\n'
     # check program size against maximum size
     p = sub.Popen(avrsizeCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
@@ -68,7 +67,7 @@ def programArduino(config, boardType, hexFile, port, eraseEEPROM):
     hexFileDir = os.path.dirname(hexFile)
     hexFileLocal = os.path.basename(hexFile)
 
-    programCommand = (avrbin + 'avrdude' +
+    programCommand = (avrdudehome + 'avrdude' +
                 ' -F ' +
                 ' -p ' + boardSettings['build.mcu'] +
                 ' -c ' + boardSettings['upload.protocol'] +
