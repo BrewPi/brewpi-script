@@ -134,8 +134,8 @@ def startBeer(beerName):
 	global day
 
 	# create directory for the data if it does not exist
-	dataPath = config['scriptPath'] + 'data/' + beerName + '/'
-	wwwDataPath = config['wwwPath'] + 'data/' + beerName + '/'
+	dataPath = addSlash(config['scriptPath']) + 'data/' + beerName + '/'
+	wwwDataPath = addSlash(config['wwwPath']) + 'data/' + beerName + '/'
 
 	if not os.path.exists(dataPath):
 		os.makedirs(dataPath)
@@ -199,8 +199,6 @@ while 1:  # read all lines on serial interface
 				logMessage("Warning: BrewPi version compatible with this script is " +
 						   compatibleBrewpiVersion +
 						   " but version number received is " + brewpiVersion)
-            if (len(data)>2):
-				print data[2]
 			break
 	else:
 		ser.write('n')
@@ -217,6 +215,11 @@ ser.write('s')  # request control settings cs
 ser.write('c')  # request control constans cc
 # answer from Arduino is received asynchronously later.
 
+def addSlash(path):
+	if not path.endswith('/'):
+		path += '/'
+	return path
+
 #create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows));
@@ -225,14 +228,15 @@ if (useInetSocket):
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	s.bind((config.get('socketHost', 'localhost'), int(config.get('socketPort', 6332))))
 else:
-	if os.path.exists(config['scriptPath'] + 'BEERSOCKET'):
+	socketFile = addSlash(config['scriptPath']) + 'BEERSOCKET'
+	if os.path.exists(socketFile):
 	# if socket already exists, remove it
-		os.remove(config['scriptPath'] + 'BEERSOCKET')
+		os.remove(socketFile)
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	s.bind(config['scriptPath'] + 'BEERSOCKET')  # Bind BEERSOCKET
+	s.bind(socketFile)  # Bind BEERSOCKET
 	# set all permissions for socket
-	os.chmod(config['scriptPath'] + 'BEERSOCKET', 0777)
+	os.chmod(socketFile, 0777)
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(10)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
@@ -252,8 +256,8 @@ while run:
 	if lastDay != day:
 		logMessage("Notification: New day, dropping data table and creating new JSON file.")
 		jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
-		localJsonFileName = config['scriptPath'] + 'data/' + jsonFileName + '.json'
-		wwwJsonFileName = config['wwwPath'] + 'data/' + jsonFileName + '.json'
+		localJsonFileName = addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
+		wwwJsonFileName = addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
 		# create new empty json file
 		brewpiJson.newEmptyFile(localJsonFileName)
 
