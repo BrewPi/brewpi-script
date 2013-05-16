@@ -324,7 +324,7 @@ while run:
 			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
-				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "+")
+				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "}")
 				logMessage("Notification: Fridge temperature set to " +
 						   str(cs['fridgeSet']) +
 						   " degrees in web interface")
