@@ -22,6 +22,7 @@ import sys
 import os
 import shutil
 import urllib
+import re
 import simplejson as json
 from configobj import ConfigObj
 
@@ -77,6 +78,8 @@ cv = {"beerDiff": 0.000,
 	  "posPeakEst": 0.000,
 	  "negPeak": 0.000,
 	  "posPeak": 0.000}
+
+deviceList = {};
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
@@ -170,6 +173,13 @@ def startBeer(beerName):
 
 def logMessage(message):
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
+def fixJson(j):
+	j = re.sub(r"{\s*'?(\w)", r'{"\1', j)
+	j = re.sub(r",\s*'?(\w)", r',"\1', j)
+	j = re.sub(r"(\w)'?\s*:", r'\1":', j)
+	j = re.sub(r":\s*'(\w*)'\s*([,}])", r':"\1"\2', j)
+	return j
 
 
 ser = 0
@@ -273,6 +283,7 @@ while run:
 			messageType, value = message.split("=", 1)
 		else:
 			messageType = message
+			value = ""
 		if messageType == "ack":  # acknowledge request
 			conn.send('ack')
 		elif messageType == "lcd":  # lcd contents requested
@@ -411,6 +422,10 @@ while run:
 			time.sleep(5)  # give the Arduino time to reboot
 			python = sys.executable
 			os.execl(python, python, *sys.argv)
+		elif messageType == "refreshDeviceList":
+			ser.write("h{" + value + "}")  # value contains request parameters in JSON
+		elif messageType == "getDeviceList":
+			conn.send(json.dumps(deviceList))
 		else:
 			logMessage("Error: Received invalid message on socket: " + message)
 
@@ -481,8 +496,7 @@ while run:
 					elif line[0] == 'C':
 						# Control constants received
 						cc = json.loads(line[2:])
-						logMessage("Control constants received: ")
-						pprint(cc, sys.stderr)
+						# pprint(cc, sys.stderr)
 					elif line[0] == 'S':
 						# Control settings received
 						cs = json.loads(line[2:])
@@ -490,10 +504,14 @@ while run:
 					elif line[0] == 'V':
 						# Control settings received
 						cv = json.loads(line[2:])
-						logMessage("Control variables received: ")
-						pprint(cv, sys.stderr)
+						# pprint(cv, sys.stderr)
 					elif line[0] == 'N':
 						pass  # version number received. Do nothing, just ignore
+					elif line[0] == 'h':
+						fixedJson = fixJson(line[2:])
+						print fixedJson
+						deviceList = json.loads(fixedJson)
+						pprint(deviceList)
 					else:
 						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
