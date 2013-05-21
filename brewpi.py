@@ -175,10 +175,10 @@ def logMessage(message):
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
 
 def fixJson(j):
-	j = re.sub(r"{\s*'?(\w)", r'{"\1', j)
-	j = re.sub(r",\s*'?(\w)", r',"\1', j)
-	j = re.sub(r"(\w)'?\s*:", r'\1":', j)
-	j = re.sub(r":\s*'(\w*)'\s*([,}])", r':"\1"\2', j)
+	j = re.sub(r"{\s*?(\w)", r'{"\1', j)
+	j = re.sub(r",\s*?(\w)", r',"\1', j)
+	j = re.sub(r"(\w)?\s*:", r'\1":', j)
+	j = re.sub(r":\s*(\w*)\s*([,}])", r':"\1"\2', j)
 	return j
 
 
@@ -360,7 +360,7 @@ while run:
 				if 'tempFormat' in decoded:
 					changeWwwSetting('tempFormat', decoded['tempFormat'])  # change in web interface settings too.
 			except json.JSONDecodeError:
-				logMessage("Error: invalid json string received: " + value)
+				logMessage("Error: invalid JSON parameter string received: " + value)
 			raise socket.timeout
 		elif messageType == "stopScript":  # exit instruction received. Stop script.
 			run = 0
@@ -426,6 +426,14 @@ while run:
 			ser.write("h{" + value + "}")  # value contains request parameters in JSON
 		elif messageType == "getDeviceList":
 			conn.send(json.dumps(deviceList))
+		elif messageType == "applyDevice":
+			try:
+				configStringJson = json.loads(fixJson(value))  # load as JSON to check syntax
+			except json.JSONDecodeError:
+				logMessage("Error: invalid JSON parameter string received: " + value)
+				continue
+
+			ser.write("U" + value)
 		else:
 			logMessage("Error: Received invalid message on socket: " + message)
 
