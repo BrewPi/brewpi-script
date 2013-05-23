@@ -1,6 +1,23 @@
+# Copyright 2012 BrewPi
+# This file is part of BrewPi.
+
+# BrewPi is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# BrewPi is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
+
 from datetime import datetime
 import time
 import os
+import re
 
 jsonCols = ("\"cols\":[{\"type\":\"datetime\",\"id\":\"Time\",\"label\":\"Time\"}," +
         "{\"type\":\"number\",\"id\":\"BeerTemp\",\"label\":\"Beer temperature\"}," +
@@ -10,14 +27,20 @@ jsonCols = ("\"cols\":[{\"type\":\"datetime\",\"id\":\"Time\",\"label\":\"Time\"
         "{\"type\":\"number\",\"id\":\"FridgeSet\",\"label\":\"Fridge setting\"}," +
         "{\"type\":\"string\",\"id\":\"FridgeAnn\",\"label\":\"Fridge Annotate\"}]")
 
+def fixJson(j):
+	j = re.sub(r"'{\s*?(|\w)", r'{"\1', j)
+	j = re.sub(r"',\s*?(|\w)", r',"\1', j)
+	j = re.sub(r"'(|\w)?\s*:", r'\1":', j)
+	j = re.sub(r"':\s*(|\w*)\s*(|[,}])", r':"\1"\2', j)
+	return j
 
 def addRow(jsonFileName, row):
     jsonFile = open(jsonFileName, "r+")
-    jsonFile.seek(-3, 2)  # Go insert point to add the last row    
+    jsonFile.seek(-3, 2)  # Go insert point to add the last row
     ch = jsonFile.read(1)
     jsonFile.seek(0, os.SEEK_CUR);
     # when alternating between reads and writes, the file contents should be flushed, see
-    # http://bugs.python.org/issue3207. This prevents IOError, Errno 0    
+    # http://bugs.python.org/issue3207. This prevents IOError, Errno 0
     if ch != '[':
         # not the first item
         jsonFile.write(',')

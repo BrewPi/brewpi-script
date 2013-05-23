@@ -1,4 +1,4 @@
-# Copyright 2012 BrewPi/Elco Jacobs.
+# Copyright 2012 BrewPi
 # This file is part of BrewPi.
 
 # BrewPi is free software: you can redistribute it and/or modify
