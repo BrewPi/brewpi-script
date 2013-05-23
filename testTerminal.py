@@ -63,6 +63,7 @@ while 1:
 			print "sending: " + userInput
 			ser.write(userInput)
 		elif received == 'q':
+			ser.close()
 			exit()
 
 	line = ser.readline()
