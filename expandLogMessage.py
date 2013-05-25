@@ -20,7 +20,7 @@ import parseEnum
 
 errorDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'errorMessages')
 infoDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'infoMessages')
-warningDict = {} # no warning messages yet
+warningDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'warningMessages')
 
 def valToFunction(val):
 	if val == 0:
@@ -82,11 +82,25 @@ def expandLogMessage(logMessageJsonString):
 		expanded += str(logId) + ": "
 		count = 0
 		for v in values:
-			if dict[logId]['paramNames'][count] == "config.deviceFunction":
-				values[count] = valToFunction(v)
+			try:
+				if dict[logId]['paramNames'][count] == "config.deviceFunction":
+					values[count] = valToFunction(v)
+				elif dict[logId]['paramNames'][count] == "character":
+					if values[count] == -1:
+						# No character received
+						values[count] = 'END OF INPUT'
+					else:
+						values[count] = chr(values[count])
+			except IndexError:
+				pass
 			count += 1
-
-		expanded += dict[logId]['logString'].replace("%d", "%s") % tuple(values)
+		printString = dict[logId]['logString'].replace("%d", "%s").replace("%c", "%s")
+		numVars = printString.count("%s")
+		numReceived = len(values)
+		if numVars == numReceived:
+			expanded +=  printString % tuple(values)
+		else:
+			expanded += printString + "  | Number of arguments mismatch!, expected " + str(numVars) + "arguments, received " + str(values)
 	else:
 		expanded += logTypeString + " with unknown ID " + str(logId)
 
