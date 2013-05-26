@@ -186,10 +186,28 @@ ser = 0
 con = 0
 # open serial port
 try:
-	ser = serial.Serial(config['port'], 57600, timeout=1)
+	port = config['port']
+	ser = serial.Serial(port, 57600, timeout=1)
 except serial.SerialException, e:
 	print e
 	exit()
+
+dumpSerial = config.get('dumpSerial', False)
+
+# yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
+if dumpSerial:
+	ser.readOriginal = ser.read
+	ser.writeOriginal = ser.write
+	def readAndDump(size=1):
+		r = ser.readOriginal(size)
+		sys.stdout.write(r)
+		return r
+	def writeAndDump(data):
+		ser.writeOriginal(data)
+		sys.stderr.write(data)
+	ser.read = readAndDump
+	ser.write = writeAndDump
+
 
 logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
@@ -236,7 +254,9 @@ useInetSocket = bool(config.get('useInetSocket', is_windows));
 if (useInetSocket):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	s.bind((config.get('socketHost', 'localhost'), int(config.get('socketPort', 6332))))
+	port = config.get('socketPort', 6332)
+	s.bind((config.get('socketHost', 'localhost'), int(port)))
+	logMessage('Bound to TCP socket on port %d ' % port)
 else:
 	socketFile = addSlash(config['scriptPath']) + 'BEERSOCKET'
 	if os.path.exists(socketFile):
