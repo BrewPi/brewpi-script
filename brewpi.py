@@ -240,7 +240,7 @@ while 1:  # read all lines on serial interface
 ser.flush()
 # request settings from Arduino, processed later when reply is received
 ser.write('s')  # request control settings cs
-ser.write('c')  # request control constans cc
+ser.write('c') # request control constants cc
 # answer from Arduino is received asynchronously later.
 
 def addSlash(path):
@@ -278,8 +278,34 @@ prevTimeOut = time.time()
 run = 1
 
 startBeer(config['beerName'])
+outputTemperature = True
+
+prevTempJson = {
+"BeerTemp":0,
+"FridgeTemp":0,
+"BeerAnn":None,
+"FridgeAnn":None,
+"RoomTemp":None,
+"State":None,
+"BeerSet":0,
+"FridgeSet":0
+}
+def renameTempKey(key):
+	rename = {
+	"bt" : "BeerTemp",
+	"bs" : "BeerSet",
+	"ba":"BeerAnn",
+	"ft":"FridgeTemp",
+	"fs":"FridgeSet",
+	"fa":"FridgeAnn",
+	"rt":"RoomTemp",
+	"s":"State",
+	"t":"Time"
+	}
+	return rename.get(key, key)
 
 while run:
+
 	# Check whether it is a new day
 	lastDay = day
 	day = time.strftime("%Y-%m-%d")
@@ -486,10 +512,17 @@ while run:
 			if line:  # line available?
 				try:
 					if line[0] == 'T':
-						# process temperature line
-						newRow = json.loads(line[2:])
+
 						# print it to stdout
-						print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+						if outputTemperature:
+							print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+						# process temperature line
+						newData = json.loads(line[2:])
+						# copy/rename keys
+						for key in newData:
+							prevTempJson[renameTempKey(key)] = newData[key]
+
+						newRow = prevTempJson
 						# add to JSON file
 						brewpiJson.addRow(localJsonFileName, newRow)
 						# copy to www dir.
@@ -505,7 +538,8 @@ while run:
 										   str(newRow['FridgeTemp']) + ';' +
 										   str(newRow['FridgeSet']) + ';' +
 										   str(newRow['FridgeAnn']) + ';' +
-										   str(newRow['State']) + '\n')
+										   str(newRow['State']) + ';' +
+										   str(newRow['RoomTemp']) + '\n')
 							csvFile.write(lineToWrite)
 						except KeyError, e:
 							logMessage("KeyError in line from Arduino: %s" % e)
