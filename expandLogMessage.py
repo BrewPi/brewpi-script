@@ -16,79 +16,92 @@
 
 import brewpiJson
 import simplejson as json
+import parseEnum
+
+errorDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'errorMessages')
+infoDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'infoMessages')
+warningDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'warningMessages')
+
+def valToFunction(val):
+	if val == 0:
+		return 'None'
+	elif val == 1:
+		return 'Chamber Door'
+	elif val == 2:
+		return 'Chamber Heater'
+	elif val == 3:
+		return 'Chamber Cooler'
+	elif val == 4:
+		return 'Chamber Light'
+	elif val == 5:
+		return 'Chamber Temp'
+	elif val == 6:
+		return 'Room Temp'
+	elif val == 7:
+		return 'Chamber Fan'
+	elif val == 8:
+		return 'Chamber Reserved 1'
+	elif val == 9:
+		return 'Beer Temp'
+	elif val == 10:
+		return  'Beer Temperature 2'
+	elif val == 11:
+		return  'Beer Heater'
+	elif val == 12:
+		return  'Beer Cooler'
+	elif val == 13:
+		return  'Beer S.G.'
+	elif val == 14:
+		return  'Beer Reserved 1'
+	elif val == 15:
+		return  'Beer Reserved 2'
+	else:
+		return 'Unknown Device Function'
+
 
 def expandLogMessage(logMessageJsonString):
-	ERROR_SRAM_SENSOR = 0
-	ERROR_SENSOR_NO_ADDRESS_ON_PIN = 1
-	ERROR_OUT_OF_MEMORY_FOR_DEVICE = 2
-	ERROR_DEVICE_DEFINITION_UPDATE_SPEC_INVALID = 3
-	ERROR_INVALID_CHAMBER = 4
-	ERROR_INVALID_BEER = 5
-	ERROR_INVALID_DEVICE_FUNCTION = 6
-	INFO_SENSOR_CONNECTED = 100
-	INFO_SENSOR_FETCHING_INITIAL_TEMP = 101
-	INFO_UNINSTALL_TEMP_SENSOR = 102
-	INFO_UNINSTALL_ACTUATOR = 103
-	INFO_UNINSTALL_SWITCH_SENSOR = 104
-	INFO_INSTALL_TEMP_SENSOR = 105
-	INFO_INSTALL_ACTUATOR = 106
-	INFO_INSTALL_SWITCH_SENSOR = 107
-	INFO_INSTALL_DEVICE = 108
-	INFO_DEVICE_DEFINITION = 109
-
 	expanded = ""
 	logMessageJson = json.loads(logMessageJsonString)
 	logId = int(logMessageJson['logID'])
 	logType = logMessageJson['logType']
 	values = logMessageJson['V']
-
+	dict  = 0
+	logTypeString = "**UNKNOWN MESSAGE TYPE**"
 	if logType == "E":
-		expanded += "ERROR "
+		dict = errorDict
+		logTypeString = "ERROR"
 	elif logType == "W":
-		expanded += "WARNING "
+		dict = warningDict
+		logTypeString = "WARNING"
 	elif logType == "I":
-		expanded += "INFO "
+		dict = infoDict
+		logTypeString = "INFO MESSAGE"
 
-	expanded += str(logId) + ": "
-
-	#  OneWireTempSensor.cpp
-	if logId == ERROR_SRAM_SENSOR:
-		expanded += "Not enough SRAM for temp sensor %s" % (values[0]['logString'])
-	if logId == ERROR_SENSOR_NO_ADDRESS_ON_PIN:
-		expanded += "Cannot find address for sensor on pin %s" % (values[0]['logString'])
-	if logId == ERROR_OUT_OF_MEMORY_FOR_DEVICE:
-		expanded += "*** OUT OF MEMORY for device f=%s" % (values[0]['logString'])
-	#  DeviceManager.cpp
-	if logId == ERROR_DEVICE_DEFINITION_UPDATE_SPEC_INVALID:
-		expanded += "Device definition update specification is INVALID"
-	if logId == ERROR_INVALID_CHAMBER:
-		expanded += "INVALID chamber logId %s" % (values[0]['logString'])
-	if logId == ERROR_INVALID_BEER:
-		expanded += "INVALID beer logId %s" % (values[0]['logString'])
-	if logId == ERROR_INVALID_DEVICE_FUNCTION:
-		expanded += "INVALID device function logId %s" % (values[0]['logString'])
-	#  Info messages
-	#  OneWireTempSensor.cpp
-	if logId == INFO_SENSOR_CONNECTED:
-		expanded += "Temp sensor connected on pin %s" % (values[0]['logString'])
-	if logId == INFO_SENSOR_FETCHING_INITIAL_TEMP:
-		expanded += "Fetching initial temperature of sensor %s" % (values[0]['logString'])
-	#  DeviceManager.cpp
-	if logId == INFO_UNINSTALL_TEMP_SENSOR:
-		expanded += "uninstalling temperature sensor  with function %s" % (values[0]['logString'])
-	if logId == INFO_UNINSTALL_ACTUATOR:
-		expanded += "uninstalling actuator with function %s" % (values[0]['logString'])
-	if logId == INFO_UNINSTALL_SWITCH_SENSOR:
-		expanded += "uninstalling switch sensor  with function %s" % (values[0]['logString'])
-	if logId == INFO_INSTALL_TEMP_SENSOR:
-		expanded += "installing temperature sensor  with function %s" % (values[0]['logString'])
-	if logId == INFO_INSTALL_ACTUATOR:
-		expanded += "installing actuator with function %s" % (values[0]['logString'])
-	if logId == INFO_INSTALL_SWITCH_SENSOR:
-		expanded += "installing switch sensor  with function %s" % (values[0]['logString'])
-	if logId == INFO_INSTALL_DEVICE:
-		expanded += "Installing device f=%s" % (values[0]['logString'])
-	if logId == INFO_DEVICE_DEFINITION:
-		expanded += "deviceDef %s:%s\n" % (values[0]['logString'], values[1]['logString'])
+	if logId in dict:
+		expanded += logTypeString + " "
+		expanded += str(logId) + ": "
+		count = 0
+		for v in values:
+			try:
+				if dict[logId]['paramNames'][count] == "config.deviceFunction":
+					values[count] = valToFunction(v)
+				elif dict[logId]['paramNames'][count] == "character":
+					if values[count] == -1:
+						# No character received
+						values[count] = 'END OF INPUT'
+					else:
+						values[count] = chr(values[count])
+			except IndexError:
+				pass
+			count += 1
+		printString = dict[logId]['logString'].replace("%d", "%s").replace("%c", "%s")
+		numVars = printString.count("%s")
+		numReceived = len(values)
+		if numVars == numReceived:
+			expanded +=  printString % tuple(values)
+		else:
+			expanded += printString + "  | Number of arguments mismatch!, expected " + str(numVars) + "arguments, received " + str(values)
+	else:
+		expanded += logTypeString + " with unknown ID " + str(logId)
 
 	return expanded
