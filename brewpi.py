@@ -30,11 +30,12 @@ from configobj import ConfigObj
 import temperatureProfile
 import programArduino as programmer
 import brewpiJson
+from brewpiVersion import AvrInfo
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.1.0"
+compatibleBrewpiVersion = "0.1.1"
 
 # Control Settings
 cs = {'mode': 'b',
@@ -57,14 +58,14 @@ cc = {"tempFormat": "C",
 	  "heatTargetL": -0.199,
 	  "coolTargetH": 0.199,
 	  "coolTargetL": -0.301,
-	  "maxHeatTimeForEst": "600",
-	  "maxCoolTimeForEst": "1200",
-	  "fridgeFastFilt": "1",
-	  "fridgeSlowFilt": "4",
-	  "fridgeSlopeFilt": "3",
-	  "beerFastFilt": "3",
-	  "beerSlowFilt": "5",
-	  "beerSlopeFilt": "4"}
+	  "maxHeatTimeForEst": 600,
+	  "maxCoolTimeForEst": 1200,
+	  "fridgeFastFilt": 1,
+	  "fridgeSlowFilt": 4,
+	  "fridgeSlopeFilt": 3,
+	  "beerFastFilt": 3,
+	  "beerSlowFilt": 5,
+	  "beerSlopeFilt": 4}
 
 # Control variables
 cv = {"beerDiff": 0.000,
@@ -219,8 +220,9 @@ while 1:  # read all lines on serial interface
 	line = ser.readline()
 	if(line):  # line available?
 		if(line[0] == 'N'):
-			data = line.strip('\n').split(':')
-			brewpiVersion = data[1]
+			data = line.strip('\n')[2:]
+			v = AvrInfo(data)
+			brewpiVersion = v.version
 			if(brewpiVersion == compatibleBrewpiVersion):
 				print "Found BrewPi version " + brewpiVersion
 			else:
