@@ -18,9 +18,11 @@ import brewpiJson
 import simplejson as json
 import parseEnum
 
-errorDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'errorMessages')
-infoDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'infoMessages')
-warningDict = parseEnum.parseEnumInFile('../brewpi-avr/brewpi_avr/DebugMessages.h', 'warningMessages')
+logMessagesFile = '../brewpi-avr/brewpi_avr/logMessages.h'
+
+errorDict = parseEnum.parseEnumInFile(logMessagesFile, 'errorMessages')
+infoDict = parseEnum.parseEnumInFile(logMessagesFile, 'infoMessages')
+warningDict = parseEnum.parseEnumInFile(logMessagesFile, 'warningMessages')
 
 def valToFunction(val):
 	if val == 0:

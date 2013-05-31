@@ -37,49 +37,19 @@ import brewpiJson
 compatibleBrewpiVersion = "0.1.0"
 
 # Control Settings
-cs = {'mode': 'b',
-	  'beerSetting': 20.0,
-	  'fridgeSetting': 20.0,
-	  'heatEstimator': 0.2,
-	  'coolEstimator': 5}
+cs = dict(mode='b', beerSetting=20.0, fridgeSetting=20.0, heatEstimator=0.2, coolEstimator=5)
 
 # Control Constants
-cc = {"tempFormat": "C",
-	  "tempSetMin": 1.0,
-	  "tempSetMax": 30.0,
-	  "Kp": 20.000,
-	  "Ki": 0.600,
-	  "Kd": -3.000,
-	  "iMaxErr": 0.500,
-	  "idleRangeH": 1.000,
-	  "idleRangeL": -1.000,
-	  "heatTargetH": 0.301,
-	  "heatTargetL": -0.199,
-	  "coolTargetH": 0.199,
-	  "coolTargetL": -0.301,
-	  "maxHeatTimeForEst": "600",
-	  "maxCoolTimeForEst": "1200",
-	  "fridgeFastFilt": "1",
-	  "fridgeSlowFilt": "4",
-	  "fridgeSlopeFilt": "3",
-	  "beerFastFilt": "3",
-	  "beerSlowFilt": "5",
-	  "beerSlopeFilt": "4"}
+cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
+          idleRangeH=1.000, idleRangeL=-1.000, heatTargetH=0.301, heatTargetL=-0.199, coolTargetH=0.199,
+          coolTargetL=-0.301, maxHeatTimeForEst="600", maxCoolTimeForEst="1200", fridgeFastFilt="1", fridgeSlowFilt="4",
+          fridgeSlopeFilt="3", beerFastFilt="3", beerSlowFilt="5", beerSlopeFilt="4", lah=0, hs=0)
 
 # Control variables
-cv = {"beerDiff": 0.000,
-	  "diffIntegral": 0.000,
-	  "beerSlope": 0.000,
-	  "p": 0.000,
-	  "i": 0.000,
-	  "d": 0.000,
-	  "estPeak": 0.000,
-	  "negPeakEst": 0.000,
-	  "posPeakEst": 0.000,
-	  "negPeak": 0.000,
-	  "posPeak": 0.000}
+cv = dict(beerDiff=0.000, diffIntegral=0.000, beerSlope=0.000, p=0.000, i=0.000, d=0.000, estPeak=0.000,
+          negPeakEst=0.000, posPeakEst=0.000, negPeak=0.000, posPeak=0.000)
 
-deviceList = {};
+deviceList = {}
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
