@@ -30,11 +30,12 @@ from configobj import ConfigObj
 import temperatureProfile
 import programArduino as programmer
 import brewpiJson
+from brewpiVersion import AvrInfo
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.1.0"
+compatibleBrewpiVersion = "0.1.1"
 
 # Control Settings
 cs = dict(mode='b', beerSetting=20.0, fridgeSetting=20.0, heatEstimator=0.2, coolEstimator=5)
@@ -156,10 +157,28 @@ ser = 0
 con = 0
 # open serial port
 try:
-	ser = serial.Serial(config['port'], 57600, timeout=1)
+	port = config['port']
+	ser = serial.Serial(port, 57600, timeout=1)
 except serial.SerialException, e:
 	print e
 	exit()
+
+dumpSerial = config.get('dumpSerial', False)
+
+# yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
+if dumpSerial:
+	ser.readOriginal = ser.read
+	ser.writeOriginal = ser.write
+	def readAndDump(size=1):
+		r = ser.readOriginal(size)
+		sys.stdout.write(r)
+		return r
+	def writeAndDump(data):
+		ser.writeOriginal(data)
+		sys.stderr.write(data)
+	ser.read = readAndDump
+	ser.write = writeAndDump
+
 
 logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
@@ -171,8 +190,9 @@ while 1:  # read all lines on serial interface
 	line = ser.readline()
 	if(line):  # line available?
 		if(line[0] == 'N'):
-			data = line.strip('\n').split(':')
-			brewpiVersion = data[1]
+			data = line.strip('\n')[2:]
+			v = AvrInfo(data)
+			brewpiVersion = v.version
 			if(brewpiVersion == compatibleBrewpiVersion):
 				print "Found BrewPi version " + brewpiVersion
 			else:
@@ -192,7 +212,7 @@ while 1:  # read all lines on serial interface
 ser.flush()
 # request settings from Arduino, processed later when reply is received
 ser.write('s')  # request control settings cs
-ser.write('c')  # request control constans cc
+ser.write('c') # request control constants cc
 # answer from Arduino is received asynchronously later.
 
 def addSlash(path):
@@ -206,7 +226,9 @@ useInetSocket = bool(config.get('useInetSocket', is_windows));
 if (useInetSocket):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	s.bind((config.get('socketHost', 'localhost'), int(config.get('socketPort', 6332))))
+	port = config.get('socketPort', 6332)
+	s.bind((config.get('socketHost', 'localhost'), int(port)))
+	logMessage('Bound to TCP socket on port %d ' % port)
 else:
 	socketFile = addSlash(config['scriptPath']) + 'BEERSOCKET'
 	if os.path.exists(socketFile):
@@ -228,8 +250,34 @@ prevTimeOut = time.time()
 run = 1
 
 startBeer(config['beerName'])
+outputTemperature = True
+
+prevTempJson = {
+"BeerTemp":0,
+"FridgeTemp":0,
+"BeerAnn":None,
+"FridgeAnn":None,
+"RoomTemp":None,
+"State":None,
+"BeerSet":0,
+"FridgeSet":0
+}
+def renameTempKey(key):
+	rename = {
+	"bt" : "BeerTemp",
+	"bs" : "BeerSet",
+	"ba":"BeerAnn",
+	"ft":"FridgeTemp",
+	"fs":"FridgeSet",
+	"fa":"FridgeAnn",
+	"rt":"RoomTemp",
+	"s":"State",
+	"t":"Time"
+	}
+	return rename.get(key, key)
 
 while run:
+
 	# Check whether it is a new day
 	lastDay = day
 	day = time.strftime("%Y-%m-%d")
@@ -436,10 +484,17 @@ while run:
 			if line:  # line available?
 				try:
 					if line[0] == 'T':
-						# process temperature line
-						newRow = json.loads(line[2:])
+
 						# print it to stdout
-						print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+						if outputTemperature:
+							print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+						# process temperature line
+						newData = json.loads(line[2:])
+						# copy/rename keys
+						for key in newData:
+							prevTempJson[renameTempKey(key)] = newData[key]
+
+						newRow = prevTempJson
 						# add to JSON file
 						brewpiJson.addRow(localJsonFileName, newRow)
 						# copy to www dir.
@@ -455,7 +510,8 @@ while run:
 										   str(newRow['FridgeTemp']) + ';' +
 										   str(newRow['FridgeSet']) + ';' +
 										   str(newRow['FridgeAnn']) + ';' +
-										   str(newRow['State']) + '\n')
+										   str(newRow['State']) + ';' +
+										   str(newRow['RoomTemp']) + '\n')
 							csvFile.write(lineToWrite)
 						except KeyError, e:
 							logMessage("KeyError in line from Arduino: %s" % e)
