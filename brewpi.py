@@ -375,7 +375,7 @@ while run:
 						   " degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
 			else:
-				logMessage("Beer temperature setting" + str(newTemp) +
+				logMessage("Beer temperature setting " + str(newTemp) +
 						   " is outside allowed range " +
 						   str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
 		elif messageType == "setFridge":  # new constant fridge temperature received
