@@ -345,7 +345,7 @@ while run:
 						   " degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
 			else:
-				logMessage("Beer temperature setting" + str(newTemp) +
+				logMessage("Beer temperature setting " + str(newTemp) +
 						   " is outside allowed range " +
 						   str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
 		elif messageType == "setFridge":  # new constant fridge temperature received
@@ -446,7 +446,7 @@ while run:
 			conn.send(json.dumps(deviceList))
 		elif messageType == "applyDevice":
 			try:
-				configStringJson = json.loads(fixJson(value))  # load as JSON to check syntax
+				configStringJson = json.loads(value)  # load as JSON to check syntax
 			except json.JSONDecodeError:
 				logMessage("Error: invalid JSON parameter string received: " + value)
 				continue
@@ -542,7 +542,7 @@ while run:
 					elif line[0] == 'N':
 						pass  # version number received. Do nothing, just ignore
 					elif line[0] == 'h':
-						fixedJson = fixJson(line[2:])
+						fixedJson = line[2:]
 						print fixedJson
 						deviceList = json.loads(fixedJson)
 						pprint(deviceList)
