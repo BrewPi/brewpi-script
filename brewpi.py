@@ -441,7 +441,8 @@ while run:
 			python = sys.executable
 			os.execl(python, python, *sys.argv)
 		elif messageType == "refreshDeviceList":
-			ser.write("h{" + value + "}")  # value contains request parameters in JSON
+			deviceList = {} # reset local copy of device list
+			ser.write("h{" + value + "}")  # request new device list, value contains request parameters in JSON
 		elif messageType == "getDeviceList":
 			conn.send(json.dumps(deviceList))
 		elif messageType == "applyDevice":
@@ -542,10 +543,8 @@ while run:
 					elif line[0] == 'N':
 						pass  # version number received. Do nothing, just ignore
 					elif line[0] == 'h':
-						fixedJson = line[2:]
-						print fixedJson
-						deviceList = json.loads(fixedJson)
-						pprint(deviceList)
+						deviceList = json.loads(line[2:])
+						print(deviceList)
 					else:
 						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
