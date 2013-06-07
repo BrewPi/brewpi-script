@@ -298,7 +298,7 @@ while run:
 	try:
 		conn, addr = s.accept()
 		# blocking receive, times out in serialCheckInterval
-		message = conn.recv(1024)
+		message = conn.recv(4096)
 		if "=" in message:
 			messageType, value = message.split("=", 1)
 		else:
@@ -446,9 +446,11 @@ while run:
 			deviceList = {} # reset local copy of device list
 			ser.write("h{" + value + "}")  # request new device list, value contains request parameters in JSON
 		elif messageType == "getDeviceList":
-			print avrVersion.board
-			print avrVersion.shield
-			response = dict(deviceList=deviceList, pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
+
+			response = dict(board=avrVersion.board,
+			                shield=avrVersion.shield,
+			                deviceList=deviceList,
+			                pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
 			conn.send(json.dumps(response))
 		elif messageType == "applyDevice":
 			try:
