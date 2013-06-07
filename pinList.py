@@ -17,8 +17,8 @@
 import simplejson as json
 
 
-def getPinList(arduinoType, boardVersion):
-	if arduinoType == "leonardo" and boardVersion == "revC":
+def getPinList(arduinoType, shieldType):
+	if arduinoType == "leonardo" and shieldType == "revC":
 		pinList = [{'val': 6, 'text': ' 6 (Act 1)', 'type': 'act'},
 		           {'val': 5, 'text': ' 5 (Act 2)', 'type': 'act'},
 		           {'val': 2, 'text': ' 2 (Act 3)', 'type': 'act'},
@@ -39,7 +39,7 @@ def getPinList(arduinoType, boardVersion):
 		           {'val': 19, 'text': 'A1', 'type': 'free'},
 		           {'val': 20, 'text': 'A2', 'type': 'free'},
 		           {'val': 21, 'text': 'A3', 'type': 'free'}]
-	elif arduinoType == "uno" and boardVersion == "revC":
+	elif arduinoType == "uno" and shieldType == "revC":
 		pinList = [{'val': 6, 'text': ' 6 (Act 1)', 'type': 'act'},
 		           {'val': 5, 'text': ' 5 (Act 2)', 'type': 'act'},
 		           {'val': 2, 'text': ' 2 (Act 3)', 'type': 'act'},
@@ -60,7 +60,7 @@ def getPinList(arduinoType, boardVersion):
 		           {'val': 15, 'text': 'A1', 'type': 'free'},
 		           {'val': 16, 'text': 'A2', 'type': 'free'},
 		           {'val': 17, 'text': 'A3', 'type': 'free'}]
-	elif arduinoType == "leonardo" and boardVersion == "revA":
+	elif arduinoType == "leonardo" and shieldType == "revA":
 		pinList = [{'val': 6, 'text': '  6 (Cool)', 'type': 'act'},
 		           {'val': 5, 'text': '  5 (Heat)', 'type': 'act'},
 		           {'val': 4, 'text': ' 4 (Door)', 'type': 'door'},
@@ -81,7 +81,7 @@ def getPinList(arduinoType, boardVersion):
 		           {'val': 19, 'text': 'A1', 'type': 'free'},
 		           {'val': 20, 'text': 'A2', 'type': 'free'},
 		           {'val': 21, 'text': 'A3', 'type': 'free'}]
-	elif arduinoType == "uno" and boardVersion == "revA":
+	elif arduinoType == "uno" and shieldType == "revA":
 		pinList = [{'val': 6, 'text': '  6 (Cool)', 'type': 'act'},
 		           {'val': 5, 'text': '  5 (Heat)', 'type': 'act'},
 		           {'val': 4, 'text': ' 4 (Door)', 'type': 'door'},
@@ -108,9 +108,9 @@ def getPinList(arduinoType, boardVersion):
 	return pinList
 
 
-def getPinListJson(arduinoType, boardVersion):
+def getPinListJson(arduinoType, shieldType):
 	try:
-		pinList = getPinList(arduinoType, boardVersion)
+		pinList = getPinList(arduinoType, shieldType)
 		return json.dumps(pinList)
 	except json.JSONDecodeError:
 		print "Cannot process pin list JSON"
@@ -122,4 +122,4 @@ def pinListTest():
 	print getPinListJson("leonardo", "revA")
 	print getPinListJson("uno", "revA")
 
-pinListTest()
+# pinListTest()

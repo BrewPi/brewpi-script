@@ -31,6 +31,7 @@ import temperatureProfile
 import programArduino as programmer
 import brewpiJson
 from brewpiVersion import AvrInfo
+import pinList
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
@@ -191,8 +192,8 @@ while 1:  # read all lines on serial interface
 	if(line):  # line available?
 		if(line[0] == 'N'):
 			data = line.strip('\n')[2:]
-			v = AvrInfo(data)
-			brewpiVersion = v.version
+			avrVersion = AvrInfo(data)
+			brewpiVersion = avrVersion.version
 			if(brewpiVersion == compatibleBrewpiVersion):
 				print "Found BrewPi version " + brewpiVersion
 			else:
@@ -206,8 +207,9 @@ while 1:  # read all lines on serial interface
 		retries += 1
 		if retries > 5:
 			logMessage("Warning: Cannot receive version number from Arduino. " +
-				   "Script might not be compatible.")
-			break
+				   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
+			       "Please upload a new version of BrewPi to your Arduino.")
+			exit()
 
 ser.flush()
 # request settings from Arduino, processed later when reply is received
@@ -242,7 +244,7 @@ else:
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(10)  # Create a backlog queue for up to 5 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
-s.settimeout(float(config['serialCheckInterval']))
+s.settimeout(0.1)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
@@ -444,15 +446,18 @@ while run:
 			deviceList = {} # reset local copy of device list
 			ser.write("h{" + value + "}")  # request new device list, value contains request parameters in JSON
 		elif messageType == "getDeviceList":
-			conn.send(json.dumps(deviceList))
+			print avrVersion.board
+			print avrVersion.shield
+			response = dict(deviceList=deviceList, pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
+			conn.send(json.dumps(response))
 		elif messageType == "applyDevice":
 			try:
 				configStringJson = json.loads(value)  # load as JSON to check syntax
 			except json.JSONDecodeError:
 				logMessage("Error: invalid JSON parameter string received: " + value)
 				continue
-
 			ser.write("U" + value)
+			deviceList = {}
 		else:
 			logMessage("Error: Received invalid message on socket: " + message)
 
