@@ -18,7 +18,7 @@ import brewpiJson
 import simplejson as json
 import parseEnum
 
-logMessagesFile = 'logMessages.h'
+logMessagesFile = 'LogMessages.h'
 
 errorDict = parseEnum.parseEnumInFile(logMessagesFile, 'errorMessages')
 infoDict = parseEnum.parseEnumInFile(logMessagesFile, 'infoMessages')
