@@ -211,7 +211,8 @@ while 1:  # read all lines on serial interface
 			logMessage("Warning: Cannot receive version number from Arduino. " +
 				   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
 				   "Please upload a new version of BrewPi to your Arduino.")
-			exit()
+			# script will continue so you can at least program the Arduino
+			break;
 
 ser.flush()
 # request settings from Arduino, processed later when reply is received
@@ -453,7 +454,6 @@ while run:
 				ser.write("d{}")  # request installed devices
 				ser.write("h{u:-1}")  # request available, but not installed devices
 		elif messageType == "getDeviceList":
-			print deviceList['listState']
 			if deviceList['listState'] in ["dh", "hd"]:
 				response = dict(board=avrVersion.board,
 							shield=avrVersion.shield,
