@@ -446,7 +446,7 @@ while run:
 		elif messageType == "refreshDeviceList":
 			deviceList['listState'] = ""  # invalidate local copy
 			if value.find("readValues") != -1:
-				ser.write("d{v:1}")  # request installed devices
+				ser.write("d{r:1}")  # request installed devices
 				ser.write("h{u:-1,v:1}")  # request available, but not installed devices
 			else:
 				ser.write("d{}")  # request installed devices
