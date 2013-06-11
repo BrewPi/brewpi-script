@@ -36,22 +36,23 @@ import pinList
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.1.1"
+compatibleBrewpiVersion = "0.2.0"
 
 # Control Settings
 cs = dict(mode='b', beerSetting=20.0, fridgeSetting=20.0, heatEstimator=0.2, coolEstimator=5)
 
 # Control Constants
 cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
-          idleRangeH=1.000, idleRangeL=-1.000, heatTargetH=0.301, heatTargetL=-0.199, coolTargetH=0.199,
-          coolTargetL=-0.301, maxHeatTimeForEst="600", maxCoolTimeForEst="1200", fridgeFastFilt="1", fridgeSlowFilt="4",
-          fridgeSlopeFilt="3", beerFastFilt="3", beerSlowFilt="5", beerSlopeFilt="4", lah=0, hs=0)
+		  idleRangeH=1.000, idleRangeL=-1.000, heatTargetH=0.301, heatTargetL=-0.199, coolTargetH=0.199,
+		  coolTargetL=-0.301, maxHeatTimeForEst="600", maxCoolTimeForEst="1200", fridgeFastFilt="1", fridgeSlowFilt="4",
+		  fridgeSlopeFilt="3", beerFastFilt="3", beerSlowFilt="5", beerSlopeFilt="4", lah=0, hs=0)
 
 # Control variables
 cv = dict(beerDiff=0.000, diffIntegral=0.000, beerSlope=0.000, p=0.000, i=0.000, d=0.000, estPeak=0.000,
-          negPeakEst=0.000, posPeakEst=0.000, negPeak=0.000, posPeak=0.000)
+		  negPeakEst=0.000, posPeakEst=0.000, negPeak=0.000, posPeak=0.000)
 
-deviceList = {}
+# listState = "", "d", "h", "dh" to reflect whether the list is up to date for installed (d) and available (h)
+deviceList = dict(listState="", installed=[], available=[])
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
@@ -159,7 +160,7 @@ con = 0
 # open serial port
 try:
 	port = config['port']
-	ser = serial.Serial(port, 57600, timeout=1)
+	ser = serial.Serial(port, 57600, timeout=2)  # timeout=1 is too slow when waiting on temp sensor reads
 except serial.SerialException, e:
 	print e
 	exit()
@@ -208,7 +209,7 @@ while 1:  # read all lines on serial interface
 		if retries > 5:
 			logMessage("Warning: Cannot receive version number from Arduino. " +
 				   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
-			       "Please upload a new version of BrewPi to your Arduino.")
+				   "Please upload a new version of BrewPi to your Arduino.")
 			exit()
 
 ser.flush()
@@ -443,15 +444,23 @@ while run:
 			python = sys.executable
 			os.execl(python, python, *sys.argv)
 		elif messageType == "refreshDeviceList":
-			deviceList = {} # reset local copy of device list
-			ser.write("h{" + value + "}")  # request new device list, value contains request parameters in JSON
+			deviceList['listState'] = ""  # invalidate local copy
+			if value.find("readValues") != -1:
+				ser.write("d{v:1}")  # request installed devices
+				ser.write("h{u:-1,v:1}")  # request available, but not installed devices
+			else:
+				ser.write("d{}")  # request installed devices
+				ser.write("h{u:-1}")  # request available, but not installed devices
 		elif messageType == "getDeviceList":
-
-			response = dict(board=avrVersion.board,
-			                shield=avrVersion.shield,
-			                deviceList=deviceList,
-			                pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
-			conn.send(json.dumps(response))
+			print deviceList['listState']
+			if deviceList['listState'] in ["dh", "hd"]:
+				response = dict(board=avrVersion.board,
+							shield=avrVersion.shield,
+							deviceList=deviceList,
+							pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
+				conn.send(json.dumps(response))
+			else:
+				conn.send("device-list-not-up-to-date")
 		elif messageType == "applyDevice":
 			try:
 				configStringJson = json.loads(value)  # load as JSON to check syntax
@@ -459,7 +468,7 @@ while run:
 				logMessage("Error: invalid JSON parameter string received: " + value)
 				continue
 			ser.write("U" + value)
-			deviceList = {}
+			deviceList['listState'] = ""  # invalidate local copy
 		else:
 			logMessage("Error: Received invalid message on socket: " + message)
 
@@ -482,8 +491,7 @@ while run:
 		if (time.time() - prevDataTime) >= float(config['interval']):
 			ser.write("t")  # request new from arduino
 
-		elif ((time.time() - prevDataTime) > float(config['interval']) +
-			  2 * float(config['interval'])):
+		elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
 			#something is wrong: arduino is not responding to data requests
 			logMessage("Error: Arduino is not responding to new data requests")
 
@@ -550,8 +558,17 @@ while run:
 					elif line[0] == 'N':
 						pass  # version number received. Do nothing, just ignore
 					elif line[0] == 'h':
-						deviceList = json.loads(line[2:])
-						print(deviceList)
+						deviceList['available'] = json.loads(line[2:])
+						oldListState = deviceList['listState']
+						deviceList['listState'] = oldListState.strip('h') + "h"
+						print "Available devices received: " + str(deviceList['available'])
+					elif line[0] == 'd':
+						deviceList['installed'] = json.loads(line[2:])
+						oldListState = deviceList['listState']
+						deviceList['listState'] = oldListState.strip('d') + "d"
+						print "Installed devices received: " + str(deviceList['installed'])
+					elif line[0] == 'U':
+						print "Device updated to: " + line[2:]
 					else:
 						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
