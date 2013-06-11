@@ -18,47 +18,43 @@ import brewpiJson
 import simplejson as json
 import parseEnum
 
-logMessagesFile = '../brewpi-avr/brewpi_avr/logMessages.h'
+logMessagesFile = 'logMessages.h'
 
 errorDict = parseEnum.parseEnumInFile(logMessagesFile, 'errorMessages')
 infoDict = parseEnum.parseEnumInFile(logMessagesFile, 'infoMessages')
 warningDict = parseEnum.parseEnumInFile(logMessagesFile, 'warningMessages')
 
 def valToFunction(val):
-	if val == 0:
-		return 'None'
-	elif val == 1:
-		return 'Chamber Door'
-	elif val == 2:
-		return 'Chamber Heater'
-	elif val == 3:
-		return 'Chamber Cooler'
-	elif val == 4:
-		return 'Chamber Light'
-	elif val == 5:
-		return 'Chamber Temp'
-	elif val == 6:
-		return 'Room Temp'
-	elif val == 7:
-		return 'Chamber Fan'
-	elif val == 8:
-		return 'Chamber Reserved 1'
-	elif val == 9:
-		return 'Beer Temp'
-	elif val == 10:
-		return  'Beer Temperature 2'
-	elif val == 11:
-		return  'Beer Heater'
-	elif val == 12:
-		return  'Beer Cooler'
-	elif val == 13:
-		return  'Beer S.G.'
-	elif val == 14:
-		return  'Beer Reserved 1'
-	elif val == 15:
-		return  'Beer Reserved 2'
+	functions = ['None',  # 0
+	             'Chamber Door',  # 1
+	             'Chamber Heater',  # 2
+	             'Chamber Cooler',  # 3
+				 'Chamber Light',  # 4
+				 'Chamber Temp',  # 5
+				 'Room Temp',  # 6
+				 'Chamber Fan',  # 7
+				 'Chamber Reserved 1',  # 8
+				 'Beer Temp',  # 9
+				 'Beer Temperature 2',  # 10
+				 'Beer Heater',  # 11
+				 'Beer Cooler',  # 12
+				 'Beer S.G.',  # 13
+				 'Beer Reserved 1',  #14
+				 'Beer Reserved 2']  #15
+	if val < len(functions):
+		return functions[val]
 	else:
 		return 'Unknown Device Function'
+
+
+def getVersion():
+	hFile = open(logMessagesFile)
+	for line in hFile:
+		if 'BREWPI_LOG_MESSAGES_VERSION ' in line:
+			splitLine = line.split('BREWPI_LOG_MESSAGES_VERSION')
+			return int(splitLine[1]) # return version number
+	print "ERROR: could not find version number in log messages header file"
+	return 0
 
 
 def expandLogMessage(logMessageJsonString):
@@ -107,3 +103,5 @@ def expandLogMessage(logMessageJsonString):
 		expanded += logTypeString + " with unknown ID " + str(logId)
 
 	return expanded
+
+getVersion()

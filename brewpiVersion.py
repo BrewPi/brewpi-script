@@ -6,9 +6,11 @@ import simplejson as json
 class AvrInfo:
 	""" Parses and stores the version and other compile-time details reported by the Arduino """
 	version = "v"
+	build = "n"
 	simulator = "y"
 	board = "b"
 	shield = "s"
+	log = "l"
 
 	shield_revA = "revA"
 	shield_revC = "revC"
@@ -26,9 +28,11 @@ class AvrInfo:
 		self.minor = 0
 		self.revision = 0
 		self.version = None
+		self.build = None
 		self.simulator = False
 		self.board = None
 		self.shield = None
+		self.log = None
 		self.parse(s)
 
 
@@ -52,6 +56,10 @@ class AvrInfo:
 			self.board = AvrInfo.boards.get(j[AvrInfo.board])
 		if AvrInfo.shield in j:
 			self.shield = AvrInfo.shields.get(j[AvrInfo.shield])
+		if AvrInfo.log in j:
+			self.log = j[AvrInfo.log]
+		if AvrInfo.build in j:
+			self.build = j[AvrInfo.build]
 
 	def parseStringVersion(self, s):
 		s = s.strip()

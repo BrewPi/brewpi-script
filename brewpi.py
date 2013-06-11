@@ -32,6 +32,7 @@ import programArduino as programmer
 import brewpiJson
 from brewpiVersion import AvrInfo
 import pinList
+import expandLogMessage
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
@@ -147,14 +148,6 @@ def startBeer(beerName):
 def logMessage(message):
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
 
-def fixJson(j):
-	j = re.sub(r"{\s*?(\w)", r'{"\1', j)
-	j = re.sub(r",\s*?(\w)", r',"\1', j)
-	j = re.sub(r"(\w)?\s*:", r'\1":', j)
-	j = re.sub(r":\s*(\w*)\s*([,}])", r':"\1"\2', j)
-	return j
-
-
 ser = 0
 con = 0
 # open serial port
@@ -162,7 +155,7 @@ try:
 	port = config['port']
 	ser = serial.Serial(port, 57600, timeout=2)  # timeout=1 is too slow when waiting on temp sensor reads
 except serial.SerialException, e:
-	print e
+	print >> sys.stderr, e
 	exit()
 
 dumpSerial = config.get('dumpSerial', False)
@@ -190,18 +183,24 @@ ser.flush()
 retries = 0
 while 1:  # read all lines on serial interface
 	line = ser.readline()
-	if(line):  # line available?
-		if(line[0] == 'N'):
+	if line:  # line available?
+		if line[0] == 'N':
 			data = line.strip('\n')[2:]
 			avrVersion = AvrInfo(data)
 			brewpiVersion = avrVersion.version
-			print "Found Arduino " + avrVersion.board + \
-			      " with a " + avrVersion.shield + " shield, " + \
-			      "running BrewPi version " + brewpiVersion
-			if(brewpiVersion != compatibleBrewpiVersion):
+			logMessage( "Found Arduino " + avrVersion.board +
+			            " with a " + avrVersion.shield + " shield, " +
+			            "running BrewPi version " + brewpiVersion +
+				        " build " + str(avrVersion.build))
+			if brewpiVersion != compatibleBrewpiVersion:
 				logMessage("Warning: BrewPi version compatible with this script is " +
 						   compatibleBrewpiVersion +
 						   " but version number received is " + brewpiVersion)
+			if int(avrVersion.log) != int(expandLogMessage.getVersion()):
+				logMessage("Warning: version number of local copy of logMessages.h " +
+					       "does not match log version number received from Arduino." +
+						   "Arduino version = " + str(avrVersion.log) +
+				           ", local copy version = " + str(expandLogMessage.getVersion()))
 			break
 	else:
 		ser.write('n')
@@ -212,7 +211,7 @@ while 1:  # read all lines on serial interface
 				   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
 				   "Please upload a new version of BrewPi to your Arduino.")
 			# script will continue so you can at least program the Arduino
-			break;
+			break
 
 ser.flush()
 # request settings from Arduino, processed later when reply is received
@@ -227,7 +226,7 @@ def addSlash(path):
 
 #create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
-useInetSocket = bool(config.get('useInetSocket', is_windows));
+useInetSocket = bool(config.get('useInetSocket', is_windows))
 if (useInetSocket):
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -539,7 +538,11 @@ while run:
 						prevDataTime = time.time()
 					elif line[0] == 'D':
 						# debug message received
-						logMessage("Arduino debug message: " + line[2:])
+						try:
+							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+						except Exception, e:  # catch all exceptions, because out of date file could cause errors
+							logMessage("Error while expanding log message: " + e)
+						logMessage("Arduino debug message: " + expandedMessage)
 					elif line[0] == 'L':
 						# lcd content received
 						lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
@@ -562,14 +565,14 @@ while run:
 						deviceList['available'] = json.loads(line[2:])
 						oldListState = deviceList['listState']
 						deviceList['listState'] = oldListState.strip('h') + "h"
-						print "Available devices received: " + str(deviceList['available'])
+						logMessage("Available devices received: " + str(deviceList['available']))
 					elif line[0] == 'd':
 						deviceList['installed'] = json.loads(line[2:])
 						oldListState = deviceList['listState']
 						deviceList['listState'] = oldListState.strip('d') + "d"
-						print "Installed devices received: " + str(deviceList['installed'])
+						logMessage("Installed devices received: " + str(deviceList['installed']))
 					elif line[0] == 'U':
-						print "Device updated to: " + line[2:]
+						logMessage("Device updated to: " + line[2:])
 					else:
 						logMessage("Cannot process line from Arduino: " + line)
 					# end or processing a line
