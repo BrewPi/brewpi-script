@@ -28,11 +28,11 @@ class AvrInfo:
 		self.minor = 0
 		self.revision = 0
 		self.version = None
-		self.build = None
+		self.build = 0
 		self.simulator = False
 		self.board = None
 		self.shield = None
-		self.log = None
+		self.log = 0
 		self.parse(s)
 
 
