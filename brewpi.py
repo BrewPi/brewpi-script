@@ -431,7 +431,7 @@ while run:
 			hexFile = programParameters['fileName']
 			boardType = programParameters['boardType']
 			logMessage("New program uploaded to Arduino, script will restart")
-			result = programmer.programArduino(config, boardType, hexFile)
+			result = programmer.programArduino(config, boardType, hexFile, {'settings': True, 'devices': True})
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
 			#							programParameters['fileName'],

@@ -35,9 +35,9 @@ userConfig = ConfigObj(configFile)
 config = defaultConfig
 config.merge(userConfig)
 
-hexFile = config['wwwPath'] + 'uploads/brewpi_avr.hex'
+hexFile = config['wwwPath'] + 'uploads/brewpi-uno-revC.hex'
 boardType = config['boardType']
 
-result = programmer.programArduino(config, boardType, hexFile)
+result = programmer.programArduino(config, boardType, hexFile, {'settings': True, 'devices': True})
 
 print result
