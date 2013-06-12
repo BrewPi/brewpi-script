@@ -224,7 +224,7 @@ def addSlash(path):
 		path += '/'
 	return path
 
-#create a listening socket to communicate with PHP
+# create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows))
 if (useInetSocket):
@@ -244,7 +244,7 @@ else:
 	# set all permissions for socket
 	os.chmod(socketFile, 0777)
 s.setblocking(1)  # set socket functions to be blocking
-s.listen(10)  # Create a backlog queue for up to 5 connections
+s.listen(10)  # Create a backlog queue for up to 10 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(0.1)
 
@@ -357,7 +357,7 @@ while run:
 			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
-				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "+")
+				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "}")
 				logMessage("Notification: Fridge temperature set to " +
 						   str(cs['fridgeSet']) +
 						   " degrees in web interface")
