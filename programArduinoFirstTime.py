@@ -29,11 +29,15 @@ if not os.path.exists(sys.argv[1]):
 configFile = sys.argv[1]
 config = ConfigObj(configFile)
 
+# global variables, will be initialized by startBeer()
+defaultConfig = ConfigObj('./settings/defaults.cfg')
+userConfig = ConfigObj(configFile)
+config = defaultConfig
+config.merge(userConfig)
+
 hexFile = config['wwwPath'] + 'uploads/brewpi_avr.hex'
 boardType = config['boardType']
-port = config['port']
-eraseEEPROM = True
 
-result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
+result = programmer.programArduino(config, boardType, hexFile)
 
 print result

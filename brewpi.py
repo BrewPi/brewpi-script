@@ -430,10 +430,8 @@ while run:
 				logMessage("Error: cannot decode programming parameters: " + value)
 			hexFile = programParameters['fileName']
 			boardType = programParameters['boardType']
-			port = config['port']
-			eraseEEPROM = programParameters['eraseEEPROM']
 			logMessage("New program uploaded to Arduino, script will restart")
-			result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
+			result = programmer.programArduino(config, boardType, hexFile)
 
 			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
 			#							programParameters['fileName'],
