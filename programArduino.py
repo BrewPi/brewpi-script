@@ -25,13 +25,8 @@ import expandLogMessage
 import settingRestore
 from sys import stderr
 
-def printAndAdd(oldString, string):
+def printStdErr(string):
 	print >> stderr, string + '\n'
-	return oldString + string
-
-def printList(returnString, list):
-	for item in list:
-		printAndAdd(returnString, item)  # print one item per line
 
 def fetchBoardSettings(boardsFile, boardType):
 	boardSettings = {}
@@ -46,11 +41,12 @@ def loadBoardsFile(arduinohome):
 	return open(arduinohome+'hardware/arduino/boards.txt', 'rb').readlines()
 
 def programArduino(config, boardType, hexFile, restoreWhat):
+	printStdErr("****    Arduino Program script started    ****")
+
 	arduinohome = config.get('arduinoHome', '/usr/share/arduino/')  # location of Arduino sdk
 	avrdudehome = config.get('avrdudeHome', arduinohome + 'hardware/tools/')  # location of avr tools
 	avrsizehome = config.get('avrsizeHome', '')  # default to empty string because avrsize is on path
 	avrconf = config.get('avrConf', avrdudehome + 'avrdude.conf')  # location of global avr conf
-	returnString = ""
 
 	boardsFile = loadBoardsFile(arduinohome)
 	boardSettings = fetchBoardSettings(boardsFile, boardType)
@@ -67,6 +63,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	# Even when restoreSettings and restoreDevices are set to True here,
 	# they might be set to false due to version incompatibility later
 
+	printStdErr("Settings will " + ("" if restoreSettings else "not ") + "be restored if possible")
+	printStdErr("Devices will " + ("" if restoreDevices else "not ") + "be restored if possible")
 
 	# open serial port to read old settings and version
 	try:
@@ -74,6 +72,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	except serial.SerialException, e:
 		print e
 
+	printStdErr("Checking old version before programming.")
 	retries = 0
 	while 1:  # read all lines on serial interface
 		line = ser.readline()
@@ -81,8 +80,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			if line[0] == 'N':
 				data = line.strip('\n')[2:]
 				avrVersionOld = AvrInfo(data)
-				printAndAdd(returnString,  "Checking old version before programming.")
-				printAndAdd(returnString, ( "Found Arduino " + str(avrVersionOld.board) +
+				printStdErr(( "Found Arduino " + str(avrVersionOld.board) +
 							" with a " + str(avrVersionOld.shield) + " shield, " +
 							"running BrewPi version " + str(avrVersionOld.version) +
 							" build " + str(avrVersionOld.build)))
@@ -92,7 +90,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			time.sleep(1)
 			retries += 1
 			if retries > 5:
-				printAndAdd(returnString,  ("Warning: Cannot receive version number from Arduino. " +
+				printStdErr(("Warning: Cannot receive version number from Arduino. " +
 							 "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
 							 "Arduino will be reset to defaults."))
 				break
@@ -101,13 +99,12 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 	oldSettings = {}
 
+	printStdErr("Requesting old settings from Arduino...")
 	# request all settings from board before programming
 	ser.write("d{}")  # installed devices
 	ser.write("c{}")  # control constants
 	ser.write("s{}")  # control settings
 	time.sleep(1)
-
-	printAndAdd(returnString,  "Requesting old settings from Arduino...")
 
 	while 1:  # read all lines on serial interface
 		line = ser.readline()
@@ -121,15 +118,15 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 					oldSettings['installedDevices'] = json.loads(line[2:])
 
 			except json.decoder.JSONDecodeError, e:
-				printAndAdd(returnString,  "JSON decode error: " + e)
-				printAndAdd(returnString,  "Line received was: " + line)
+				printStdErr("JSON decode error: " + e)
+				printStdErr("Line received was: " + line)
 		else:
 			break
 
 	ser.close()
 	del ser  # Arduino won't reset when serial port is not completely removed
 	oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
-	printAndAdd(returnString,  "Saving old settings to file "+ oldSettingsFileName)
+	printStdErr("Saving old settings to file "+ oldSettingsFileName)
 
 	scriptDir = "" # os.path.dirname(__file__)  # <-- absolute dir the script is in
 	oldSettingsFile = open(scriptDir + 'settings/' + oldSettingsFileName, 'wb')
@@ -139,6 +136,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	oldSettingsFile.close()
 
 
+	printStdErr("Loading programming settings from board.txt")
+
 	# parse the Arduino board file to get the right program settings
 	for line in boardsFile:
 		if line.startswith(boardType):
@@ -147,23 +146,25 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			[key, sign, val] = setting.rpartition('=')
 			boardSettings[key] = val
 
+	printStdErr("Checking hex file size...")
+
 	# start programming the Arduino
 	avrsizeCommand = avrsizehome + 'avr-size ' + hexFile
-	printAndAdd(returnString, avrsizeCommand)
+	printStdErr(avrsizeCommand)
 	# check program size against maximum size
 	p = sub.Popen(avrsizeCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
 	output, errors = p.communicate()
 	if errors != "":
-		printAndAdd(returnString, 'avr-size error: ' + errors)
+		printStdErr('avr-size error: ' + errors)
 		return returnString
 
 	programSize = output.split()[7]
-	printAndAdd(returnString, ('Progam size: ' + programSize +
+	printStdErr(('Progam size: ' + programSize +
 		' bytes out of max ' + boardSettings['upload.maximum_size']))
 
 	# Another check just to be sure!
 	if int(programSize) > int(boardSettings['upload.maximum_size']):
-		printAndAdd(returnString,  "ERROR: program size is bigger than maximum size for Arduino " + boardType)
+		printStdErr("ERROR: program size is bigger than maximum size for your Arduino " + boardType)
 		return returnString
 
 	hexFileDir = os.path.dirname(hexFile)
@@ -178,7 +179,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 				' -U ' + 'flash:w:' + hexFileLocal +
 				' -C ' + avrconf)
 
-	printAndAdd(returnString, programCommand)
+	printStdErr("Programming Arduino with avrdude: " + programCommand)
 
 	# open and close serial port at 1200 baud. This resets the Arduino Leonardo
 	# the Arduino Uno resets every time the serial port is opened automatically
@@ -191,15 +192,29 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	output, errors = p.communicate()
 
 	# avrdude only uses stderr, append its output to the returnString
-	printAndAdd(returnString, errors)
+	printStdErr("result of invoking avrdude:\n" + errors)
 
-	printAndAdd(returnString,  "avrdude done! Now trying to restore settings")
+	printStdErr("avrdude done!")
 
 	try:
 		ser = serial.Serial(port, 57600, timeout=1)  # timeout=1 is too slow when waiting on temp sensor reads
 	except serial.SerialException, e:
 		print e
-		printAndAdd(returnString,  "Error opening serial port after programming: " + e)
+		printStdErr("Error opening serial port after programming: " + e)
+
+	printStdErr("Resetting EEPROM to default settings")
+	lines = ser.readlines()
+	for line in lines:
+		if line[0] == 'D':
+			# debug message received
+			try:
+				expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+			except Exception, e:  # catch all exceptions, because out of date file could cause errors
+				printStdErr("Error while expanding log message: " + e)
+			printStdErr("Arduino debug message: " + expandedMessage)
+
+
+	printStdErr("Now checking which settings and devices can be restored...")
 
 	retries = 0
 	# read new version
@@ -209,7 +224,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			if line[0] == 'N':
 				data = line.strip('\n')[2:]
 				avrVersionNew = AvrInfo(data)
-				printAndAdd(returnString, ( "Checking new version: Found Arduino " + avrVersionNew.board +
+				printStdErr(( "Checking new version: Found Arduino " + avrVersionNew.board +
 				                 " with a " + str(avrVersionNew.shield) + " shield, " +
 				                 "running BrewPi version " + str(avrVersionNew.version) +
 				                 " build " + str(avrVersionNew.build) + "\n"))
@@ -219,42 +234,29 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			time.sleep(1)
 			retries += 1
 			if retries > 10:
-				printAndAdd(returnString,("Warning: Cannot receive version number from Arduino after programming. " +
+				printStdErr(("Warning: Cannot receive version number from Arduino after programming. " +
 				                 "Something must have gone wrong. \n"))
 				break
-
-	printAndAdd(returnString, "Checking if settings can be restored")
 
 	if avrVersionNew.major == 0 and avrVersionNew.minor == 2:
 		if avrVersionOld.major == 0:
 			if avrVersionOld.minor == 0:
-				printAndAdd(returnString,  "Could not receive version number from old board, " +\
+				printStdErr("Could not receive version number from old board, " +\
 			                "resetting to defaults without restoring settings.")
 				restoreDevices = False
 				restoreSettings = False
 			if avrVersionOld.major > 0:
 				# version 0.1.x, try to restore most of the settings
 				settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_0
-				printAndAdd(returnString,  "Settings can be partially restored when going from 0.1.x to 0.2.0")
+				printStdErr("Settings can be partially restored when going from 0.1.x to 0.2.0")
 				restoreDevices = False
 
 			if avrVersionOld.minor == 2:
 				# restore settings and devices
 				settingsRestoreLookupDict = settingRestore.keys_0_2_0_to_0_2_0
-				printAndAdd(returnString,  "Settings can be fully restored when going from 0.2.0 to 0.2.0")
+				printStdErr("Settings can be fully restored when going from 0.2.0 to 0.2.0")
 	else:
-		printAndAdd(returnString, "Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
-
-	printAndAdd(returnString, "Resetting EEPROM to default settings")
-	lines = ser.readlines()
-	for line in lines:
-		if line[0] == 'D':
-			# debug message received
-			try:
-				expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-			except Exception, e:  # catch all exceptions, because out of date file could cause errors
-				printAndAdd(returnString, "Error while expanding log message: " + e)
-			printAndAdd(returnString,  "Arduino debug message: " + expandedMessage)
+		printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
 
 	if restoreSettings:
 		restoredSettings = {}
@@ -276,15 +278,15 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 						try: # debug message received
 							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
 						except Exception, e:  # catch all exceptions, because out of date file could cause errors
-							printAndAdd(returnString, "Error while expanding log message: " + e)
-							printAndAdd(returnString, "Arduino debug message: " + expandedMessage)
+							printStdErr("Error while expanding log message: " + e)
+							printStdErr("Arduino debug message: " + expandedMessage)
 				except json.decoder.JSONDecodeError, e:
-						printAndAdd(returnString,  "JSON decode error: " + e)
-						printAndAdd(returnString,  "Line received was: " + line)
+						printStdErr("JSON decode error: " + e)
+						printStdErr("Line received was: " + line)
 			else:
 				break
 
-		printAndAdd(returnString, "Trying to restore old control constants and settings")
+		printStdErr("Trying to restore old control constants and settings")
 		# find control constants to restore
 		for key in ccNew.keys():  # for all new keys
 			for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get the valid aliases of old keys
@@ -297,7 +299,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 				if alias in csOld.keys():  # if they are in the old settings
 					restoredSettings[key] = csOld[alias]  # add the old setting to the restoredSettings
 
-		printAndAdd(returnString, "Restoring these settings: " + json.dumps(restoredSettings))
+		printStdErr("Restoring these settings: " + json.dumps(restoredSettings))
 		ser.write("j" + json.dumps(restoredSettings))
 
 		# read log messages from arduino
@@ -308,17 +310,17 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 					try: # debug message received
 						expandedMessage = expandLogMessage.expandLogMessage(line[2:])
 					except Exception, e:  # catch all exceptions, because out of date file could cause errors
-						printAndAdd(returnString, "Error while expanding log message: " + e)
-						printAndAdd(returnString, "Arduino debug message: " + expandedMessage)
+						printStdErr("Error while expanding log message: " + e)
+						printStdErr("Arduino debug message: " + expandedMessage)
 			else:
 				break
 
-		printAndAdd(returnString, "restoring settings done!")
+		printStdErr("restoring settings done!")
 
 	if restoreDevices:
-		printAndAdd(returnString, "Now trying to restore previously installed devices: " + str(oldSettings['installedDevices']))
+		printStdErr("Now trying to restore previously installed devices: " + str(oldSettings['installedDevices']))
 		for device in oldSettings['installedDevices']:
-			printAndAdd(returnString, "Restoring device: " + json.dumps(device))
+			printStdErr("Restoring device: " + json.dumps(device))
 			ser.write("U" + json.dumps(device))
 
 		time.sleep(1) # give the Arduino time to respond
@@ -331,14 +333,19 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 					try: # debug message received
 						expandedMessage = expandLogMessage.expandLogMessage(line[2:])
 					except Exception, e:  # catch all exceptions, because out of date file could cause errors
-						printAndAdd(returnString, "Error while expanding log message: " + e)
-						printAndAdd(returnString, "Arduino debug message: " + expandedMessage)
+						printStdErr("Error while expanding log message: " + e)
+						printStdErr("Arduino debug message: " + expandedMessage)
 				elif line[0] == 'U':
-					printAndAdd(returnString, "Arduino reports: device updated to: " + line[2:])
+					printStdErr("Arduino reports: device updated to: " + line[2:])
 			else:
 				break
 
-		printAndAdd(returnString, "Restoring installed devices done!")
+		printStdErr("Restoring installed devices done!")
+
+	printStdErr("****    Program script done!    ****")
+	printStdErr("If you started the program script from the web interface, BrewPi will restart automatically")
+
 
 	ser.close()
-	return returnString
+	return "success"
+

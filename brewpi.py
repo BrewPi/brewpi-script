@@ -426,18 +426,14 @@ while run:
 			del ser  # Arduino won't reset when serial port is not completely removed
 			try:
 				programParameters = json.loads(value)
+				hexFile = programParameters['fileName']
+				boardType = programParameters['boardType']
+				restoreSettings = programParameters['restoreSettings']
+				restoreDevices = programParameters['restoreDevices']
 			except json.JSONDecodeError:
 				logMessage("Error: cannot decode programming parameters: " + value)
-			hexFile = programParameters['fileName']
-			boardType = programParameters['boardType']
 			logMessage("New program uploaded to Arduino, script will restart")
-			result = programmer.programArduino(config, boardType, hexFile, {'settings': True, 'devices': True})
-
-			# avrdudeResult = programmer.programArduino(	programParameters['boardType'],
-			#							programParameters['fileName'],
-			#							config['port'],
-			#							programParameters['eraseEEPROM'])
-			conn.send(result)
+			programmer.programArduino(config, boardType, hexFile, {'settings': restoreSettings, 'devices': restoreDevices})
 			# restart the script when done. This replaces this process with the new one
 			time.sleep(5)  # give the Arduino time to reboot
 			python = sys.executable
@@ -538,9 +534,10 @@ while run:
 						# debug message received
 						try:
 							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+							logMessage("Arduino debug message: " + expandedMessage)
 						except Exception, e:  # catch all exceptions, because out of date file could cause errors
-							logMessage("Error while expanding log message: " + e)
-						logMessage("Arduino debug message: " + expandedMessage)
+							logMessage("Error while expanding log message '" + line[2:] + "'" + str(e))
+
 					elif line[0] == 'L':
 						# lcd content received
 						lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
