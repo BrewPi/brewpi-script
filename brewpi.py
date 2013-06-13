@@ -188,9 +188,9 @@ while 1:  # read all lines on serial interface
 			data = line.strip('\n')[2:]
 			avrVersion = AvrInfo(data)
 			brewpiVersion = avrVersion.version
-			logMessage( "Found Arduino " + avrVersion.board +
-			            " with a " + avrVersion.shield + " shield, " +
-			            "running BrewPi version " + brewpiVersion +
+			logMessage( "Found Arduino " + str(avrVersion.board) +
+			            " with a " + str(avrVersion.shield) + " shield, " +
+			            "running BrewPi version " + str(brewpiVersion) +
 				        " build " + str(avrVersion.build))
 			if brewpiVersion != compatibleBrewpiVersion:
 				logMessage("Warning: BrewPi version compatible with this script is " +

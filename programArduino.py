@@ -82,9 +82,9 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 				data = line.strip('\n')[2:]
 				avrVersionOld = AvrInfo(data)
 				printAndAdd(returnString,  "Checking old version before programming.")
-				printAndAdd(returnString, ( "Found Arduino " + avrVersionOld.board +
-							" with a " + avrVersionOld.shield + " shield, " +
-							"running BrewPi version " + avrVersionOld.version +
+				printAndAdd(returnString, ( "Found Arduino " + str(avrVersionOld.board) +
+							" with a " + str(avrVersionOld.shield) + " shield, " +
+							"running BrewPi version " + str(avrVersionOld.version) +
 							" build " + str(avrVersionOld.build)))
 				break
 		else:
@@ -210,8 +210,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 				data = line.strip('\n')[2:]
 				avrVersionNew = AvrInfo(data)
 				printAndAdd(returnString, ( "Checking new version: Found Arduino " + avrVersionNew.board +
-				                 " with a " + avrVersionNew.shield + " shield, " +
-				                 "running BrewPi version " + avrVersionNew.version +
+				                 " with a " + str(avrVersionNew.shield) + " shield, " +
+				                 "running BrewPi version " + str(avrVersionNew.version) +
 				                 " build " + str(avrVersionNew.build) + "\n"))
 				break
 		else:
