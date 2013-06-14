@@ -108,9 +108,9 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	printStdErr("Requesting old settings from Arduino...")
 	# request all settings from board before programming
 	ser.write("d{}")  # installed devices
-	ser.write("c{}")  # control constants
-	ser.write("s{}")  # control settings
-	time.sleep(1)
+	ser.write("c")  # control constants
+	ser.write("s")  # control settings
+	time.sleep(2)
 
 	while 1:  # read all lines on serial interface
 		line = ser.readline()
@@ -134,8 +134,11 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
 	printStdErr("Saving old settings to file " + oldSettingsFileName)
 
-	scriptDir = ""  # os.path.dirname(__file__)  # <-- absolute dir the script is in
-	oldSettingsFile = open(scriptDir + 'settings/avr-backup/' + oldSettingsFileName, 'wb')
+	scriptDir = os.path.dirname(__file__)  # <-- absolute dir the script is in
+	if not os.path.exists(scriptDir + '/settings/avr-backup/'):
+		os.makedirs(scriptDir + '/settings/avr-backup/')
+
+	oldSettingsFile = open(scriptDir + '/settings/avr-backup/' + oldSettingsFileName, 'wb')
 	oldSettingsFile.write(json.dumps(oldSettings))
 
 	oldSettingsFile.truncate()
@@ -208,18 +211,6 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 		printStdErr("Error opening serial port after programming: " + str(e))
 		return 0
 
-	printStdErr("Resetting EEPROM to default settings")
-	lines = ser.readlines()
-	for line in lines:
-		if line[0] == 'D':
-			# debug message received
-			try:
-				expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-				printStdErr("Arduino debug message: " + expandedMessage)
-			except Exception, e:  # catch all exceptions, because out of date file could cause errors
-				printStdErr("Error while expanding log message: " + str(e))
-				printStdErr("Arduino debug message was: " + line[2:])
-
 	printStdErr("Now checking which settings and devices can be restored...")
 
 	retries = 0
@@ -242,6 +233,24 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			retries += 1
 			if retries > 10:
 				break
+
+	ser.flush()
+	printStdErr("Resetting EEPROM to default settings")
+	ser.write('E')
+	time.sleep(5)
+	while 1:  # read all lines on serial interface
+		line = ser.readline()
+		if line:  # line available?
+			if line[0] == 'D':
+				# debug message received
+				try:
+					expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+					printStdErr("Arduino debug message: " + expandedMessage)
+				except Exception, e:  # catch all exceptions, because out of date file could cause errors
+					printStdErr("Error while expanding log message: " + str(e))
+					printStdErr("Arduino debug message was: " + line[2:])
+		else:
+			break
 
 	if avrVersionNew is None:
 		printStdErr(("Warning: Cannot receive version number from Arduino after programming. " +
@@ -278,8 +287,9 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 		ccOld = oldSettings['controlConstants']
 		csOld = oldSettings['controlSettings']
 
-		ser.write('c{}')
-		ser.write('s{}')
+		ser.write('c')
+		ser.write('s')
+		time.sleep(2)
 		ccNew = {}
 		csNew = {}
 		while 1:  # read all lines on serial interface
@@ -317,10 +327,14 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 					restoredSettings[key] = csOld[alias]  # add the old setting to the restoredSettings
 
 		printStdErr("Restoring these settings: " + json.dumps(restoredSettings))
-		ser.write("j" + json.dumps(restoredSettings))
 
-		# read log messages from arduino
-		while 1:  # read all lines on serial interface
+		for key in restoredSettings.keys():
+			# send one by one or the arduino cannot keep up
+			if restoredSettings[key] is not None:
+				command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
+				ser.write(command)
+		# read all replies
+		while 1:
 			line = ser.readline()
 			if line:  # line available?
 				if line[0] == 'D':
