@@ -30,9 +30,10 @@ start.bat
 
 # make sure an empty logs directory is created
 logs/
-!.gitignore
 sftp-config.json
-brewpi-script.iml
 requirements.txt
+data/
 settings/tempProfile.csv.old
 settings/config.cfg
+settings/avr-backup/
+!.gitignore

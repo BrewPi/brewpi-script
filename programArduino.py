@@ -129,7 +129,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	printStdErr("Saving old settings to file "+ oldSettingsFileName)
 
 	scriptDir = "" # os.path.dirname(__file__)  # <-- absolute dir the script is in
-	oldSettingsFile = open(scriptDir + 'settings/' + oldSettingsFileName, 'wb')
+	oldSettingsFile = open(scriptDir + 'settings/avr-backup/' + oldSettingsFileName, 'wb')
 	oldSettingsFile.write(json.dumps(oldSettings))
 
 	oldSettingsFile.truncate()
