@@ -36,12 +36,12 @@ class BrewPiSocket:
 	def __repr__(self):
 		"""
 		This special function ensures BrewPiSocket is printed as a dict of its member variables in print statements.
-		This function deletes old sockets for file sockets, so do not use it to connect to a socket that is in use.
 		"""
 		return repr(self.__dict__)
 
 	def create(self):
 		""" Creates a socket socket based on the settings in the member variables and assigns it to self.sock
+		This function deletes old sockets for file sockets, so do not use it to connect to a socket that is in use.
 		"""
 		if self.type == 'i':  # Internet socket
 			self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -66,18 +66,27 @@ class BrewPiSocket:
 		self.sock.listen(10)  # Create a backlog queue for up to 10 connections
 		self.sock.settimeout(0.1)  # set to block 0.1 seconds, for instance for reading from the socket
 
-	def accept(self):
+	def read(self):
 		"""
-		Accept a connection from the socket, returns 0 on timeout.
+		Accept a connection from the socket and reads the incoming message.
 
 		Returns:
-		socket object when an incoming connection is accepted, otherwise returns False
+		conn: socket object when an incoming connection is accepted, otherwise returns False
+		msgType: the type of the message received on the socket
+		msg: the message body
 		"""
 		conn = False
+		msgType = ""
+		msg = ""
 		try:
 			conn, addr = self.sock.accept()
+			message = conn.recv(4096)
+			if "=" in message:
+				msgType, msg = message.split("=", 1)
+			else:
+				msgType = message
 		except socket.timeout:
 			conn = False
 		finally:
-			return conn
+			return conn, msgType, msg
 
