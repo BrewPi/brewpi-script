@@ -7,13 +7,12 @@ import BrewPiSocket
 import BrewPiUtil as util
 
 
-
 class BrewPiProcess:
-	'''
+	"""
 	This class represents a running BrewPi process.
 	It allows other instances of BrewPi to see if there would be conflicts between them.
 	It can also use the socket to send a quit signal or the pid to kill the other instance.
-	'''
+	"""
 	def __init__(self):
 		self.cwd = None  # working directory of process
 		self.pid = None  # pid of process
@@ -24,11 +23,14 @@ class BrewPiProcess:
 	def as_dict(self):
 		return self.__dict__
 
+	def quit(self):
+		self.sock.start()
+
 
 class BrewPiProcesses():
-	'''
+	"""
 	This class can get all running BrewPi instances on the system as a list of BrewPiProcess objects.
-	'''
+	"""
 	def __init__(self):
 		self.list = []
 
@@ -44,7 +46,7 @@ class BrewPiProcesses():
 			if cfg:
 				cfg = bp.cwd + '/' + cfg[0]  # add full path to config file
 			defaultCfg = bp.cwd + '/settings/config.cfg'
-			bp.cfg = self.readCfgWithDefaults(cfg, defaultCfg)
+			bp.cfg = util.readCfgWithDefaults(cfg, defaultCfg)
 
 			bp.port = bp.cfg['port']
 			bp.sock = BrewPiSocket.BrewPiSocket(bp.cfg)
@@ -54,24 +56,13 @@ class BrewPiProcesses():
 		return self.list
 
 	def get(self):
-		return list
+		return self.list
 
 	def as_dict(self):
-		list = []
+		outputList = []
 		for bp in self.list:
-			list.append(bp.as_dict())
-		return list
-
-	def readCfgWithDefaults(self, cfg, defaultCfg):
-		defaultConfig = ConfigObj('defaultCfg')
-		if cfg:
-			config = defaultConfig
-			userConfig = ConfigObj(cfg)
-			config.merge(userConfig)
-		return config
-
-
-
+			outputList.append(bp.as_dict())
+		return outputList
 
 allScripts = BrewPiProcesses()
 allScripts.update()
