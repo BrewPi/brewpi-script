@@ -33,6 +33,7 @@ import brewpiJson
 from brewpiVersion import AvrInfo
 import pinList
 import expandLogMessage
+import BrewPiProcess
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
@@ -67,6 +68,19 @@ else:
 if not os.path.exists(configFile):
 	sys.exit('ERROR: Config file "%s" was not found!' % configFile)
 
+
+def logMessage(message):
+	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
+
+# check for other running instances of BrewPi that will cause conflicts with this instance
+allProcesses = BrewPiProcess.BrewPiProcesses()
+allProcesses.update()
+myProcess = allProcesses.me()
+if allProcesses.findConflicts(myProcess):
+	logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
+				"This instance will exit")
+	exit(0)
 
 # global variables, will be initialized by startBeer()
 defaultConfig = ConfigObj('./settings/defaults.cfg')
@@ -144,9 +158,6 @@ def startBeer(beerName):
 	wwwCsvFileName = (wwwDataPath + config['beerName'] + '.csv')
 	changeWwwSetting('beerName', beerName)
 
-
-def logMessage(message):
-	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
 
 ser = 0
 con = 0

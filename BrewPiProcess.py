@@ -1,4 +1,18 @@
-__author__ = 'Elco'
+# Copyright 2013 BrewPi
+# This file is part of BrewPi.
+
+# BrewPi is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# BrewPi is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
 import psutil
 import pprint
@@ -42,6 +56,16 @@ class BrewPiProcess:
 		"""
 		process = psutil.Process(self.pid)  # get psutil process my pid
 		process.kill()
+
+	def conflict(self, otherProcess):
+		if otherProcess.cfg == self.cfg:
+			return 1
+		if otherProcess.port == self.port:
+			return 1
+		if [otherProcess.sock.type, otherProcess.sock.file, otherProcess.sock.host, otherProcess.sock.port ]  == \
+				[self.sock.type, self.sock.file, self.sock.host, self.sock.port]:
+			return 1
+		return 0
 
 
 class BrewPiProcesses():
@@ -97,6 +121,23 @@ class BrewPiProcesses():
 		myPid = os.getpid()
 		myProcess = psutil.Process(myPid)
 		return self.parseProcess(myProcess)
+
+	def findConflicts(self, process):
+		"""
+		Finds out if the process given as argument will conflict with other running instances of BrewPi
+
+		Params:
+		process: a BrewPiProcess object that will be compared with other running instances
+
+		Returns:
+		bool: True means there are conflicts, False means no conflict
+		"""
+		for p in self.list:
+			if process.pid == p.pid:  # skip the process itself
+				continue
+			if process.conflict(p):
+				return 1
+		return 0
 
 	def as_dict(self):
 		"""
