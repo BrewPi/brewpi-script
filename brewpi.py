@@ -82,8 +82,8 @@ for o, a in opts:
 		print("\n Available command line options: ")
 		print("--help: print this help message")
 		print "--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used"
-		print("--quit: ask all other instances of BrewPi to quit by sending a message to their socket")
-		print("--kill: kill all other instances of BrewPi by sending SIGKILL")
+		print("--quit: ask all  instances of BrewPi to quit by sending a message to their socket")
+		print("--kill: kill all instances of BrewPi by sending SIGKILL")
 		print("--force: Force quit/kill conflicting instances of BrewPi and keep this one")
 		exit()
 	# supply a config file
@@ -118,7 +118,7 @@ for o, a in opts:
 if not configFile:
 	print >> sys.stderr,    ("Using default config path ./settings/config.cfg, " +
 							"to override use : %s --config <config file full path>" % sys.argv[0])
-	configFile = './settings/config.cfg'
+	configFile = os.path.dirname(__file__) + '/settings/config.cfg'
 
 
 # check for other running instances of BrewPi that will cause conflicts with this instance

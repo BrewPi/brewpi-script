@@ -19,6 +19,7 @@ import pprint
 import BrewPiSocket
 import BrewPiUtil as util
 import os
+import sys
 from time import sleep
 
 
@@ -29,7 +30,6 @@ class BrewPiProcess:
 	It can also use the socket to send a quit signal or the pid to kill the other instance.
 	"""
 	def __init__(self):
-		self.cwd = None  # working directory of process
 		self.pid = None  # pid of process
 		self.cfg = None  # config file of process, full path
 		self.port = None  # serial port the process is connected to
@@ -53,22 +53,28 @@ class BrewPiProcess:
 				print "Quit message sent to BrewPi instance with pid %s!" % self.pid
 			else:
 				print "Could not connect to socket of BrewPi process, maybe it just started and is not listening yet."
-				print "Could not send quit message to BrewPi instance with pid %s!" % self.pid
+				print "Could not send quit message to BrewPi instance with pid %d!" % self.pid
 
 	def kill(self):
 		"""
 		Kills this BrewPiProcess with force, use when quit fails.
 		"""
 		process = psutil.Process(self.pid)  # get psutil process my pid
-		process.kill()
-		print "SIGKILL sent to BrewPi instance with pid %s!" % self.pid
+		try:
+			process.kill()
+			print "SIGKILL sent to BrewPi instance with pid %d!" % self.pid
+		except psutil.error.AccessDenied:
+			print >> sys.stderr, "Cannot kill process %d, you need root permission to do that." % self.pid
+			print >> sys.stderr, "Is the process running under the same user?"
 
 	def conflict(self, otherProcess):
+		if self.pid == otherProcess.pid:
+			return 0  # this is me! I don't have a conflict with myself
 		if otherProcess.cfg == self.cfg:
 			return 1
 		if otherProcess.port == self.port:
 			return 1
-		if [otherProcess.sock.type, otherProcess.sock.file, otherProcess.sock.host, otherProcess.sock.port ]  == \
+		if [otherProcess.sock.type, otherProcess.sock.file, otherProcess.sock.host, otherProcess.sock.port] == \
 				[self.sock.type, self.sock.file, self.sock.host, self.sock.port]:
 			return 1
 		return 0
@@ -87,7 +93,7 @@ class BrewPiProcesses():
 		Returns: list of BrewPiProcess objects
 		"""
 		bpList = []
-		matching = [p for p in psutil.process_iter() if any('brewpi.py'in s for s in p.cmdline)]
+		matching = [p for p in psutil.process_iter() if any('python' in p.name and 'brewpi.py'in s for s in p.cmdline)]
 		for p in matching:
 			bp = self.parseProcess(p)
 			bpList.append(bp)
@@ -101,13 +107,12 @@ class BrewPiProcesses():
 		Returns: BrewPiProcess object
 		"""
 		bp = BrewPiProcess()
-		bp.cwd = process.getcwd()
 		bp.pid = process._pid
 
 		cfg = [s for s in process.cmdline if '.cfg' in s]  # get config file argument
 		if cfg:
-			cfg = bp.cwd + '/' + cfg[0]  # add full path to config file
-		defaultCfg = bp.cwd + '/settings/config.cfg'
+			cfg = cfg[0]  # add full path to config file
+		defaultCfg = os.path.dirname(__file__) + '/settings/defaults.cfg'
 		bp.cfg = util.readCfgWithDefaults(cfg, defaultCfg)
 
 		bp.port = bp.cfg['port']
@@ -141,7 +146,7 @@ class BrewPiProcesses():
 		for p in self.list:
 			if process.pid == p.pid:  # skip the process itself
 				continue
-			if process.conflict(p):
+			elif process.conflict(p):
 				return 1
 		return 0
 

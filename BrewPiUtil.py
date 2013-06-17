@@ -41,8 +41,7 @@ def readCfgWithDefaults(cfg, defaultCfg):
 	Returns:
 	ConfigObj of settings
 	"""
-	defaultConfig = ConfigObj(defaultCfg)
-	config = defaultConfig
+	config = ConfigObj(defaultCfg)
 	if cfg:
 		userConfig = ConfigObj(cfg)
 		config.merge(userConfig)
