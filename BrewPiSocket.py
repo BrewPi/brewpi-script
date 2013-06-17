@@ -50,13 +50,30 @@ class BrewPiSocket:
 			util.logMessage('Bound to TCP socket on port %d ' % self.port)
 		else:
 			if os.path.exists(self.file):
-				# if socket already exists, remove it
+				# if socket already exists, remove it. This prevents  errors when the socket is corrupt after a crash.
 				os.remove(self.file)
 			self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 			self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.sock.bind(self.file)  # Bind BEERSOCKET
 			# set all permissions for socket
 			os.chmod(self.file, 0777)
+
+	def connect(self):
+		"""	Connect to the socket represented by BrewPiSocket. Returns a new connected socket object.
+		This function should be called when the socket is created by a different instance of brewpi.
+		"""
+		sock = socket.socket
+		if self.type == 'i':  # Internet socket
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			util.logMessage('Bound to existing TCP socket on port %d ' % self.port)
+			sock.connect((self.host, self.port))
+		else:
+			sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+			sock.connect(self.file)
+
+		return sock
 
 	def listen(self):
 		"""

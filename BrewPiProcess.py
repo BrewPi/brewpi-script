@@ -2,7 +2,6 @@ __author__ = 'Elco'
 
 import psutil
 import pprint
-from configobj import ConfigObj
 import BrewPiSocket
 import BrewPiUtil as util
 
@@ -18,7 +17,7 @@ class BrewPiProcess:
 		self.pid = None  # pid of process
 		self.cfg = None  # config file of process, full path
 		self.port = None  # serial port the process is connected to
-		self.sock = None  # socket the process is connected to
+		self.sock = None  # BrewPiSocket object which the process is connected to
 
 	def as_dict(self):
 		return self.__dict__
@@ -66,6 +65,9 @@ class BrewPiProcesses():
 
 allScripts = BrewPiProcesses()
 allScripts.update()
+for script in allScripts.list:
+	sock = script.sock.connect()
+	sock.send('stopScript')
 pprint.pprint(allScripts.as_dict())
 
 
