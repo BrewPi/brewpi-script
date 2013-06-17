@@ -69,22 +69,24 @@ def logMessage(message):
 
 # Read in command line arguments
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "hc:qkf", ['help', 'config=', 'quit', 'kill', 'force'])
+	opts, args = getopt.getopt(sys.argv[1:], "hc:qkfd", ['help', 'config=', 'quit', 'kill', 'force', 'dontrunfile'])
 except getopt.GetoptError:
-	print "Available Options: --help, --config <path to config file>, --quit, --kill, --force"
+	print "Available Options: --help, --config <path to config file>, --quit, --kill, --force, --dontrunfile"
 	sys.exit()
 
 configFile = None
+checkDontRunFile = False
 
 for o, a in opts:
 	# print help message for command line options
 	if o in ('-h', '--help'):
-		print("\n Available command line options: ")
-		print("--help: print this help message")
+		print "\n Available command line options: "
+		print "--help: print this help message"
 		print "--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used"
-		print("--quit: ask all  instances of BrewPi to quit by sending a message to their socket")
-		print("--kill: kill all instances of BrewPi by sending SIGKILL")
-		print("--force: Force quit/kill conflicting instances of BrewPi and keep this one")
+		print "--quit: ask all  instances of BrewPi to quit by sending a message to their socket"
+		print "--kill: kill all instances of BrewPi by sending SIGKILL"
+		print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
+		print "--dontrunfile: check dontrunfile in www directory and quit if it exists"
 		exit()
 	# supply a config file
 	if o in ('-c', '--config'):
@@ -113,6 +115,11 @@ for o, a in opts:
 			time.sleep(2)
 			if len(allProcesses.update()) > 1:
 				print "Asking the other processes to quit nicely did not work. Killing them with force!"
+	# only start brewpi when the donotrunfile is not found
+	if o in ('-d', '--dontrunfile'):
+		checkDontRunFile = True
+
+
 
 
 if not configFile:
@@ -120,6 +127,19 @@ if not configFile:
 							"to override use : %s --config <config file full path>" % sys.argv[0])
 	configFile = os.path.dirname(__file__) + '/settings/config.cfg'
 
+# global variables, will be initialized by startBeer()
+defaultConfig = ConfigObj('./settings/defaults.cfg')
+userConfig = ConfigObj(configFile)
+config = defaultConfig
+config.merge(userConfig)
+
+dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
+
+# check dont run file when it exists and exit it it does
+if checkDontRunFile:
+	if os.path.exists(dontRunFilePath):
+		print >> sys.stderr, "DontRunFile exists, script will exit"
+		exit()
 
 # check for other running instances of BrewPi that will cause conflicts with this instance
 allProcesses = BrewPiProcess.BrewPiProcesses()
@@ -129,12 +149,6 @@ if allProcesses.findConflicts(myProcess):
 	logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
 				"This instance will exit")
 	exit(0)
-
-# global variables, will be initialized by startBeer()
-defaultConfig = ConfigObj('./settings/defaults.cfg')
-userConfig = ConfigObj(configFile)
-config = defaultConfig
-config.merge(userConfig)
 
 
 def configSet(settingName, value):
@@ -449,7 +463,7 @@ while run:
 			logMessage("stopScript message received on socket. " +
 			           "Stopping script and writing dontrunfile to prevent automatic restart")
 			run = 0
-			dontrunfile = open(config['wwwPath'] + 'do_not_run_brewpi', "w")
+			dontrunfile = open(dontRunFilePath, "w")
 			dontrunfile.write("1")
 			dontrunfile.close()
 			continue
