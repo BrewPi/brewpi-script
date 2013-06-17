@@ -385,12 +385,20 @@ while run:
 				logMessage("Error: invalid JSON parameter string received: " + value)
 			raise socket.timeout
 		elif messageType == "stopScript":  # exit instruction received. Stop script.
-			run = 0
 			# voluntary shutdown.
 			# write a file to prevent the cron job from restarting the script
+			logMessage("stopScript message received on socket. " +
+			           "Stopping script and writing dontrunfile to prevent automatic restart")
+			run = 0
 			dontrunfile = open(config['wwwPath'] + 'do_not_run_brewpi', "w")
 			dontrunfile.write("1")
 			dontrunfile.close()
+			continue
+		elif messageType == "quit":  # quit instruction received. Probably sent by another brewpi script instance
+			logMessage("quit message received on socket. Stopping script.")
+			run = 0
+			# Leave dontrunfile alone.
+			# This instruction is meant to restart the script or replace it with another instance.
 			continue
 		elif messageType == "interval":  # new interval received
 			newInterval = int(value)
@@ -545,7 +553,6 @@ while run:
 					elif line[0] == 'C':
 						# Control constants received
 						cc = json.loads(line[2:])
-						# pprint(cc, sys.stderr)
 					elif line[0] == 'S':
 						# Control settings received
 						cs = json.loads(line[2:])
@@ -553,7 +560,6 @@ while run:
 					elif line[0] == 'V':
 						# Control settings received
 						cv = json.loads(line[2:])
-						# pprint(cv, sys.stderr)
 					elif line[0] == 'N':
 						pass  # version number received. Do nothing, just ignore
 					elif line[0] == 'h':
