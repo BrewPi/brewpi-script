@@ -77,17 +77,20 @@ class BrewPiSocket:
 		This function should be called when the socket is created by a different instance of brewpi.
 		"""
 		sock = socket.socket
-		if self.type == 'i':  # Internet socket
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			util.logMessage('Bound to existing TCP socket on port %d ' % self.port)
-			sock.connect((self.host, self.port))
-		else:
-			sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-			sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			sock.connect(self.file)
-
-		return sock
+		try:
+			if self.type == 'i':  # Internet socket
+				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+				util.logMessage('Bound to existing TCP socket on port %d ' % self.port)
+				sock.connect((self.host, self.port))
+			else:
+				sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+				sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+				sock.connect(self.file)
+		except socket.error:
+			sock = False
+		finally:
+			return sock
 
 	def listen(self):
 		"""

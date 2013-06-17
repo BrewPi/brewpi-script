@@ -46,9 +46,14 @@ class BrewPiProcess:
 		Sends a friendly quit message to this BrewPi process over its socket to aks the process to exit.
 		"""
 		if self.sock is not None:
-			sock = self.sock.connect()
-			sock.send('quit')
-			sock.close()  # do not shutdown the socket, other processes are still connected to it.
+			conn = self.sock.connect()
+			if conn:
+				conn.send('quit')
+				conn.close()  # do not shutdown the socket, other processes are still connected to it.
+				print "Quit message sent to BrewPi instance with pid %s!" % self.pid
+			else:
+				print "Could not connect to socket of BrewPi process, maybe it just started and is not listening yet."
+				print "Could not send quit message to BrewPi instance with pid %s!" % self.pid
 
 	def kill(self):
 		"""
@@ -56,6 +61,7 @@ class BrewPiProcess:
 		"""
 		process = psutil.Process(self.pid)  # get psutil process my pid
 		process.kill()
+		print "SIGKILL sent to BrewPi instance with pid %s!" % self.pid
 
 	def conflict(self, otherProcess):
 		if otherProcess.cfg == self.cfg:
@@ -158,17 +164,25 @@ class BrewPiProcesses():
 		"""
 		Ask all running BrewPi processes to exit
 		"""
+		myPid = os.getpid()
 		self.update()
-		for script in self.list:
-			script.quit()
+		for p in self.list:
+			if p.pid == myPid:  # do not send quit message to myself
+				continue
+			else:
+				p.quit()
 
 	def killAll(self):
 		"""
 		Kill all running BrewPi processes with force by sending a sigkill signal.
 		"""
+		myPid = os.getpid()
 		self.update()
-		for script in self.list:
-			script.kill()
+		for p in self.list:
+			if p.pid == myPid:  # do not commit suicide
+				continue
+			else:
+				p.kill()
 
 
 def testKillAll():

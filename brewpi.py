@@ -22,9 +22,10 @@ import sys
 import os
 import shutil
 import urllib
-import re
 import simplejson as json
 from configobj import ConfigObj
+import getopt
+
 
 #local imports
 import temperatureProfile
@@ -58,19 +59,66 @@ deviceList = dict(listState="", installed=[], available=[])
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
-# Read in command line arguments
-if len(sys.argv) < 2:
-	print >> sys.stderr, 'Using default config path ./settings/config.cfg, to override use : %s <config file full path>' % sys.argv[0]
-	configFile = './settings/config.cfg'
-else:
-	configFile = sys.argv[1]
-
-if not os.path.exists(configFile):
-	sys.exit('ERROR: Config file "%s" was not found!' % configFile)
-
+# Check needed software dependencies to nudge users to fix their setup
+if sys.version_info < (2, 7):
+	print "Sorry, requires Python 2.7."
+	sys.exit(1)
 
 def logMessage(message):
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
+# Read in command line arguments
+try:
+	opts, args = getopt.getopt(sys.argv[1:], "hc:qkf", ['help', 'config=', 'quit', 'kill', 'force'])
+except getopt.GetoptError:
+	print "Available Options: --help, --config <path to config file>, --quit, --kill, --force"
+	sys.exit()
+
+configFile = None
+
+for o, a in opts:
+	# print help message for command line options
+	if o in ('-h', '--help'):
+		print("\n Available command line options: ")
+		print("--help: print this help message")
+		print "--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used"
+		print("--quit: ask all other instances of BrewPi to quit by sending a message to their socket")
+		print("--kill: kill all other instances of BrewPi by sending SIGKILL")
+		print("--force: Force quit/kill conflicting instances of BrewPi and keep this one")
+		exit()
+	# supply a config file
+	if o in ('-c', '--config'):
+		configFile = os.path.abspath(a)
+		if not os.path.exists(configFile):
+			sys.exit('ERROR: Config file "%s" was not found!' % configFile)
+	# send quit instruction to all running instances of BrewPi
+	if o in ('-q', '--quit'):
+		logMessage("Asking all BrewPi Processes to quit on their socket")
+		allProcesses = BrewPiProcess.BrewPiProcesses()
+		allProcesses.quitAll()
+		time.sleep(2)
+		exit()
+	# send SIGKILL to all running instances of BrewPi
+	if o in ('-k', '--kill'):
+		logMessage("Killing all BrewPi Processes")
+		allProcesses = BrewPiProcess.BrewPiProcesses()
+		allProcesses.killAll()
+		exit()
+	# quit/kill running instances, then keep this one
+	if o in ('-f', '--force'):
+		logMessage("Closing all existing processes of BrewPi and keeping this one")
+		allProcesses = BrewPiProcess.BrewPiProcesses()
+		if len(allProcesses.update()) > 1:  # if I am not the only one running
+			allProcesses.quitAll()
+			time.sleep(2)
+			if len(allProcesses.update()) > 1:
+				print "Asking the other processes to quit nicely did not work. Killing them with force!"
+
+
+if not configFile:
+	print >> sys.stderr,    ("Using default config path ./settings/config.cfg, " +
+							"to override use : %s --config <config file full path>" % sys.argv[0])
+	configFile = './settings/config.cfg'
 
 
 # check for other running instances of BrewPi that will cause conflicts with this instance
