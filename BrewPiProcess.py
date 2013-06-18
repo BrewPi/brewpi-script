@@ -112,8 +112,7 @@ class BrewPiProcesses():
 		cfg = [s for s in process.cmdline if '.cfg' in s]  # get config file argument
 		if cfg:
 			cfg = cfg[0]  # add full path to config file
-		defaultCfg = os.path.dirname(__file__) + '/settings/defaults.cfg'
-		bp.cfg = util.readCfgWithDefaults(cfg, defaultCfg)
+		bp.cfg = util.readCfgWithDefaults(cfg)
 
 		bp.port = bp.cfg['port']
 		bp.sock = BrewPiSocket.BrewPiSocket(bp.cfg)

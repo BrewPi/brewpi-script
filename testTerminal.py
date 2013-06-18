@@ -22,6 +22,7 @@ import os
 from configobj import ConfigObj
 import simplejson as json
 import expandLogMessage
+import BrewPiUtil as util
 
 # Read in command line arguments
 if len(sys.argv) < 2:
@@ -33,11 +34,7 @@ else:
 if not os.path.exists(configFile):
 	sys.exit('ERROR: Config file "%s" was not found!' % configFile)
 
-# global variables, will be initialized by startBeer()
-defaultConfig = ConfigObj('./settings/defaults.cfg')
-userConfig = ConfigObj(configFile)
-config = defaultConfig
-config.merge(userConfig)
+config = util.readCfgWithDefaults(configFile)
 
 print "***** BrewPi Windows Test Terminal ****"
 print "This simple Python script lets you send commands to the Arduino."

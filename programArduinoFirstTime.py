@@ -19,6 +19,7 @@ import sys
 from configobj import ConfigObj
 
 import programArduino as programmer
+import BrewPiUtil as util
 
 # Read in command line arguments
 if len(sys.argv) < 2:
@@ -30,10 +31,7 @@ configFile = sys.argv[1]
 config = ConfigObj(configFile)
 
 # global variables, will be initialized by startBeer()
-defaultConfig = ConfigObj('./settings/defaults.cfg')
-userConfig = ConfigObj(configFile)
-config = defaultConfig
-config.merge(userConfig)
+util.readCfgWithDefaults(configFile)
 
 hexFile = config['wwwPath'] + 'uploads/brewpi-uno-revC.hex'
 boardType = config['boardType']

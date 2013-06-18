@@ -24,6 +24,7 @@ from brewpiVersion import AvrInfo
 import expandLogMessage
 import settingRestore
 from sys import stderr
+import BrewPiUtil as util
 
 
 def printStdErr(string):
@@ -134,7 +135,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
 	printStdErr("Saving old settings to file " + oldSettingsFileName)
 
-	scriptDir = os.path.dirname(__file__)  # <-- absolute dir the script is in
+	scriptDir = util.scriptPath()  # <-- absolute dir the script is in
 	if not os.path.exists(scriptDir + '/settings/avr-backup/'):
 		os.makedirs(scriptDir + '/settings/avr-backup/')
 

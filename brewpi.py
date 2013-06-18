@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
-from pprint import pprint
 import serial
 import time
 import socket
@@ -23,7 +22,6 @@ import os
 import shutil
 import urllib
 import simplejson as json
-from configobj import ConfigObj
 import getopt
 
 
@@ -35,6 +33,7 @@ from brewpiVersion import AvrInfo
 import pinList
 import expandLogMessage
 import BrewPiProcess
+import BrewPiUtil as util
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
@@ -120,18 +119,13 @@ for o, a in opts:
 		checkDontRunFile = True
 
 
-
-
 if not configFile:
-	print >> sys.stderr,    ("Using default config path ./settings/config.cfg, " +
-							"to override use : %s --config <config file full path>" % sys.argv[0])
-	configFile = os.path.dirname(__file__) + '/settings/config.cfg'
+	print >> sys.stderr,    ("Using default config path <script dir>/settings/config.cfg, " +
+							"to override use: %s --config <config file full path>" % sys.argv[0])
+	configFile = util.scriptPath() + '/settings/config.cfg'
 
 # global variables, will be initialized by startBeer()
-defaultConfig = ConfigObj('./settings/defaults.cfg')
-userConfig = ConfigObj(configFile)
-config = defaultConfig
-config.merge(userConfig)
+config = util.readCfgWithDefaults(configFile)
 
 dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
 
@@ -187,8 +181,8 @@ def startBeer(beerName):
 	global day
 
 	# create directory for the data if it does not exist
-	dataPath = addSlash(config['scriptPath']) + 'data/' + beerName + '/'
-	wwwDataPath = addSlash(config['wwwPath']) + 'data/' + beerName + '/'
+	dataPath = util.addSlash(config['scriptPath']) + 'data/' + beerName + '/'
+	wwwDataPath = util.addSlash(config['wwwPath']) + 'data/' + beerName + '/'
 
 	if not os.path.exists(dataPath):
 		os.makedirs(dataPath)
@@ -292,11 +286,6 @@ ser.write('s')  # request control settings cs
 ser.write('c') # request control constants cc
 # answer from Arduino is received asynchronously later.
 
-def addSlash(path):
-	if not path.endswith('/'):
-		path += '/'
-	return path
-
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows))
@@ -307,7 +296,7 @@ if (useInetSocket):
 	s.bind((config.get('socketHost', 'localhost'), int(port)))
 	logMessage('Bound to TCP socket on port %d ' % port)
 else:
-	socketFile = addSlash(config['scriptPath']) + 'BEERSOCKET'
+	socketFile = util.addSlash(config['scriptPath']) + 'BEERSOCKET'
 	if os.path.exists(socketFile):
 	# if socket already exists, remove it
 		os.remove(socketFile)
@@ -361,8 +350,8 @@ while run:
 	if lastDay != day:
 		logMessage("Notification: New day, dropping data table and creating new JSON file.")
 		jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
-		localJsonFileName = addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
-		wwwJsonFileName = addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
+		localJsonFileName = util.addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
+		wwwJsonFileName = util.addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
 		# create new empty json file
 		brewpiJson.newEmptyFile(localJsonFileName)
 
@@ -503,7 +492,7 @@ while run:
 			else:
 				conn.send("Failed to update profile")
 		elif messageType == "programArduino":
-			ser.close  # close serial port before programming
+			ser.close()  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
 			try:
 				programParameters = json.loads(value)
@@ -511,10 +500,12 @@ while run:
 				boardType = programParameters['boardType']
 				restoreSettings = programParameters['restoreSettings']
 				restoreDevices = programParameters['restoreDevices']
+				programmer.programArduino(config, boardType, hexFile, {'settings': restoreSettings, 'devices': restoreDevices})
+				logMessage("New program uploaded to Arduino, script will restart")
 			except json.JSONDecodeError:
 				logMessage("Error: cannot decode programming parameters: " + value)
-			logMessage("New program uploaded to Arduino, script will restart")
-			programmer.programArduino(config, boardType, hexFile, {'settings': restoreSettings, 'devices': restoreDevices})
+				logMessage("Restarting script without programming.")
+
 			# restart the script when done. This replaces this process with the new one
 			time.sleep(5)  # give the Arduino time to reboot
 			python = sys.executable

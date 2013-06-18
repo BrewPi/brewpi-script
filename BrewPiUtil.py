@@ -17,6 +17,7 @@
 from configobj import ConfigObj
 import time
 import sys
+import os
 
 
 def addSlash(path):
@@ -30,7 +31,7 @@ def addSlash(path):
 	return path
 
 
-def readCfgWithDefaults(cfg, defaultCfg):
+def readCfgWithDefaults(cfg):
 	"""
 	Reads a config file with the default config file as fallback
 
@@ -41,7 +42,9 @@ def readCfgWithDefaults(cfg, defaultCfg):
 	Returns:
 	ConfigObj of settings
 	"""
+	defaultCfg = scriptPath() + '/settings/defaults.cfg'
 	config = ConfigObj(defaultCfg)
+
 	if cfg:
 		userConfig = ConfigObj(cfg)
 		config.merge(userConfig)
@@ -53,3 +56,10 @@ def logMessage(message):
 	Prints a timestamped message to stderr
 	"""
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
+def scriptPath():
+	"""
+	Return the path of BrewPiUtil.py. __file__ only works in modules, not in the main script.
+	That is why this function is needed.
+	"""
+	return os.path.dirname(__file__)
