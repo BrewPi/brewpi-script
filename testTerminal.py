@@ -15,11 +15,9 @@
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
 import serial
-import time
 import msvcrt
 import sys
 import os
-from configobj import ConfigObj
 import simplejson as json
 import expandLogMessage
 import BrewPiUtil as util

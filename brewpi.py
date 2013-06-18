@@ -14,15 +14,40 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
-import serial
+import sys
+# Check needed software dependencies to nudge users to fix their setup
+if sys.version_info < (2, 7):
+	print "Sorry, requires Python 2.7."
+	sys.exit(1)
+
 import time
 import socket
-import sys
 import os
-import shutil
 import urllib
-import simplejson as json
 import getopt
+from pprint import pprint
+
+# load non standard packages, exit when they are not installed
+try:
+	import serial
+except ValueError:
+	print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
+	exit(1)
+try:
+	import simplejson as json
+except ValueError:
+	print "BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson"
+	exit(1)
+try:
+	from configobj import ConfigObj
+except ValueError:
+	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
+	exit(1)
+try:
+	import shutil
+except ValueError:
+	print "BrewPi requires shutil to run, please install it with 'sudo apt-get install python-shutil"
+	exit(1)
 
 
 #local imports
@@ -34,7 +59,7 @@ import pinList
 import expandLogMessage
 import BrewPiProcess
 import BrewPiUtil as util
-from pprint import pprint
+
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
@@ -59,10 +84,6 @@ deviceList = dict(listState="", installed=[], available=[])
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
-# Check needed software dependencies to nudge users to fix their setup
-if sys.version_info < (2, 7):
-	print "Sorry, requires Python 2.7."
-	sys.exit(1)
 
 def logMessage(message):
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
