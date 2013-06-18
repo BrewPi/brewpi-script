@@ -151,22 +151,22 @@ for o, a in opts:
 	if o in ('-d', '--dontrunfile'):
 		checkDontRunFile = True
 
+dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
+# check dont run file when it exists and exit it it does
+if checkDontRunFile:
+	if os.path.exists(dontRunFilePath):
+		# do not print anything, this will flood the logs
+		exit()
 
 if not configFile:
-	print >> sys.stderr,    ("Using default config path <script dir>/settings/config.cfg, " +
+	if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
+		print >> sys.stderr,    ("Using default config path <script dir>/settings/config.cfg, " +
 							"to override use: %s --config <config file full path>" % sys.argv[0])
 	configFile = util.scriptPath() + '/settings/config.cfg'
 
 # global variables, will be initialized by startBeer()
 config = util.readCfgWithDefaults(configFile)
 
-dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
-
-# check dont run file when it exists and exit it it does
-if checkDontRunFile:
-	if os.path.exists(dontRunFilePath):
-		print >> sys.stderr, "DontRunFile exists, script will exit"
-		exit()
 
 # check for other running instances of BrewPi that will cause conflicts with this instance
 allProcesses = BrewPiProcess.BrewPiProcesses()
