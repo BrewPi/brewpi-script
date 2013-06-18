@@ -151,11 +151,15 @@ class BrewPiProcesses():
 
 	def as_dict(self):
 		"""
-		Returns the list of BrewPiProcesses as a list of dicts
+		Returns the list of BrewPiProcesses as a list of dicts, except for the process calling this function
 		"""
 		outputList = []
-		for bp in self.list:
-			outputList.append(bp.as_dict())
+		myPid = os.getpid()
+		self.update()
+		for p in self.list:
+			if p.pid == myPid:  # do not send quit message to myself
+				continue
+			outputList.append(p.as_dict())
 		return outputList
 
 	def __repr__(self):

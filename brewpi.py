@@ -34,6 +34,7 @@ import pinList
 import expandLogMessage
 import BrewPiProcess
 import BrewPiUtil as util
+from pprint import pprint
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
@@ -68,7 +69,7 @@ def logMessage(message):
 
 # Read in command line arguments
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "hc:qkfd", ['help', 'config=', 'quit', 'kill', 'force', 'dontrunfile'])
+	opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfd", ['help', 'config=', 'status', 'quit', 'kill', 'force', 'dontrunfile'])
 except getopt.GetoptError:
 	print "Available Options: --help, --config <path to config file>, --quit, --kill, --force, --dontrunfile"
 	sys.exit()
@@ -82,6 +83,7 @@ for o, a in opts:
 		print "\n Available command line options: "
 		print "--help: print this help message"
 		print "--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used"
+		print "--status: check which scripts are already running"
 		print "--quit: ask all  instances of BrewPi to quit by sending a message to their socket"
 		print "--kill: kill all instances of BrewPi by sending SIGKILL"
 		print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
@@ -93,6 +95,16 @@ for o, a in opts:
 		if not os.path.exists(configFile):
 			sys.exit('ERROR: Config file "%s" was not found!' % configFile)
 	# send quit instruction to all running instances of BrewPi
+	if o in ('-s', '--status'):
+		allProcesses = BrewPiProcess.BrewPiProcesses()
+		allProcesses.update()
+		running = allProcesses.as_dict()
+		if running:
+			pprint(running)
+		else:
+			print "No BrewPi scripts running"
+		exit()
+	# quit/kill running instances, then keep this one
 	if o in ('-q', '--quit'):
 		logMessage("Asking all BrewPi Processes to quit on their socket")
 		allProcesses = BrewPiProcess.BrewPiProcesses()
@@ -105,7 +117,7 @@ for o, a in opts:
 		allProcesses = BrewPiProcess.BrewPiProcesses()
 		allProcesses.killAll()
 		exit()
-	# quit/kill running instances, then keep this one
+	# close all existing instances of BrewPi by quit/kill and keep this one
 	if o in ('-f', '--force'):
 		logMessage("Closing all existing processes of BrewPi and keeping this one")
 		allProcesses = BrewPiProcess.BrewPiProcesses()
