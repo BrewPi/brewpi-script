@@ -338,10 +338,12 @@ else:
 	s.bind(socketFile)  # Bind BEERSOCKET
 	# set all permissions for socket
 	os.chmod(socketFile, 0777)
+
+serialCheckInterval = 0.5
 s.setblocking(1)  # set socket functions to be blocking
 s.listen(10)  # Create a backlog queue for up to 10 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
-s.settimeout(0.1)
+s.settimeout(serialCheckInterval)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
@@ -571,7 +573,7 @@ while run:
 		else:
 			logMessage("Error: Received invalid message on socket: " + message)
 
-		if (time.time() - prevTimeOut) < config['serialCheckInterval']:
+		if (time.time() - prevTimeOut) < serialCheckInterval:
 			continue
 		else:
 			# raise exception to check serial for data immediately
