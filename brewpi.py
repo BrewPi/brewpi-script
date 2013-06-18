@@ -151,6 +151,14 @@ for o, a in opts:
 	if o in ('-d', '--dontrunfile'):
 		checkDontRunFile = True
 
+if not configFile:
+	if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
+		print >> sys.stderr,    ("Using default config path <script dir>/settings/config.cfg, " +
+		                         "to override use: %s --config <config file full path>" % sys.argv[0])
+	configFile = util.scriptPath() + '/settings/config.cfg'
+
+config = util.readCfgWithDefaults(configFile)
+
 dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
 # check dont run file when it exists and exit it it does
 if checkDontRunFile:
@@ -158,33 +166,15 @@ if checkDontRunFile:
 		# do not print anything, this will flood the logs
 		exit()
 
-if not configFile:
-	if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
-		print >> sys.stderr,    ("Using default config path <script dir>/settings/config.cfg, " +
-							"to override use: %s --config <config file full path>" % sys.argv[0])
-	configFile = util.scriptPath() + '/settings/config.cfg'
-
-# global variables, will be initialized by startBeer()
-config = util.readCfgWithDefaults(configFile)
-
-
 # check for other running instances of BrewPi that will cause conflicts with this instance
 allProcesses = BrewPiProcess.BrewPiProcesses()
 allProcesses.update()
 myProcess = allProcesses.me()
 if allProcesses.findConflicts(myProcess):
-	logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
-				"This instance will exit")
+	if not checkDontRunFile:
+		logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
+					"This instance will exit")
 	exit(0)
-
-
-def configSet(settingName, value):
-	global userConfig
-	global config
-	config[settingName] = value
-	userConfig[settingName] = value
-	userConfig.write()
-
 
 localJsonFileName = ""
 localCsvFileName = ""
@@ -289,18 +279,18 @@ while 1:  # read all lines on serial interface
 			avrVersion = AvrInfo(data)
 			brewpiVersion = avrVersion.version
 			logMessage( "Found Arduino " + str(avrVersion.board) +
-			            " with a " + str(avrVersion.shield) + " shield, " +
-			            "running BrewPi version " + str(brewpiVersion) +
-				        " build " + str(avrVersion.build))
+						" with a " + str(avrVersion.shield) + " shield, " +
+						"running BrewPi version " + str(brewpiVersion) +
+						" build " + str(avrVersion.build))
 			if brewpiVersion != compatibleBrewpiVersion:
 				logMessage("Warning: BrewPi version compatible with this script is " +
 						   compatibleBrewpiVersion +
 						   " but version number received is " + brewpiVersion)
 			if int(avrVersion.log) != int(expandLogMessage.getVersion()):
 				logMessage("Warning: version number of local copy of logMessages.h " +
-					       "does not match log version number received from Arduino." +
+						   "does not match log version number received from Arduino." +
 						   "Arduino version = " + str(avrVersion.log) +
-				           ", local copy version = " + str(expandLogMessage.getVersion()))
+						   ", local copy version = " + str(expandLogMessage.getVersion()))
 			break
 	else:
 		ser.write('n')
@@ -485,7 +475,7 @@ while run:
 			# voluntary shutdown.
 			# write a file to prevent the cron job from restarting the script
 			logMessage("stopScript message received on socket. " +
-			           "Stopping script and writing dontrunfile to prevent automatic restart")
+					   "Stopping script and writing dontrunfile to prevent automatic restart")
 			run = 0
 			dontrunfile = open(dontRunFilePath, "w")
 			dontrunfile.write("1")
@@ -497,20 +487,26 @@ while run:
 			# Leave dontrunfile alone.
 			# This instruction is meant to restart the script or replace it with another instance.
 			continue
+		elif messageType == "eraseLogs":
+			# erase the log files for stderr and stdout
+			open(util.scriptPath() + '/logs/stderr.txt', 'wb').close()
+			open(util.scriptPath() + '/logs/stdout.txt', 'wb').close()
+			logMessage("Fresh start! Log files erased.")
+			continue
 		elif messageType == "interval":  # new interval received
 			newInterval = int(value)
 			if 5 < newInterval < 5000:
-				configSet('interval',float(newInterval))
+				config = util.configSet(configFile, 'interval',float(newInterval))
 				logMessage("Notification: Interval changed to " +
 						   str(newInterval) + " seconds")
 		elif messageType == "name":  # new beer name
 			newName = value
 			if len(newName) > 3:     # shorter names are probably invalid
-				configSet('beerName', newName)
+				config = util.configSet(configFile, 'beerName', newName)
 				startBeer(newName)
 				logMessage("Notification: restarted for beer: " + newName)
 		elif messageType == "profileKey":
-			configSet('profileKey', value)
+			config = util.configSet(configFile, 'profileKey', value)
 			changeWwwSetting('profileKey', value)
 		elif messageType == "uploadProfile":
 			# use urllib to download the profile as a CSV file

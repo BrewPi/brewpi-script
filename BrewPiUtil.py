@@ -50,6 +50,12 @@ def readCfgWithDefaults(cfg):
 		config.merge(userConfig)
 	return config
 
+def configSet(configFile, settingName, value):
+	config = ConfigObj(configFile)
+	config[settingName] = value
+	config.write()
+	return config  # return updated ConfigObj
+
 
 def logMessage(message):
 	"""
