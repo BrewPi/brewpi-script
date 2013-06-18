@@ -54,7 +54,7 @@ def configSet(configFile, settingName, value):
 	config = ConfigObj(configFile)
 	config[settingName] = value
 	config.write()
-	return config  # return updated ConfigObj
+	return readCfgWithDefaults(configFile)  # return updated ConfigObj
 
 
 def logMessage(message):

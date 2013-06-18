@@ -73,7 +73,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 	# open serial port to read old settings and version
 	try:
-		ser = serial.Serial(port, 57600, timeout=1)  # timeout=1 is too slow when waiting on temp sensor reads
+		ser = serial.Serial(port, 57600, timeout=0.2)  # a faster timeout is ok here, makes programming process faster
 	except serial.SerialException, e:
 		print e
 		return 0
@@ -334,19 +334,20 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			if restoredSettings[key] is not None:
 				command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
 				ser.write(command)
-		# read all replies
-		while 1:
-			line = ser.readline()
-			if line:  # line available?
-				if line[0] == 'D':
-					try:  # debug message received
-						expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-						printStdErr(expandedMessage)
-					except Exception, e:  # catch all exceptions, because out of date file could cause errors
-						printStdErr("Error while expanding log message: " + str(e))
-						printStdErr("Arduino debug message: " + line[2:])
-			else:
-				break
+				time.sleep(0.5)
+			# read all replies
+			while 1:
+				line = ser.readline()
+				if line:  # line available?
+					if line[0] == 'D':
+						try:  # debug message received
+							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+							printStdErr(expandedMessage)
+						except Exception, e:  # catch all exceptions, because out of date file could cause errors
+							printStdErr("Error while expanding log message: " + str(e))
+							printStdErr("Arduino debug message: " + line[2:])
+				else:
+					break
 
 		printStdErr("restoring settings done!")
 
