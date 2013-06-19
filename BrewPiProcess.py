@@ -14,7 +14,11 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
-import psutil
+try:
+	import shutil
+except ImportError:
+	print "BrewPi requires shutil to run, please install it with 'sudo apt-get install python-shutil"
+	exit(1)
 import pprint
 import BrewPiSocket
 import BrewPiUtil as util

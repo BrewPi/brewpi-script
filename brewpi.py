@@ -30,22 +30,22 @@ from pprint import pprint
 # load non standard packages, exit when they are not installed
 try:
 	import serial
-except ValueError:
+except ImportError:
 	print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
 	exit(1)
 try:
 	import simplejson as json
-except ValueError:
+except ImportError:
 	print "BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson"
 	exit(1)
 try:
 	from configobj import ConfigObj
-except ValueError:
+except ImportError:
 	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
 	exit(1)
 try:
 	import shutil
-except ValueError:
+except ImportError:
 	print "BrewPi requires shutil to run, please install it with 'sudo apt-get install python-shutil"
 	exit(1)
 
