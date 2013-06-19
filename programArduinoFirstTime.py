@@ -19,6 +19,7 @@ import sys
 from configobj import ConfigObj
 
 import programArduino as programmer
+import BrewPiUtil as util
 
 # Read in command line arguments
 if len(sys.argv) < 2:
@@ -29,11 +30,12 @@ if not os.path.exists(sys.argv[1]):
 configFile = sys.argv[1]
 config = ConfigObj(configFile)
 
-hexFile = config['wwwPath'] + 'uploads/brewpi_avr.hex'
-boardType = config['boardType']
-port = config['port']
-eraseEEPROM = True
+# global variables, will be initialized by startBeer()
+util.readCfgWithDefaults(configFile)
 
-result = programmer.programArduino(config, boardType, hexFile, port, eraseEEPROM)
+hexFile = config['wwwPath'] + 'uploads/brewpi-uno-revC.hex'
+boardType = config['boardType']
+
+result = programmer.programArduino(config, boardType, hexFile, {'settings': True, 'devices': True})
 
 print result
