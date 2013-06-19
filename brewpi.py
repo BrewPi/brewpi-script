@@ -20,45 +20,44 @@ if sys.version_info < (2, 7):
 	print "Sorry, requires Python 2.7."
 	sys.exit(1)
 
+# standard libraries
 import time
 import socket
 import os
 import urllib
 import getopt
 from pprint import pprint
+import shutil
 
 # load non standard packages, exit when they are not installed
 try:
 	import serial
 except ImportError:
 	print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
-	exit(1)
+	sys.exit(1)
 try:
 	import simplejson as json
 except ImportError:
 	print "BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson"
-	exit(1)
+	sys.exit(1)
 try:
 	from configobj import ConfigObj
 except ImportError:
 	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
-	exit(1)
-try:
-	import shutil
-except ImportError:
-	print "BrewPi requires shutil to run, please install it with 'sudo apt-get install python-shutil"
-	exit(1)
+	sys.exit(1)
+
 
 
 #local imports
 import temperatureProfile
 import programArduino as programmer
 import brewpiJson
+import BrewPiUtil as util
 from brewpiVersion import AvrInfo
 import pinList
 import expandLogMessage
 import BrewPiProcess
-import BrewPiUtil as util
+
 
 
 # Settings will be read from Arduino, initialize with same defaults as Arduino
