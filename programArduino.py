@@ -205,6 +205,13 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 	printStdErr("avrdude done!")
 
+	printStdErr("Giving the Arduino a few seconds to power up...")
+	countDown = 6
+	while countDown > 0:
+		time.sleep(1)
+		countDown -= 1
+		printStdErr("Back up in " + str(countDown) + "...")
+
 	try:
 		ser = serial.Serial(port, 57600, timeout=1)  # timeout=1 is too slow when waiting on temp sensor reads
 	except serial.SerialException, e:
@@ -238,7 +245,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	ser.flush()
 	printStdErr("Resetting EEPROM to default settings")
 	ser.write('E')
-	time.sleep(5)
+	time.sleep(2)
 	while 1:  # read all lines on serial interface
 		line = ser.readline()
 		if line:  # line available?
