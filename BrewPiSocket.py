@@ -15,10 +15,9 @@
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-import BrewPiUtil as util
 import socket
 import os
-
+import BrewPiUtil as util
 
 class BrewPiSocket:
 	"""

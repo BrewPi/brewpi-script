@@ -14,11 +14,15 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
-from configobj import ConfigObj
 import time
 import sys
 import os
 
+try:
+	from configobj import ConfigObj
+except ImportError:
+	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
+	sys.exit(1)
 
 def addSlash(path):
 	"""

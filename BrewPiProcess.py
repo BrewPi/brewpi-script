@@ -14,13 +14,20 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
-import psutil
+
 import pprint
-import BrewPiSocket
-import BrewPiUtil as util
 import os
 import sys
 from time import sleep
+
+try:
+	import psutil
+except ImportError:
+	print "BrewPi requires psutil to run, please install it with 'sudo apt-get install python-psutil"
+	sys.exit(1)
+
+import BrewPiSocket
+import BrewPiUtil as util
 
 
 class BrewPiProcess:
