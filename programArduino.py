@@ -68,8 +68,10 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	# Even when restoreSettings and restoreDevices are set to True here,
 	# they might be set to false due to version incompatibility later
 
-	printStdErr("Settings will " + ("" if restoreSettings else "not ") + "be restored if possible")
-	printStdErr("Devices will " + ("" if restoreDevices else "not ") + "be restored if possible")
+	printStdErr("Settings will " + ("" if restoreSettings else "not ") + "be restored" +
+				(" if possible" if restoreSettings else ""))
+	printStdErr("Devices will " + ("" if restoreDevices else "not ") + "be restored" +
+				(" if possible" if restoreSettings else ""))
 
 	# open serial port to read old settings and version
 	try:
