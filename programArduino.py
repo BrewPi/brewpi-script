@@ -108,7 +108,9 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 	printStdErr("Requesting old settings from Arduino...")
 	# request all settings from board before programming
-	ser.write("d{}")  # installed devices
+	if avrVersionOld.minor > 1:  # older versions did not have a device manager
+		ser.write("d{}")  # installed devices
+		time.sleep(1)
 	ser.write("c")  # control constants
 	ser.write("s")  # control settings
 	time.sleep(2)
@@ -245,7 +247,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	ser.flush()
 	printStdErr("Resetting EEPROM to default settings")
 	ser.write('E')
-	time.sleep(2)
+	time.sleep(5)  # resetting EEPROM takes a while, wait 5 seconds
 	while 1:  # read all lines on serial interface
 		line = ser.readline()
 		if line:  # line available?
@@ -357,6 +359,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 					break
 
 		printStdErr("restoring settings done!")
+	else:
+		printStdErr("No settings to restore!")
 
 	if restoreDevices:
 		printStdErr("Now trying to restore previously installed devices: " + str(oldSettings['installedDevices']))
@@ -383,6 +387,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 				break
 
 		printStdErr("Restoring installed devices done!")
+	else:
+		printStdErr("No devices to restore!")
 
 	printStdErr("****    Program script done!    ****")
 	printStdErr("If you started the program script from the web interface, BrewPi will restart automatically")
