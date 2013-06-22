@@ -110,9 +110,10 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 	printStdErr("Requesting old settings from Arduino...")
 	# request all settings from board before programming
-	if avrVersionOld.minor > 1:  # older versions did not have a device manager
-		ser.write("d{}")  # installed devices
-		time.sleep(1)
+	if avrVersionOld is not None:
+		if avrVersionOld.minor > 1:  # older versions did not have a device manager
+			ser.write("d{}")  # installed devices
+			time.sleep(1)
 	ser.write("c")  # control constants
 	ser.write("s")  # control settings
 	time.sleep(2)
