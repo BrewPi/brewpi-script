@@ -84,8 +84,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	retries = 0
 	avrVersionOld = None
 	while 1:  # read all lines on serial interface
-		line = ser.readline()
-		if line:  # line available?
+		for line in ser.readlines():
 			if line[0] == 'N':
 				data = line.strip('\n')[2:]
 				avrVersionOld = AvrInfo(data)
@@ -119,8 +118,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	time.sleep(2)
 
 	while 1:  # read all lines on serial interface
-		line = ser.readline()
-		if line:  # line available?
+		for line in ser.readlines():
 			try:
 				if line[0] == 'C':
 					oldSettings['controlConstants'] = json.loads(line[2:])

@@ -269,10 +269,10 @@ logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 time.sleep(float(config.get('startupDelay', 10)))
 
 ser.flush()
+brewpiVersion = None
 retries = 0
 while 1:  # read all lines on serial interface
-	line = ser.readline()
-	if line:  # line available?
+	for line in ser.readlines():
 		if line[0] == 'N':
 			data = line.strip('\n')[2:]
 			avrVersion = AvrInfo(data)
