@@ -242,7 +242,7 @@ con = 0
 # open serial port
 try:
 	port = config['port']
-	ser = serial.Serial(port, 57600, timeout=2)  # timeout=1 is too slow when waiting on temp sensor reads
+	ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
 except serial.SerialException, e:
 	print >> sys.stderr, e
 	exit()
@@ -594,92 +594,87 @@ while run:
 			#something is wrong: arduino is not responding to data requests
 			logMessage("Error: Arduino is not responding to new data requests")
 
-		while 1:  # read all lines on serial interface
-			line = ser.readline()
-			if line:  # line available?
-				try:
-					if line[0] == 'T':
+		for line in ser.readlines():  # read all lines on serial interface
+			try:
+				if line[0] == 'T':
 
-						# print it to stdout
-						if outputTemperature:
-							print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
-						# process temperature line
-						newData = json.loads(line[2:])
-						# copy/rename keys
-						for key in newData:
-							prevTempJson[renameTempKey(key)] = newData[key]
+					# print it to stdout
+					if outputTemperature:
+						print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+					# process temperature line
+					newData = json.loads(line[2:])
+					# copy/rename keys
+					for key in newData:
+						prevTempJson[renameTempKey(key)] = newData[key]
 
-						newRow = prevTempJson
-						# add to JSON file
-						brewpiJson.addRow(localJsonFileName, newRow)
-						# copy to www dir.
-						# Do not write directly to www dir to prevent blocking www file.
-						shutil.copyfile(localJsonFileName, wwwJsonFileName)
-						#write csv file too
-						csvFile = open(localCsvFileName, "a")
-						try:
-							lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-										   str(newRow['BeerTemp']) + ';' +
-										   str(newRow['BeerSet']) + ';' +
-										   str(newRow['BeerAnn']) + ';' +
-										   str(newRow['FridgeTemp']) + ';' +
-										   str(newRow['FridgeSet']) + ';' +
-										   str(newRow['FridgeAnn']) + ';' +
-										   str(newRow['State']) + ';' +
-										   str(newRow['RoomTemp']) + '\n')
-							csvFile.write(lineToWrite)
-						except KeyError, e:
-							logMessage("KeyError in line from Arduino: %s" % e)
+					newRow = prevTempJson
+					# add to JSON file
+					brewpiJson.addRow(localJsonFileName, newRow)
+					# copy to www dir.
+					# Do not write directly to www dir to prevent blocking www file.
+					shutil.copyfile(localJsonFileName, wwwJsonFileName)
+					#write csv file too
+					csvFile = open(localCsvFileName, "a")
+					try:
+						lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+									   str(newRow['BeerTemp']) + ';' +
+									   str(newRow['BeerSet']) + ';' +
+									   str(newRow['BeerAnn']) + ';' +
+									   str(newRow['FridgeTemp']) + ';' +
+									   str(newRow['FridgeSet']) + ';' +
+									   str(newRow['FridgeAnn']) + ';' +
+									   str(newRow['State']) + ';' +
+									   str(newRow['RoomTemp']) + '\n')
+						csvFile.write(lineToWrite)
+					except KeyError, e:
+						logMessage("KeyError in line from Arduino: %s" % e)
 
-						csvFile.close()
-						shutil.copyfile(localCsvFileName, wwwCsvFileName)
-						# store time of last new data for interval check
-						prevDataTime = time.time()
-					elif line[0] == 'D':
-						# debug message received
-						try:
-							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-							logMessage("Arduino debug message: " + expandedMessage)
-						except Exception, e:  # catch all exceptions, because out of date file could cause errors
-							logMessage("Error while expanding log message '" + line[2:] + "'" + str(e))
+					csvFile.close()
+					shutil.copyfile(localCsvFileName, wwwCsvFileName)
+					# store time of last new data for interval check
+					prevDataTime = time.time()
+				elif line[0] == 'D':
+					# debug message received
+					try:
+						expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+						logMessage("Arduino debug message: " + expandedMessage)
+					except Exception, e:  # catch all exceptions, because out of date file could cause errors
+						logMessage("Error while expanding log message '" + line[2:] + "'" + str(e))
 
-					elif line[0] == 'L':
-						# lcd content received
-						lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
-						lcdText = json.loads(lcdTextReplaced)
-					elif line[0] == 'C':
-						# Control constants received
-						cc = json.loads(line[2:])
-					elif line[0] == 'S':
-						# Control settings received
-						cs = json.loads(line[2:])
-					# do not print this to the log file. This is requested continuously.
-					elif line[0] == 'V':
-						# Control settings received
-						cv = json.loads(line[2:])
-					elif line[0] == 'N':
-						pass  # version number received. Do nothing, just ignore
-					elif line[0] == 'h':
-						deviceList['available'] = json.loads(line[2:])
-						oldListState = deviceList['listState']
-						deviceList['listState'] = oldListState.strip('h') + "h"
-						logMessage("Available devices received: " + str(deviceList['available']))
-					elif line[0] == 'd':
-						deviceList['installed'] = json.loads(line[2:])
-						oldListState = deviceList['listState']
-						deviceList['listState'] = oldListState.strip('d') + "d"
-						logMessage("Installed devices received: " + str(deviceList['installed']))
-					elif line[0] == 'U':
-						logMessage("Device updated to: " + line[2:])
-					else:
-						logMessage("Cannot process line from Arduino: " + line)
-					# end or processing a line
-				except json.decoder.JSONDecodeError, e:
-					logMessage("JSON decode error: %s" % e)
-					logMessage("Line received was: " + line)
-			else:
-				# no lines left to process
-				break
+				elif line[0] == 'L':
+					# lcd content received
+					lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
+					lcdText = json.loads(lcdTextReplaced)
+				elif line[0] == 'C':
+					# Control constants received
+					cc = json.loads(line[2:])
+				elif line[0] == 'S':
+					# Control settings received
+					cs = json.loads(line[2:])
+				# do not print this to the log file. This is requested continuously.
+				elif line[0] == 'V':
+					# Control settings received
+					cv = json.loads(line[2:])
+				elif line[0] == 'N':
+					pass  # version number received. Do nothing, just ignore
+				elif line[0] == 'h':
+					deviceList['available'] = json.loads(line[2:])
+					oldListState = deviceList['listState']
+					deviceList['listState'] = oldListState.strip('h') + "h"
+					logMessage("Available devices received: " + str(deviceList['available']))
+				elif line[0] == 'd':
+					deviceList['installed'] = json.loads(line[2:])
+					oldListState = deviceList['listState']
+					deviceList['listState'] = oldListState.strip('d') + "d"
+					logMessage("Installed devices received: " + str(deviceList['installed']))
+				elif line[0] == 'U':
+					logMessage("Device updated to: " + line[2:])
+				else:
+					logMessage("Cannot process line from Arduino: " + line)
+				# end or processing a line
+			except json.decoder.JSONDecodeError, e:
+				logMessage("JSON decode error: %s" % e)
+				logMessage("Line received was: " + line)
 
 		# Check for update from temperature profile
 		if cs['mode'] == 'p':
