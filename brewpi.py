@@ -272,7 +272,8 @@ ser.flush()
 brewpiVersion = None
 retries = 0
 
-while 1:  # read all lines on serial interface
+requestVersion = True
+while requestVersion:
 	for line in ser.readlines():
 		if line[0] == 'N':
 			data = line.strip('\n')[2:]
@@ -291,6 +292,7 @@ while 1:  # read all lines on serial interface
 						   "does not match log version number received from Arduino." +
 						   "Arduino version = " + str(avrVersion.log) +
 						   ", local copy version = " + str(expandLogMessage.getVersion()))
+			requestVersion = False
 			break
 	else:
 		ser.write('n')
