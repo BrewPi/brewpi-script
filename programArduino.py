@@ -83,8 +83,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	printStdErr("Checking old version before programming.")
 	retries = 0
 	avrVersionOld = None
-	oldTimeout = ser.getTimeout()
-	ser.setTimeout(0)
+
 	while 1:  # read all lines on serial interface
 		for line in ser.readlines():
 			if line[0] == 'N':
@@ -104,7 +103,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 							 "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
 							 "Arduino will be reset to defaults."))
 				break
-	ser.setTimeout(oldTimeout)
+
 	ser.flush()
 
 	oldSettings = {}
@@ -229,8 +228,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	retries = 0
 	# read new version
 	avrVersionNew = None
-	oldTimeout = ser.getTimeout()
-	ser.setTimeout(0)
+
 	while 1:  # read all lines on serial interface
 		line = ser.readline()
 		if line:  # line available?
@@ -248,7 +246,6 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			retries += 1
 			if retries > 10:
 				break
-	ser.setTimeout(oldTimeout)
 
 	ser.flush()
 	printStdErr("Resetting EEPROM to default settings")
