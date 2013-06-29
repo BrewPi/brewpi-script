@@ -96,6 +96,7 @@ except getopt.GetoptError:
 
 configFile = None
 checkDontRunFile = False
+serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 
 for o, a in opts:
 	# print help message for command line options
@@ -670,6 +671,7 @@ while run:
 					logMessage("Available devices received: " + str(deviceList['available']))
 					if serialRestoreTimeOut:
 						ser.setTimeout(serialRestoreTimeOut)
+						serialRestoreTimeOut = None
 				elif line[0] == 'd':
 					deviceList['installed'] = json.loads(line[2:])
 					oldListState = deviceList['listState']
