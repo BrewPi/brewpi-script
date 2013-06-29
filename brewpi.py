@@ -271,6 +271,8 @@ time.sleep(float(config.get('startupDelay', 10)))
 ser.flush()
 brewpiVersion = None
 retries = 0
+oldTimeout = ser.getTimeout()
+ser.setTimeout(0)
 while 1:  # read all lines on serial interface
 	for line in ser.readlines():
 		if line[0] == 'N':
@@ -301,6 +303,7 @@ while 1:  # read all lines on serial interface
 				   "Please upload a new version of BrewPi to your Arduino.")
 			# script will continue so you can at least program the Arduino
 			break
+ser.setTimeout(oldTimeout)
 
 ser.flush()
 # request settings from Arduino, processed later when reply is received
