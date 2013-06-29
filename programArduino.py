@@ -81,11 +81,13 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 		return 0
 
 	printStdErr("Checking old version before programming.")
-	retries = 0
+
 	avrVersionOld = None
-	while 1:  # read all lines on serial interface
-		line = ser.readline()
-		if line:  # line available?
+
+	retries = 0
+	requestVersion = True
+	while requestVersion:
+		for line in ser.readlines():
 			if line[0] == 'N':
 				data = line.strip('\n')[2:]
 				avrVersionOld = AvrInfo(data)
@@ -93,6 +95,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 							" with a " + str(avrVersionOld.shield) + " shield, " +
 							"running BrewPi version " + str(avrVersionOld.version) +
 							" build " + str(avrVersionOld.build)))
+				requestVersion = False
 				break
 		else:
 			ser.write('n')  # request version info
@@ -104,7 +107,6 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 							 "Arduino will be reset to defaults."))
 				break
 
-	ser.flush()
 
 	oldSettings = {}
 
@@ -114,26 +116,23 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 		if avrVersionOld.minor > 1:  # older versions did not have a device manager
 			ser.write("d{}")  # installed devices
 			time.sleep(1)
-	ser.write("c")  # control constants
-	ser.write("s")  # control settings
-	time.sleep(2)
+		ser.write("c")  # control constants
+		ser.write("s")  # control settings
+		time.sleep(2)
 
-	while 1:  # read all lines on serial interface
-		line = ser.readline()
-		if line:  # line available?
-			try:
-				if line[0] == 'C':
-					oldSettings['controlConstants'] = json.loads(line[2:])
-				elif line[0] == 'S':
-					oldSettings['controlSettings'] = json.loads(line[2:])
-				elif line[0] == 'd':
-					oldSettings['installedDevices'] = json.loads(line[2:])
 
-			except json.decoder.JSONDecodeError, e:
-				printStdErr("JSON decode error: " + str(e))
-				printStdErr("Line received was: " + line)
-		else:
-			break
+	for line in ser.readlines():
+		try:
+			if line[0] == 'C':
+				oldSettings['controlConstants'] = json.loads(line[2:])
+			elif line[0] == 'S':
+				oldSettings['controlSettings'] = json.loads(line[2:])
+			elif line[0] == 'd':
+				oldSettings['installedDevices'] = json.loads(line[2:])
+
+		except json.decoder.JSONDecodeError, e:
+			printStdErr("JSON decode error: " + str(e))
+			printStdErr("Line received was: " + line)
 
 	ser.close()
 	del ser  # Arduino won't reset when serial port is not completely removed
@@ -226,12 +225,13 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 	printStdErr("Now checking which settings and devices can be restored...")
 
-	retries = 0
+
 	# read new version
 	avrVersionNew = None
-	while 1:  # read all lines on serial interface
-		line = ser.readline()
-		if line:  # line available?
+	retries = 0
+	requestVersion = True
+	while requestVersion:
+		for line in ser.readlines():
 			if line[0] == 'N':
 				data = line.strip('\n')[2:]
 				avrVersionNew = AvrInfo(data)
@@ -239,7 +239,9 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 								" with a " + str(avrVersionNew.shield) + " shield, " +
 								"running BrewPi version " + str(avrVersionNew.version) +
 								" build " + str(avrVersionNew.build) + "\n"))
+				requestVersion = False
 				break
+
 		else:
 			ser.write('n')  # request version info
 			time.sleep(1)
@@ -247,7 +249,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			if retries > 10:
 				break
 
-	ser.flush()
+
 	printStdErr("Resetting EEPROM to default settings")
 	ser.write('E')
 	time.sleep(5)  # resetting EEPROM takes a while, wait 5 seconds
