@@ -548,6 +548,8 @@ while run:
 			deviceList['listState'] = ""  # invalidate local copy
 			if value.find("readValues") != -1:
 				ser.write("d{r:1}")  # request installed devices
+				serialRestoreTimeOut = ser.getTimeout()
+				ser.setTimeout(2)  # set timeOut to 2 seconds because retreiving values takes a while
 				ser.write("h{u:-1,v:1}")  # request available, but not installed devices
 			else:
 				ser.write("d{}")  # request installed devices
@@ -666,6 +668,8 @@ while run:
 					oldListState = deviceList['listState']
 					deviceList['listState'] = oldListState.strip('h') + "h"
 					logMessage("Available devices received: " + str(deviceList['available']))
+					if serialRestoreTimeOut:
+						ser.setTimeout(serialRestoreTimeOut)
 				elif line[0] == 'd':
 					deviceList['installed'] = json.loads(line[2:])
 					oldListState = deviceList['listState']
