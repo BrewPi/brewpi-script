@@ -305,7 +305,7 @@ while requestVersion:
 			# script will continue so you can at least program the Arduino
 			break
 
-if avrVersion != None:
+if brewpiVersion:
 	ser.flush()
 	# request settings from Arduino, processed later when reply is received
 	ser.write('s')  # request control settings cs
@@ -582,7 +582,7 @@ while run:
 		# Do serial communication and update settings every SerialCheckInterval
 		prevTimeOut = time.time()
 
-		if avrVersion == None:
+		if brewpiVersion is None:
 			continue  #  do nothing with the serial port when the arduino has not been recognized
 
 		# request new LCD text
