@@ -305,11 +305,12 @@ while requestVersion:
 			# script will continue so you can at least program the Arduino
 			break
 
-ser.flush()
-# request settings from Arduino, processed later when reply is received
-ser.write('s')  # request control settings cs
-ser.write('c') # request control constants cc
-# answer from Arduino is received asynchronously later.
+if avrVersion != None:
+	ser.flush()
+	# request settings from Arduino, processed later when reply is received
+	ser.write('s')  # request control settings cs
+	ser.write('c') # request control constants cc
+	# answer from Arduino is received asynchronously later.
 
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
@@ -580,6 +581,9 @@ while run:
 	except socket.timeout:
 		# Do serial communication and update settings every SerialCheckInterval
 		prevTimeOut = time.time()
+
+		if avrVersion == None:
+			continue  #  do nothing with the serial port when the arduino has not been recognized
 
 		# request new LCD text
 		ser.write('l')
