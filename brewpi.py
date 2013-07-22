@@ -509,20 +509,20 @@ while run:
 				config = util.configSet(configFile, 'beerName', newName)
 				startBeer(newName)
 				logMessage("Notification: restarted for beer: " + newName)
-		elif messageType == "profileKey":
-			config = util.configSet(configFile, 'profileKey', value)
-			changeWwwSetting('profileKey', value)
+		elif messageType == "profileName":
+			config = util.configSet(configFile, 'profileName', value)
+			changeWwwSetting('profileName', value)
+			logMessage("Changing profile config setting: " + value)
 		elif messageType == "uploadProfile":
-			# use urllib to download the profile as a CSV file
-			profileUrl = ("https://spreadsheets.google.com/tq?key=" +
-						  config['profileKey'] +
-						  "&tq=select D,E&tqx=out:csv")  # select the right cells and CSV format
-			profileFileName = config['scriptPath'] + 'settings/tempProfile.csv'
-			if os.path.isfile(profileFileName + '.old'):
-				os.remove(profileFileName + '.old')
-			os.rename(profileFileName, profileFileName + '.old')
-			urllib.urlretrieve(profileUrl, profileFileName)
-			if os.path.isfile(profileFileName):
+			# copy the profile CSV file to the working directory
+			logMessage("Uploading profile: " + value)
+			profileSrcFile = config['wwwPath'] + "/data/profiles/" + value + ".csv"
+			profileDestFile = config['scriptPath'] + 'settings/tempProfile.csv'
+			if os.path.isfile(profileDestFile + '.old'):
+				os.remove(profileDestFile + '.old')
+			os.rename(profileDestFile, profileDestFile + '.old')
+			shutil.copy(profileSrcFile, profileDestFile)
+			if os.path.isfile(profileDestFile):
 				conn.send("Profile successfuly updated")
 			else:
 				conn.send("Failed to update profile")
