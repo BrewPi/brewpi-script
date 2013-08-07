@@ -516,8 +516,8 @@ while run:
 		elif messageType == "uploadProfile":
 			# copy the profile CSV file to the working directory
 			logMessage("Uploading profile: " + value)
-			profileSrcFile = config['wwwPath'] + "/data/profiles/" + value + ".csv"
-			profileDestFile = config['scriptPath'] + 'settings/tempProfile.csv'
+			profileSrcFile = util.addSlash(config['wwwPath']) + "data/profiles/" + value + ".csv"
+			profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
 			if os.path.isfile(profileDestFile + '.old'):
 				os.remove(profileDestFile + '.old')
 			os.rename(profileDestFile, profileDestFile + '.old')
