@@ -519,7 +519,7 @@ while run:
 			profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
 			profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
 			profileDestFileOld = profileDestFile + '.old'
-			try
+			try:
 				if os.path.isfile(profileDestFile):
 					if os.path.isfile(profileDestFileOld):
 						os.remove(profileDestFileOld)
