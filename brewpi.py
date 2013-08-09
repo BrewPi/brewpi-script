@@ -516,16 +516,19 @@ while run:
 		elif messageType == "uploadProfile":
 			# copy the profile CSV file to the working directory
 			logMessage("Uploading profile: " + value)
-			profileSrcFile = util.addSlash(config['wwwPath']) + "data/profiles/" + value + ".csv"
+			profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
 			profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
-			if os.path.isfile(profileDestFile + '.old'):
-				os.remove(profileDestFile + '.old')
-			os.rename(profileDestFile, profileDestFile + '.old')
-			shutil.copy(profileSrcFile, profileDestFile)
-			if os.path.isfile(profileDestFile):
+			profileDestFileOld = profileDestFile + '.old'
+			try
+				if os.path.isfile(profileDestFile):
+					if os.path.isfile(profileDestFileOld):
+						os.remove(profileDestFileOld)
+					os.rename(profileDestFile, profileDestFileOld)
+				shutil.copy(profileSrcFile, profileDestFile)
+			except IOError, ioe:  # catch all exceptions and report back an error
+				conn.send("Error updating profile: " + ioe)
+			else
 				conn.send("Profile successfuly updated")
-			else:
-				conn.send("Failed to update profile")
 		elif messageType == "programArduino":
 			ser.close()  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
