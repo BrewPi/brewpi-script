@@ -527,7 +527,7 @@ while run:
 				shutil.copy(profileSrcFile, profileDestFile)
 			except IOError, ioe:  # catch all exceptions and report back an error
 				conn.send("Error updating profile: " + ioe)
-			else
+			else:
 				conn.send("Profile successfuly updated")
 		elif messageType == "programArduino":
 			ser.close()  # close serial port before programming
