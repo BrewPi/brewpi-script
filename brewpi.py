@@ -509,6 +509,10 @@ while run:
 				config = util.configSet(configFile, 'beerName', newName)
 				startBeer(newName)
 				logMessage("Notification: restarted for beer: " + newName)
+		elif messageType == "dateTimeFormatDisplay":
+			config = util.configSet(configFile, 'dateTimeFormatDisplay', value)
+			changeWwwSetting('dateTimeFormatDisplay', value)
+			logMessage("Changing date format config setting: " + value)
 		elif messageType == "profileName":
 			config = util.configSet(configFile, 'profileName', value)
 			changeWwwSetting('profileName', value)
