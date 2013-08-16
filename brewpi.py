@@ -63,13 +63,13 @@ import BrewPiProcess
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.2.0"
+compatibleBrewpiVersion = "0.2.2"
 
 # Control Settings
 cs = dict(mode='b', beerSetting=20.0, fridgeSetting=20.0, heatEstimator=0.2, coolEstimator=5)
 
 # Control Constants
-cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
+cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, pidMax=10.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
 		  idleRangeH=1.000, idleRangeL=-1.000, heatTargetH=0.301, heatTargetL=-0.199, coolTargetH=0.199,
 		  coolTargetL=-0.301, maxHeatTimeForEst="600", maxCoolTimeForEst="1200", fridgeFastFilt="1", fridgeSlowFilt="4",
 		  fridgeSlopeFilt="3", beerFastFilt="3", beerSlowFilt="5", beerSlopeFilt="4", lah=0, hs=0)

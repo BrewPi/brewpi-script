@@ -80,6 +80,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 		print e
 		return 0
 
+	time.sleep(5)  # give the arduino some time to reboot in case of an Arduino UNO
+
 	printStdErr("Checking old version before programming.")
 
 	avrVersionOld = None
@@ -101,7 +103,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			ser.write('n')  # request version info
 			time.sleep(1)
 			retries += 1
-			if retries > 5:
+			if retries > 10:
 				printStdErr(("Warning: Cannot receive version number from Arduino. " +
 							 "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
 							 "Arduino will be reset to defaults."))
@@ -284,16 +286,21 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			                "resetting to defaults without restoring settings.")
 				restoreDevices = False
 				restoreSettings = False
-			if avrVersionOld.major > 0:
+			elif avrVersionOld.minor == 1:
 				# version 0.1.x, try to restore most of the settings
-				settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_0
-				printStdErr("Settings can be partially restored when going from 0.1.x to 0.2.0")
+				settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_x
+				printStdErr("Settings can be partially restored when going from 0.1.x to 0.2.x")
 				restoreDevices = False
-
-			if avrVersionOld.minor == 2:
+			elif avrVersionOld.minor == 2:
 				# restore settings and devices
-				settingsRestoreLookupDict = settingRestore.keys_0_2_0_to_0_2_0
-				printStdErr("Settings can be fully restored when going from 0.2.0 to 0.2.0")
+				if avrVersionOld.revision == 0 and avrVersionNew.revision == 0:
+					settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_0
+				elif avrVersionOld.revision == 0 and avrVersionNew.revision == 1:
+					settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_1
+				elif avrVersionOld.revision == 0 and avrVersionNew.revision == 2:
+					settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
+
+				printStdErr("Restoring compatible settings")
 	else:
 		printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
 
@@ -373,24 +380,23 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			printStdErr("Restoring device: " + json.dumps(device))
 			ser.write("U" + json.dumps(device))
 
-		time.sleep(1)  # give the Arduino time to respond
+			time.sleep(3)  # give the Arduino time to respond
 
-		# read log messages from arduino
-		while 1:  # read all lines on serial interface
-			line = ser.readline()
-			if line:  # line available?
-				if line[0] == 'D':
-					try:  # debug message received
-						expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-						printStdErr(expandedMessage)
-					except Exception, e:  # catch all exceptions, because out of date file could cause errors
-						printStdErr("Error while expanding log message: " + str(e))
-						printStdErr("Arduino debug message: " + line[2:])
-				elif line[0] == 'U':
-					printStdErr("Arduino reports: device updated to: " + line[2:])
-			else:
-				break
-
+			# read log messages from arduino
+			while 1:  # read all lines on serial interface
+				line = ser.readline()
+				if line:  # line available?
+					if line[0] == 'D':
+						try:  # debug message received
+							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+							printStdErr(expandedMessage)
+						except Exception, e:  # catch all exceptions, because out of date file could cause errors
+							printStdErr("Error while expanding log message: " + str(e))
+							printStdErr("Arduino debug message: " + line[2:])
+					elif line[0] == 'U':
+						printStdErr("Arduino reports: device updated to: " + line[2:])
+				else:
+					break
 		printStdErr("Restoring installed devices done!")
 	else:
 		printStdErr("No devices to restore!")
