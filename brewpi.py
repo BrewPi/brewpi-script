@@ -430,7 +430,7 @@ while run:
 			raise socket.timeout
 		elif messageType == "setBeer":  # new constant beer temperature received
 			newTemp = float(value)
-			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+			if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
 				cs['mode'] = 'b'
 				# round to 2 dec, python will otherwise produce 6.999999999
 				cs['beerSet'] = round(newTemp, 2)
@@ -441,11 +441,12 @@ while run:
 				raise socket.timeout  # go to serial communication to update Arduino
 			else:
 				logMessage("Beer temperature setting " + str(newTemp) +
-						   " is outside allowed range " +
-						   str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
+						   " is outside of allowed range " +
+						   str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
+						   ". These limits can be changed in advanced settings.")
 		elif messageType == "setFridge":  # new constant fridge temperature received
 			newTemp = float(value)
-			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+			if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
 				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "}")
@@ -453,6 +454,11 @@ while run:
 						   str(cs['fridgeSet']) +
 						   " degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
+			else:
+				logMessage("Fridge temperature setting " + str(newTemp) +
+				           " is outside of allowed range " +
+				           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
+				           ". These limits can be changed in advanced settings.")
 		elif messageType == "setProfile":  # cs['mode'] set to profile
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
