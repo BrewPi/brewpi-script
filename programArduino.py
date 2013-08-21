@@ -161,11 +161,11 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			[key, sign, val] = setting.rpartition('=')
 			boardSettings[key] = val
 
-	printStdErr("Checking hex file size...")
+	printStdErr("Checking hex file size with avr-size...")
 
 	# start programming the Arduino
-	avrsizeCommand = avrsizehome + 'avr-size ' + hexFile
-	printStdErr(avrsizeCommand)
+	avrsizeCommand = avrsizehome + 'avr-size ' + "\"" + hexFile + "\""
+
 	# check program size against maximum size
 	p = sub.Popen(avrsizeCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
 	output, errors = p.communicate()
@@ -191,7 +191,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 				' -c ' + boardSettings['upload.protocol'] +
 				' -b ' + boardSettings['upload.speed'] +
 				' -P ' + port +
-				' -U ' + 'flash:w:' + hexFileLocal +
+				' -U ' + 'flash:w:' + "\"" + hexFileLocal + "\"" +
 				' -C ' + avrconf)
 
 	printStdErr("Programming Arduino with avrdude: " + programCommand)
