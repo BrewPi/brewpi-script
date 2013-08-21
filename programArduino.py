@@ -278,6 +278,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 		            "No settings are restored.")
 		return 0
 
+	print "Restoring compatible settings from " + avrVersionOld.toString() + " to " + avrVersionNew.toString()
 	settingsRestoreLookupDict = {}
 	if avrVersionNew.major == 0 and avrVersionNew.minor == 2:
 		if avrVersionOld.major == 0:
@@ -289,15 +290,15 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 			elif avrVersionOld.minor == 1:
 				# version 0.1.x, try to restore most of the settings
 				settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_x
-				printStdErr("Settings can be partially restored when going from 0.1.x to 0.2.x")
+				printStdErr("Settings can only be partially restored when going from 0.1.x to 0.2.x")
 				restoreDevices = False
 			elif avrVersionOld.minor == 2:
 				# restore settings and devices
-				if avrVersionOld.revision == 0 and avrVersionNew.revision == 0:
+				if avrVersionNew.revision == 0:
 					settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_0
-				elif avrVersionOld.revision == 0 and avrVersionNew.revision == 1:
+				elif avrVersionNew.revision == 1:
 					settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_1
-				elif avrVersionOld.revision == 0 and avrVersionNew.revision == 2:
+				elif avrVersionNew.revision == 2:
 					settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
 
 				printStdErr("Restoring compatible settings")

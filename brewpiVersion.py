@@ -81,7 +81,8 @@ class AvrInfo:
 		self.major, self.minor, self.revision = parts[0],parts[1],parts[2]
 		self.version = s
 
-
+	def toString(self):
+		return str(self.major) + "." + str(self.minor) + "." + str(self.revision)
 
 
 
