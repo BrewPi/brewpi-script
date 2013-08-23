@@ -24,7 +24,6 @@ if sys.version_info < (2, 7):
 import time
 import socket
 import os
-import urllib
 import getopt
 from pprint import pprint
 import shutil

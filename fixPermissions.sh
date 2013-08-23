@@ -1,3 +1,4 @@
+#!/bin/sh
 sudo chown -R www-data:www-data /var/www
 sudo chown -R brewpi:brewpi /home/brewpi
 sudo chmod -R g+rwx /home/brewpi

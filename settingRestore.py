@@ -14,6 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
+restoreOrder = ("tempFormat", "tempSetMin", "tempSetMax",  # it is critical that these are applied first
+             "pidMax", "Kp", "Kp", "Ki", "Kd", "iMaxErr",
+             "idleRangeH", "idleRangeL", "heatTargetH", "heatTargetL", "coolTargetH", "coolTargetL",
+             "maxHeatTimeForEst", "maxCoolTimeForEst",
+             "fridgeFastFilt", "fridgeSlowFilt", "fridgeSlopeFilt", "beerFastFilt", "beerSlowFilt",
+             "beerSlopeFilt", "lah", "hs", "heatEst", "coolEst", "mode", "fridgeSet", "beerSet")
+
 keys_0_1_x_to_0_2_x = [{'key': "mode", 'validAliases': ["mode"]},
                        {'key': "beerSet", 'validAliases': ["beerSet"]},
                        {'key': "fridgeSet", 'validAliases': ["fridgeSet"]},

@@ -186,7 +186,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 	hexFileLocal = os.path.basename(hexFile)
 
 	programCommand = (avrdudehome + 'avrdude' +
-				' -F ' +
+				' -F ' +  # override device signature check
+				' -e ' +  # erase flash and eeprom before programming. This prevents issues with corrupted eeprom
 				' -p ' + boardSettings['build.mcu'] +
 				' -c ' + boardSettings['upload.protocol'] +
 				' -b ' + boardSettings['upload.speed'] +
@@ -351,25 +352,26 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
 		printStdErr("Restoring these settings: " + json.dumps(restoredSettings))
 
-		for key in restoredSettings.keys():
-			# send one by one or the arduino cannot keep up
-			if restoredSettings[key] is not None:
-				command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
-				ser.write(command)
-				time.sleep(0.5)
-			# read all replies
-			while 1:
-				line = ser.readline()
-				if line:  # line available?
-					if line[0] == 'D':
-						try:  # debug message received
-							expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-							printStdErr(expandedMessage)
-						except Exception, e:  # catch all exceptions, because out of date file could cause errors
-							printStdErr("Error while expanding log message: " + str(e))
-							printStdErr("Arduino debug message: " + line[2:])
-				else:
-					break
+		for key in settingRestore.restoreOrder:
+			if key in restoredSettings.keys():
+				# send one by one or the arduino cannot keep up
+				if restoredSettings[key] is not None:
+					command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
+					ser.write(command)
+					time.sleep(0.5)
+				# read all replies
+				while 1:
+					line = ser.readline()
+					if line:  # line available?
+						if line[0] == 'D':
+							try:  # debug message received
+								expandedMessage = expandLogMessage.expandLogMessage(line[2:])
+								printStdErr(expandedMessage)
+							except Exception, e:  # catch all exceptions, because out of date file could cause errors
+								printStdErr("Error while expanding log message: " + str(e))
+								printStdErr("Arduino debug message: " + line[2:])
+					else:
+						break
 
 		printStdErr("restoring settings done!")
 	else:
