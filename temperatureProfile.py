@@ -38,7 +38,7 @@ def getNewTemp(scriptPath):
 			prevTemp = nextTemp
 			nextTemp = temperature
 			prevDate = nextDate
-			nextDate = time.mktime(time.strptime(datestring, "%Y/%m/%dT%H:%M:%S"))
+			nextDate = time.mktime(time.strptime(datestring, "%Y-%m-%dT%H:%M:%S"))
 			timeDiff = now - nextDate
 			if(timeDiff < 0):
 				if(prevDate == -1):
