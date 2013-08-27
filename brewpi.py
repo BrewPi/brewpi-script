@@ -46,7 +46,6 @@ except ImportError:
 	sys.exit(1)
 
 
-
 #local imports
 import temperatureProfile
 import programArduino as programmer
@@ -58,14 +57,13 @@ import expandLogMessage
 import BrewPiProcess
 
 
-
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
 compatibleBrewpiVersion = "0.2.2"
 
 # Control Settings
-cs = dict(mode='b', beerSetting=20.0, fridgeSetting=20.0, heatEstimator=0.2, coolEstimator=5)
+cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0, heatEstimator=0.2, coolEstimator=5)
 
 # Control Constants
 cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, pidMax=10.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
@@ -461,8 +459,7 @@ while run:
 		elif messageType == "setProfile":  # cs['mode'] set to profile
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
-			cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
-			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']) + "}")
+			ser.write("j{mode:p}")
 			logMessage("Notification: Profile mode enabled")
 			raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "setOff":  # cs['mode'] set to OFF
@@ -535,9 +532,9 @@ while run:
 					os.rename(profileDestFile, profileDestFileOld)
 				shutil.copy(profileSrcFile, profileDestFile)
 			except IOError, ioe:  # catch all exceptions and report back an error
-				conn.send("Error updating profile: " + ioe)
+				conn.send("Error updating profile: " + str(ioe))
 			else:
-				conn.send("Profile successfuly updated")
+				conn.send("Profile successfully updated")
 		elif messageType == "programArduino":
 			ser.close()  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
@@ -646,7 +643,7 @@ while run:
 									   str(newRow['RoomTemp']) + '\n')
 						csvFile.write(lineToWrite)
 					except KeyError, e:
-						logMessage("KeyError in line from Arduino: %s" % e)
+						logMessage("KeyError in line from Arduino: %s" % str(e))
 
 					csvFile.close()
 					shutil.copyfile(localCsvFileName, wwwCsvFileName)
@@ -695,20 +692,24 @@ while run:
 					logMessage("Cannot process line from Arduino: " + line)
 				# end or processing a line
 			except json.decoder.JSONDecodeError, e:
-				logMessage("JSON decode error: %s" % e)
+				logMessage("JSON decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
 
 		# Check for update from temperature profile
 		if cs['mode'] == 'p':
 			newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
-			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
-				if newTemp != cs['beerSet']:
+			if newTemp != cs['beerSet']:
+				cs['beerSet'] = newTemp
+				if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
 					# if temperature has to be updated send settings to arduino
-					cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
 					ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
+				elif newTemp is None:
+					# temperature control disabled by profile
+					logMessage("Temperature control disabled by empty cell in profile.")
+					ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
 
 	except socket.error, e:
-		logMessage("socket error: %s" % e)
+		logMessage("socket error: %s" % str(e))
 
 if ser:
 	ser.close()  # close port
