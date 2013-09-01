@@ -201,8 +201,8 @@ def startBeer(beerName):
 	global day
 
 	# create directory for the data if it does not exist
-	dataPath = util.addSlash(config['scriptPath']) + 'data/' + beerName + '/'
-	wwwDataPath = util.addSlash(config['wwwPath']) + 'data/' + beerName + '/'
+	dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
+	wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
 
 	if not os.path.exists(dataPath):
 		os.makedirs(dataPath)
@@ -296,7 +296,7 @@ while requestVersion:
 		ser.write('n')
 		time.sleep(1)
 		retries += 1
-		if retries > 5:
+		if retries > 10:
 			logMessage("Warning: Cannot receive version number from Arduino. " +
 				   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
 				   "Please upload a new version of BrewPi to your Arduino.")
