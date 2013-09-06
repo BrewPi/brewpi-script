@@ -407,6 +407,10 @@ while run:
 		elif messageType == "getControlConstants":
 			conn.send(json.dumps(cc))
 		elif messageType == "getControlSettings":
+			if cs['mode'] == "p":
+				profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+				with file(profileFile, 'r') as prof: 
+					cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
 			conn.send(json.dumps(cs))
 		elif messageType == "getControlVariables":
 			conn.send(json.dumps(cv))
@@ -531,6 +535,11 @@ while run:
 						os.remove(profileDestFileOld)
 					os.rename(profileDestFile, profileDestFileOld)
 				shutil.copy(profileSrcFile, profileDestFile)
+				# for now, store profile name in header row (in an additional column)
+				with file(profileDestFile, 'r') as original: 
+					line1 = original.readline().rstrip("\n")
+					rest = original.read()
+				with file(profileDestFile, 'w') as modified: modified.write( line1 + "," + value + "\n" + rest)
 			except IOError, ioe:  # catch all exceptions and report back an error
 				conn.send("Error updating profile: " + str(ioe))
 			else:
