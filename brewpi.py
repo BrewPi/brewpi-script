@@ -24,7 +24,6 @@ if sys.version_info < (2, 7):
 import time
 import socket
 import os
-import urllib
 import getopt
 from pprint import pprint
 import shutil
@@ -47,7 +46,6 @@ except ImportError:
 	sys.exit(1)
 
 
-
 #local imports
 import temperatureProfile
 import programArduino as programmer
@@ -59,17 +57,16 @@ import expandLogMessage
 import BrewPiProcess
 
 
-
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.2.0"
+compatibleBrewpiVersion = "0.2.2"
 
 # Control Settings
-cs = dict(mode='b', beerSetting=20.0, fridgeSetting=20.0, heatEstimator=0.2, coolEstimator=5)
+cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0, heatEstimator=0.2, coolEstimator=5)
 
 # Control Constants
-cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
+cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, pidMax=10.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
 		  idleRangeH=1.000, idleRangeL=-1.000, heatTargetH=0.301, heatTargetL=-0.199, coolTargetH=0.199,
 		  coolTargetL=-0.301, maxHeatTimeForEst="600", maxCoolTimeForEst="1200", fridgeFastFilt="1", fridgeSlowFilt="4",
 		  fridgeSlopeFilt="3", beerFastFilt="3", beerSlowFilt="5", beerSlopeFilt="4", lah=0, hs=0)
@@ -204,8 +201,8 @@ def startBeer(beerName):
 	global day
 
 	# create directory for the data if it does not exist
-	dataPath = util.addSlash(config['scriptPath']) + 'data/' + beerName + '/'
-	wwwDataPath = util.addSlash(config['wwwPath']) + 'data/' + beerName + '/'
+	dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
+	wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
 
 	if not os.path.exists(dataPath):
 		os.makedirs(dataPath)
@@ -299,7 +296,7 @@ while requestVersion:
 		ser.write('n')
 		time.sleep(1)
 		retries += 1
-		if retries > 5:
+		if retries > 10:
 			logMessage("Warning: Cannot receive version number from Arduino. " +
 				   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
 				   "Please upload a new version of BrewPi to your Arduino.")
@@ -410,6 +407,10 @@ while run:
 		elif messageType == "getControlConstants":
 			conn.send(json.dumps(cc))
 		elif messageType == "getControlSettings":
+			if cs['mode'] == "p":
+				profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+				with file(profileFile, 'r') as prof: 
+					cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
 			conn.send(json.dumps(cs))
 		elif messageType == "getControlVariables":
 			conn.send(json.dumps(cv))
@@ -430,7 +431,7 @@ while run:
 			raise socket.timeout
 		elif messageType == "setBeer":  # new constant beer temperature received
 			newTemp = float(value)
-			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+			if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
 				cs['mode'] = 'b'
 				# round to 2 dec, python will otherwise produce 6.999999999
 				cs['beerSet'] = round(newTemp, 2)
@@ -441,11 +442,12 @@ while run:
 				raise socket.timeout  # go to serial communication to update Arduino
 			else:
 				logMessage("Beer temperature setting " + str(newTemp) +
-						   " is outside allowed range " +
-						   str(cc['tempSetMin']) + "-" + str(cc['tempSetMax']))
+						   " is outside of allowed range " +
+						   str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
+						   ". These limits can be changed in advanced settings.")
 		elif messageType == "setFridge":  # new constant fridge temperature received
 			newTemp = float(value)
-			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
+			if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
 				ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "}")
@@ -453,11 +455,15 @@ while run:
 						   str(cs['fridgeSet']) +
 						   " degrees in web interface")
 				raise socket.timeout  # go to serial communication to update Arduino
+			else:
+				logMessage("Fridge temperature setting " + str(newTemp) +
+				           " is outside of allowed range " +
+				           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
+				           ". These limits can be changed in advanced settings.")
 		elif messageType == "setProfile":  # cs['mode'] set to profile
 			# read temperatures from currentprofile.csv
 			cs['mode'] = 'p'
-			cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
-			ser.write("j{mode:p, beerSet:" + str(cs['beerSet']) + "}")
+			ser.write("j{mode:p}")
 			logMessage("Notification: Profile mode enabled")
 			raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "setOff":  # cs['mode'] set to OFF
@@ -509,23 +515,35 @@ while run:
 				config = util.configSet(configFile, 'beerName', newName)
 				startBeer(newName)
 				logMessage("Notification: restarted for beer: " + newName)
-		elif messageType == "profileKey":
-			config = util.configSet(configFile, 'profileKey', value)
-			changeWwwSetting('profileKey', value)
+		elif messageType == "dateTimeFormatDisplay":
+			config = util.configSet(configFile, 'dateTimeFormatDisplay', value)
+			changeWwwSetting('dateTimeFormatDisplay', value)
+			logMessage("Changing date format config setting: " + value)
+		elif messageType == "profileName":
+			config = util.configSet(configFile, 'profileName', value)
+			changeWwwSetting('profileName', value)
+			logMessage("Changing profile config setting: " + value)
 		elif messageType == "uploadProfile":
-			# use urllib to download the profile as a CSV file
-			profileUrl = ("https://spreadsheets.google.com/tq?key=" +
-						  config['profileKey'] +
-						  "&tq=select D,E&tqx=out:csv")  # select the right cells and CSV format
-			profileFileName = config['scriptPath'] + 'settings/tempProfile.csv'
-			if os.path.isfile(profileFileName + '.old'):
-				os.remove(profileFileName + '.old')
-			os.rename(profileFileName, profileFileName + '.old')
-			urllib.urlretrieve(profileUrl, profileFileName)
-			if os.path.isfile(profileFileName):
-				conn.send("Profile successfuly updated")
+			# copy the profile CSV file to the working directory
+			logMessage("Uploading profile: " + value)
+			profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
+			profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+			profileDestFileOld = profileDestFile + '.old'
+			try:
+				if os.path.isfile(profileDestFile):
+					if os.path.isfile(profileDestFileOld):
+						os.remove(profileDestFileOld)
+					os.rename(profileDestFile, profileDestFileOld)
+				shutil.copy(profileSrcFile, profileDestFile)
+				# for now, store profile name in header row (in an additional column)
+				with file(profileDestFile, 'r') as original: 
+					line1 = original.readline().rstrip("\n")
+					rest = original.read()
+				with file(profileDestFile, 'w') as modified: modified.write( line1 + "," + value + "\n" + rest)
+			except IOError, ioe:  # catch all exceptions and report back an error
+				conn.send("Error updating profile: " + str(ioe))
 			else:
-				conn.send("Failed to update profile")
+				conn.send("Profile successfully updated")
 		elif messageType == "programArduino":
 			ser.close()  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
@@ -634,7 +652,7 @@ while run:
 									   str(newRow['RoomTemp']) + '\n')
 						csvFile.write(lineToWrite)
 					except KeyError, e:
-						logMessage("KeyError in line from Arduino: %s" % e)
+						logMessage("KeyError in line from Arduino: %s" % str(e))
 
 					csvFile.close()
 					shutil.copyfile(localCsvFileName, wwwCsvFileName)
@@ -683,20 +701,24 @@ while run:
 					logMessage("Cannot process line from Arduino: " + line)
 				# end or processing a line
 			except json.decoder.JSONDecodeError, e:
-				logMessage("JSON decode error: %s" % e)
+				logMessage("JSON decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
 
 		# Check for update from temperature profile
 		if cs['mode'] == 'p':
 			newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
-			if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
-				if newTemp != cs['beerSet']:
+			if newTemp != cs['beerSet']:
+				cs['beerSet'] = newTemp
+				if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
 					# if temperature has to be updated send settings to arduino
-					cs['beerSet'] = temperatureProfile.getNewTemp(config['scriptPath'])
 					ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
+				elif newTemp is None:
+					# temperature control disabled by profile
+					logMessage("Temperature control disabled by empty cell in profile.")
+					ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
 
 	except socket.error, e:
-		logMessage("socket error: %s" % e)
+		logMessage("socket error: %s" % str(e))
 
 if ser:
 	ser.close()  # close port

@@ -16,39 +16,64 @@
 
 import time
 import csv
+import sys
+
+
+# also defined in brewpi.py. TODO: move to shared import
+def logMessage(message):
+	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
 
 
 def getNewTemp(scriptPath):
-	temperatureReader = csv.reader(
-		open(scriptPath + 'settings/tempProfile.csv', 'rb'),
+	temperatureReader = csv.reader(	open(scriptPath + 'settings/tempProfile.csv', 'rb'),
 									delimiter=',', quoting=csv.QUOTE_ALL)
 	temperatureReader.next()  # discard the first row, which is the table header
-	prevTemp = -1
-	nextTemp = -1
-	prevDate = -1
-	nextDate = -1
-	interpolatedTemp = -1
+	prevTemp = None
+	nextTemp = None
+	interpolatedTemp = -99
+	prevDate = None
+	nextDate = None
+
 
 	now = time.mktime(time.localtime())  # get current time in seconds since epoch
 
 	for row in temperatureReader:
-		datestring = row[0]
-		if(datestring != "null"):
-			temperature = float(row[1])
-			prevTemp = nextTemp
-			nextTemp = temperature
-			prevDate = nextDate
-			nextDate = time.mktime(time.strptime(datestring, "%d/%m/%Y %H:%M:%S"))
-			timeDiff = now - nextDate
-			if(timeDiff < 0):
-				if(prevDate == -1):
-					interpolatedTemp = nextTemp  # first setpoint is in the future
-					break
-				else:
-					interpolatedTemp = ((now - prevDate) / (nextDate - prevDate) *
-										(nextTemp - prevTemp) + prevTemp)
-					break
+		dateString = row[0]
+		try:
+			date = time.mktime(time.strptime(dateString, "%Y-%m-%dT%H:%M:%S"))
+		except ValueError:
+			continue  # skip dates that cannot be parsed
 
-	if(interpolatedTemp == -1):  # all setpoints in the past
+		try:
+			temperature = float(row[1])
+		except ValueError:
+			if row[1].strip() == '':
+				# cell is left empty, this is allowed to disable temperature control in part of the profile
+				temperature = None
+			else:
+				# invalid number string, skip this row
+				continue
+
+		prevTemp = nextTemp
+		nextTemp = temperature
+		prevDate = nextDate
+		nextDate = date
+		timeDiff = now - nextDate
+		if timeDiff < 0:
+			if prevDate is None:
+				interpolatedTemp = nextTemp  # first set point is in the future
+				break
+			else:
+				if prevTemp is None or nextTemp is None:
+					# When the previous or next temperature is an empty cell, disable temperature control.
+					# This is useful to stop temperature control after a while or to not start right away.
+					interpolatedTemp = None
+				else:
+					interpolatedTemp = ((now - prevDate) / (nextDate - prevDate) * (nextTemp - prevTemp) + prevTemp)
+					interpolatedTemp = round(interpolatedTemp, 2)
+				break
+
+	if interpolatedTemp == -99:  # all set points in the past
 		interpolatedTemp = nextTemp
-	return round(interpolatedTemp, 2)  # retun temp in tenths of degrees
+
+	return interpolatedTemp
