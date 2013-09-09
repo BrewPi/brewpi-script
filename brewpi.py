@@ -180,16 +180,16 @@ wwwCsvFileName = ""
 lastDay = ""
 day = ""
 
-# wwwSettings.json is a copy of some of the settings for the web server
+# userSettings.json is a copy of some of the settings that are needed by the web server.
+# This allows the web server to load properly, even when the script is not running.
 def changeWwwSetting(settingName, value):
-	wwwSettingsFile = open(config['wwwPath'] + 'wwwSettings.json', 'r+b')
+	wwwSettingsFile = open(util.addSlash(config['wwwPath']) + 'userSettings.json', 'r+b')
 	wwwSettings = json.load(wwwSettingsFile)
 	wwwSettings[settingName] = value
 	wwwSettingsFile.seek(0)
 	wwwSettingsFile.write(json.dumps(wwwSettings))
 	wwwSettingsFile.truncate()
 	wwwSettingsFile.close()
-
 
 def startBeer(beerName):
 	global config
@@ -409,7 +409,7 @@ while run:
 		elif messageType == "getControlSettings":
 			if cs['mode'] == "p":
 				profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
-				with file(profileFile, 'r') as prof: 
+				with file(profileFile, 'r') as prof:
 					cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
 			conn.send(json.dumps(cs))
 		elif messageType == "getControlVariables":
@@ -536,7 +536,7 @@ while run:
 					os.rename(profileDestFile, profileDestFileOld)
 				shutil.copy(profileSrcFile, profileDestFile)
 				# for now, store profile name in header row (in an additional column)
-				with file(profileDestFile, 'r') as original: 
+				with file(profileDestFile, 'r') as original:
 					line1 = original.readline().rstrip("\n")
 					rest = original.read()
 				with file(profileDestFile, 'w') as modified: modified.write( line1 + "," + value + "\n" + rest)
