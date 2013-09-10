@@ -183,8 +183,18 @@ day = ""
 # userSettings.json is a copy of some of the settings that are needed by the web server.
 # This allows the web server to load properly, even when the script is not running.
 def changeWwwSetting(settingName, value):
-	wwwSettingsFile = open(util.addSlash(config['wwwPath']) + 'userSettings.json', 'r+b')
-	wwwSettings = json.load(wwwSettingsFile)
+	wwwSettingsFileName = util.addSlash(config['wwwPath']) + 'userSettings.json'
+	if(os.path.exists(wwwSettingsFileName)):
+		wwwSettingsFile = open(wwwSettingsFileName, 'r+b')
+		try:
+			wwwSettings = json.load(wwwSettingsFile)  # read existing settings
+		except json.JSONDecodeError:
+			logMessage("Error in decoding userSettings.json, creating new empty json file")
+			wwwSettings = {}  # start with a fresh file when the json is corrupt.
+	else:
+		wwwSettingsFile = open(wwwSettingsFileName, 'w+b') # create new file
+		wwwSettings = {}
+
 	wwwSettings[settingName] = value
 	wwwSettingsFile.seek(0)
 	wwwSettingsFile.write(json.dumps(wwwSettings))
