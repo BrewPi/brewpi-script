@@ -727,7 +727,7 @@ while run:
 				logMessage("JSON decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
 			except UnicodeDecodeError, e:
-				logMessage("Unicode decode decode error: %s" % str(e))
+				logMessage("Unicode decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
 
 		# Check for update from temperature profile
