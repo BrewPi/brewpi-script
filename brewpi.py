@@ -440,7 +440,11 @@ while run:
 			ser.write("C")
 			raise socket.timeout
 		elif messageType == "setBeer":  # new constant beer temperature received
-			newTemp = float(value)
+			try:
+				newTemp = float(value)
+			except ValueError:
+				logMessage("Cannot convert temperature '" + value + "' to float")
+				continue
 			if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
 				cs['mode'] = 'b'
 				# round to 2 dec, python will otherwise produce 6.999999999
@@ -456,7 +460,12 @@ while run:
 						   str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
 						   ". These limits can be changed in advanced settings.")
 		elif messageType == "setFridge":  # new constant fridge temperature received
-			newTemp = float(value)
+			try:
+				newTemp = float(value)
+			except ValueError:
+				logMessage("Cannot convert temperature '" + value + "' to float")
+				continue
+
 			if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
 				cs['mode'] = 'f'
 				cs['fridgeSet'] = round(newTemp, 2)
@@ -516,7 +525,11 @@ while run:
 		elif messageType == "interval":  # new interval received
 			newInterval = int(value)
 			if 5 < newInterval < 5000:
-				config = util.configSet(configFile, 'interval',float(newInterval))
+				try:
+					config = util.configSet(configFile, 'interval', float(newInterval))
+				except ValueError:
+					logMessage("Cannot convert interval '" + value + "' to float")
+					continue
 				logMessage("Notification: Interval changed to " +
 						   str(newInterval) + " seconds")
 		elif messageType == "name":  # new beer name
@@ -712,6 +725,9 @@ while run:
 				# end or processing a line
 			except json.decoder.JSONDecodeError, e:
 				logMessage("JSON decode error: %s" % str(e))
+				logMessage("Line received was: " + line)
+			except UnicodeDecodeError, e:
+				logMessage("Unicode decode decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
 
 		# Check for update from temperature profile
