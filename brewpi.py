@@ -86,13 +86,14 @@ def logMessage(message):
 
 # Read in command line arguments
 try:
-	opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfd", ['help', 'config=', 'status', 'quit', 'kill', 'force', 'dontrunfile'])
+	opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld", ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile'])
 except getopt.GetoptError:
-	print "Available Options: --help, --config <path to config file>, --quit, --kill, --force, --dontrunfile"
+	print "Unknown parameter, available Options: --help, --config <path to config file>, --status, --quit, --kill, --force, --log, --dontrunfile"
 	sys.exit()
 
 configFile = None
 checkDontRunFile = False
+logToFiles = False
 serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 
 for o, a in opts:
@@ -105,6 +106,7 @@ for o, a in opts:
 		print "--quit: ask all  instances of BrewPi to quit by sending a message to their socket"
 		print "--kill: kill all instances of BrewPi by sending SIGKILL"
 		print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
+		print "--log: redirect stderr and stdout to log files"
 		print "--dontrunfile: check dontrunfile in www directory and quit if it exists"
 		exit()
 	# supply a config file
@@ -144,15 +146,19 @@ for o, a in opts:
 			time.sleep(2)
 			if len(allProcesses.update()) > 1:
 				print "Asking the other processes to quit nicely did not work. Killing them with force!"
+	# redirect output of stderr and stdout to files in log directory
+	if o in ('-l', '--log'):
+		logToFiles = True
 	# only start brewpi when the donotrunfile is not found
 	if o in ('-d', '--dontrunfile'):
 		checkDontRunFile = True
 
 if not configFile:
+	configFile = util.addSlash(sys.path[0]) + 'settings/config.cfg'
 	if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
-		print >> sys.stderr,    ("Using default config path <script dir>/settings/config.cfg, " +
+		print >> sys.stderr,    ("Using default config path %s, " % configFile +
 		                         "to override use: %s --config <config file full path>" % sys.argv[0])
-	configFile = util.scriptPath() + '/settings/config.cfg'
+
 
 config = util.readCfgWithDefaults(configFile)
 
@@ -179,6 +185,13 @@ wwwJsonFileName = ""
 wwwCsvFileName = ""
 lastDay = ""
 day = ""
+
+if logToFiles:
+	logPath = util.addSlash(config['scriptPath']) + 'logs/'
+	print logPath
+	logMessage("Redirecting output to log files in %s, output will not be shown in console" % logPath)
+	sys.stderr = open(logPath + 'stderr.txt', 'a', 0)  # append to stderr file, unbuffered
+	sys.stdout = open(logPath + 'stdout.txt', 'w', 0)  # overwrite stdout file on script start, unbuffered
 
 # userSettings.json is a copy of some of the settings that are needed by the web server.
 # This allows the web server to load properly, even when the script is not running.
