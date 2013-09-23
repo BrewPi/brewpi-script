@@ -556,13 +556,11 @@ while run:
 			config = util.configSet(configFile, 'dateTimeFormatDisplay', value)
 			changeWwwSetting('dateTimeFormatDisplay', value)
 			logMessage("Changing date format config setting: " + value)
-		elif messageType == "profileName":
-			logMessage("Changing active profile to '%s'" % value)
+		elif messageType == "setActiveProfile":
+			# copy the profile CSV file to the working directory
+			logMessage("Setting profile '%s' as active profile" % value)
 			config = util.configSet(configFile, 'profileName', value)
 			changeWwwSetting('profileName', value)
-		elif messageType == "uploadProfile":
-			# copy the profile CSV file to the working directory
-			logMessage("Copying profile '%s' to active profile" % value)
 			profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
 			profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
 			profileDestFileOld = profileDestFile + '.old'
@@ -576,7 +574,8 @@ while run:
 				with file(profileDestFile, 'r') as original:
 					line1 = original.readline().rstrip("\n")
 					rest = original.read()
-				with file(profileDestFile, 'w') as modified: modified.write( line1 + "," + value + "\n" + rest)
+				with file(profileDestFile, 'w') as modified:
+					modified.write(line1 + "," + value + "\n" + rest)
 			except IOError as e:  # catch all exceptions and report back an error
 				conn.send("I/O Error(%d) updating profile: %s " % (e.errno, e.strerror))
 			else:
