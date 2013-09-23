@@ -27,6 +27,7 @@ import os
 import getopt
 from pprint import pprint
 import shutil
+import traceback
 
 # load non standard packages, exit when they are not installed
 try:
@@ -758,6 +759,7 @@ while run:
 
 	except socket.error as e:
 		logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
+		traceback.print_exc()
 
 if ser:
 	ser.close()  # close port
