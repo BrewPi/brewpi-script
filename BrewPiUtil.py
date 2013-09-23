@@ -24,6 +24,7 @@ except ImportError:
 	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
 	sys.exit(1)
 
+
 def addSlash(path):
 	"""
 	Adds a slash to the path, but only when it does not already have a slash at the end
@@ -54,10 +55,16 @@ def readCfgWithDefaults(cfg):
 		config.merge(userConfig)
 	return config
 
+
 def configSet(configFile, settingName, value):
-	config = ConfigObj(configFile)
-	config[settingName] = value
-	config.write()
+	try:
+		config = ConfigObj(configFile)
+		config[settingName] = value
+		config.write()
+	except IOError as e:
+		logMessage("I/O error(%d) while updating %s: %s " % (e.errno, configFile, e.strerror))
+		logMessage("Probably your permissions are not set correctly. " +
+		           "To fix this, run 'sudo sh /home/brewpi/fixPermissions.sh'")
 	return readCfgWithDefaults(configFile)  # return updated ConfigObj
 
 
@@ -66,6 +73,7 @@ def logMessage(message):
 	Prints a timestamped message to stderr
 	"""
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
 
 def scriptPath():
 	"""

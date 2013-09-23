@@ -556,12 +556,12 @@ while run:
 			changeWwwSetting('dateTimeFormatDisplay', value)
 			logMessage("Changing date format config setting: " + value)
 		elif messageType == "profileName":
+			logMessage("Changing active profile to '%s'" % value)
 			config = util.configSet(configFile, 'profileName', value)
 			changeWwwSetting('profileName', value)
-			logMessage("Changing profile config setting: " + value)
 		elif messageType == "uploadProfile":
 			# copy the profile CSV file to the working directory
-			logMessage("Uploading profile: " + value)
+			logMessage("Copying profile '%s' to active profile" % value)
 			profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
 			profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
 			profileDestFileOld = profileDestFile + '.old'
@@ -576,8 +576,8 @@ while run:
 					line1 = original.readline().rstrip("\n")
 					rest = original.read()
 				with file(profileDestFile, 'w') as modified: modified.write( line1 + "," + value + "\n" + rest)
-			except IOError, ioe:  # catch all exceptions and report back an error
-				conn.send("Error updating profile: " + str(ioe))
+			except IOError as e:  # catch all exceptions and report back an error
+				conn.send("I/O Error(%d) updating profile: %s " % (e.errno, e.strerror))
 			else:
 				conn.send("Profile successfully updated")
 		elif messageType == "programArduino":
@@ -739,7 +739,7 @@ while run:
 			except json.decoder.JSONDecodeError, e:
 				logMessage("JSON decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
-			except UnicodeDecodeError, e:
+			except UnicodeDecodeError as e:
 				logMessage("Unicode decode error: %s" % str(e))
 				logMessage("Line received was: " + line)
 
@@ -756,8 +756,8 @@ while run:
 					logMessage("Temperature control disabled by empty cell in profile.")
 					ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
 
-	except socket.error, e:
-		logMessage("socket error: %s" % str(e))
+	except socket.error as e:
+		logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
 
 if ser:
 	ser.close()  # close port
