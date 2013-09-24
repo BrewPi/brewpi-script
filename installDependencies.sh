@@ -73,11 +73,14 @@ if [ -s /tmp/oldcron ]; then
     sudo crontab -u brewpi -l
 fi
 rm /tmp/oldcron||die
-echo -e "\ncopying new cron job to /etc/cron.d/brewpi\n"
+echo -e "\ncopying new cron job to /etc/cron.d/brewpi"
 sudo cp "$installPath"/brewpi.cron /etc/cron.d/brewpi
+echo -e "Restarting cron"
+sudo /etc/init.d/cron restart
 
 
-echo -e "\n***** Fixing file permissions, with 'sh $installPath/fixPremssions.sh' *****\n"
+
+echo -e "\n***** Fixing file permissions, with 'sh $installPath/fixPermissions.sh' *****\n"
 sudo sh "$installPath"/fixPermissions.sh
 
 echo -e "\n***** Done processing BrewPi dependencies *****\n"

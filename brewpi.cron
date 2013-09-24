@@ -1,1 +1,1 @@
-* * * * * python -u /home/brewpi/brewpi.py --dontrunfile 1>/home/brewpi/logs/stdout.txt 2>>/home/brewpi/logs/stderr.txt &
+* * * * * brewpi python -u /home/brewpi/brewpi.py --dontrunfile 1>/home/brewpi/logs/stdout.txt 2>>/home/brewpi/logs/stderr.txt &

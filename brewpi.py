@@ -265,8 +265,8 @@ con = 0
 try:
 	port = config['port']
 	ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-except serial.SerialException, e:
-	print >> sys.stderr, e
+except serial.SerialException as e:
+	logMessage("Error opening serial port: %s" % str(e))
 	exit()
 
 dumpSerial = config.get('dumpSerial', False)
@@ -275,10 +275,12 @@ dumpSerial = config.get('dumpSerial', False)
 if dumpSerial:
 	ser.readOriginal = ser.read
 	ser.writeOriginal = ser.write
+
 	def readAndDump(size=1):
 		r = ser.readOriginal(size)
 		sys.stdout.write(r)
 		return r
+
 	def writeAndDump(data):
 		ser.writeOriginal(data)
 		sys.stderr.write(data)
