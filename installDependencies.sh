@@ -46,42 +46,38 @@ echo -e "\n***** Installing/updating required packages... *****\n"
 installPath="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 ############
-### Install Web Crontab
+### Install cron job
 ############
-echo -e "\n***** Updating crontab for the brewpi user... *****\n"
+echo -e "\n***** Updating cron for the brewpi user... *****\n"
 
-newCronLine="* * * * * python -u $installPath/brewpi.py --dontrunfile 1>$installPath/logs/stdout.txt 2>>$installPath/logs/stderr.txt &"
+sudo -u brewpi crontab -l > /tmp/oldcron||die
+if [ -s /tmp/oldcron ]; then
+	echo -e "You have some entries in the brewpi user's crontab."
+    echo -e "The cron job to start/restart brewpi has been moved to cron.d"
+	echo -e "Please choose what you want to do with the following entries in the crontab:\n"
 
-sudo crontab -u brewpi -l > /tmp/tempcron
-echo -e "Current crontab for user brewpi is:"
-cat /tmp/tempcron
-echo -e "\nThe updated CRON line for starting BrewPi is:\n$newCronLine \n"
-read -p "Do you want to replace the entire crontab (r), append to the existing crontab (a) or skip this step (s)? [r]: " replaceOrAppend
-if [ -z "$replaceOrAppend" ]; then
-    replaceOrAppend="r"
-fi;
-case "$replaceOrAppend" in
-    "r" | "R"  )
-        echo "Replacing crontab with new line"
-        sudo -u brewpi echo -e "$newCronLine"
-        sudo -u brewpi echo -e "$newCronLine" > /tmp/tempcron||die||die
-        sudo crontab -u brewpi /tmp/tempcron||die
-        ;;
-    "a" | "A"  )
-        echo "Appending new line to crontab"
-        sudo -u brewpi echo -e "$newCronLine" >> /tmp/tempcron||die||die
-        sudo crontab -u brewpi /tmp/tempcron||die
-        ;;
-    "s" | "S"  )
-        echo "Skipping crontab update"
-        ;;
-    *)
-        echo -e "Invalid option, crontab not changed\n"
-        ;;
-esac
-rm /tmp/tempcron||die
+	> /tmp/newcron||die
+    while read line
+    do
+        echo "crontab line: $line"
+        read -p "Do you want keep this line? [Y/n]: " yn </dev/tty
+        case "$yn" in
+            n | N | no | NO | No ) echo "Discarding line";;
+            y | Y | yes | YES| Yes ) echo -e "Keeping line\n"; echo "$line" >> /tmp/newcron;;
+            * ) echo "No valid choice received, assuming yes..."; echo -e "Keeping line\n"; echo "$line" >> /tmp/newcron;;
+        esac
+    done < /tmp/oldcron
+	sudo crontab -u brewpi /tmp/newcron||die
+	rm /tmp/newcron||die
+    echo -e "Updated crontab to:"
+    sudo crontab -u brewpi -l
+fi
+rm /tmp/oldcron||die
+echo -e "\ncopying new cron job to /etc/cron.d/brewpi\n"
+sudo cp "$installPath"/brewpi.cron /etc/cron.d/brewpi
 
-echo -e "\n***** Fixing file permissions, with sh $installPath/fixPremssions.sh *****\n"
+
+echo -e "\n***** Fixing file permissions, with 'sh $installPath/fixPremssions.sh' *****\n"
 sudo sh "$installPath"/fixPermissions.sh
 
 echo -e "\n***** Done processing BrewPi dependencies *****\n"
