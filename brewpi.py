@@ -259,8 +259,8 @@ def startBeer(beerName):
 	changeWwwSetting('beerName', beerName)
 
 
-ser = 0
-con = 0
+ser = None
+conn = None
 # open serial port
 try:
 	port = config['port']
@@ -333,13 +333,13 @@ if brewpiVersion:
 	ser.flush()
 	# request settings from Arduino, processed later when reply is received
 	ser.write('s')  # request control settings cs
-	ser.write('c') # request control constants cc
+	ser.write('c')  # request control constants cc
 	# answer from Arduino is received asynchronously later.
 
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows))
-if (useInetSocket):
+if useInetSocket:
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	port = config.get('socketPort', 6332)
@@ -371,27 +371,27 @@ startBeer(config['beerName'])
 outputTemperature = True
 
 prevTempJson = {
-"BeerTemp":0,
-"FridgeTemp":0,
-"BeerAnn":None,
-"FridgeAnn":None,
-"RoomTemp":None,
-"State":None,
-"BeerSet":0,
-"FridgeSet":0
-}
+	"BeerTemp": 0,
+	"FridgeTemp": 0,
+	"BeerAnn": None,
+	"FridgeAnn": None,
+	"RoomTemp": None,
+	"State": None,
+	"BeerSet": 0,
+	"FridgeSet": 0}
+
+
 def renameTempKey(key):
 	rename = {
-	"bt" : "BeerTemp",
-	"bs" : "BeerSet",
-	"ba":"BeerAnn",
-	"ft":"FridgeTemp",
-	"fs":"FridgeSet",
-	"fa":"FridgeAnn",
-	"rt":"RoomTemp",
-	"s":"State",
-	"t":"Time"
-	}
+		"bt": "BeerTemp",
+		"bs": "BeerSet",
+		"ba": "BeerAnn",
+		"ft": "FridgeTemp",
+		"fs": "FridgeSet",
+		"fa": "FridgeAnn",
+		"rt": "RoomTemp",
+		"s": "State",
+		"t": "Time"}
 	return rename.get(key, key)
 
 while run:
@@ -642,7 +642,7 @@ while run:
 		prevTimeOut = time.time()
 
 		if brewpiVersion is None:
-			continue  #  do nothing with the serial port when the arduino has not been recognized
+			continue  # do nothing with the serial port when the arduino has not been recognized
 
 		# request new LCD text
 		ser.write('l')
