@@ -19,7 +19,7 @@ import sys
 import os
 
 try:
-	from configobj import ConfigObj
+	import configobj
 except ImportError:
 	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
 	sys.exit(1)
@@ -48,17 +48,24 @@ def readCfgWithDefaults(cfg):
 	ConfigObj of settings
 	"""
 	defaultCfg = scriptPath() + '/settings/defaults.cfg'
-	config = ConfigObj(defaultCfg)
+	config = configobj.ConfigObj(defaultCfg)
 
 	if cfg:
-		userConfig = ConfigObj(cfg)
-		config.merge(userConfig)
+		try:
+			userConfig = configobj.ConfigObj(cfg)
+			config.merge(userConfig)
+		except configobj.ParseError:
+			logMessage("ERROR: Could not parse user config file %s" % cfg)
+		except IOError:
+			logMessage("Could not open user config file %s. Using only default config file" % cfg)
 	return config
 
 
 def configSet(configFile, settingName, value):
+	if not os.path.isfile(configFile):
+		logMessage("User config file %s does not exist yet, creating it..." % configFile)
 	try:
-		config = ConfigObj(configFile)
+		config = configobj.ConfigObj(configFile)
 		config[settingName] = value
 		config.write()
 	except IOError as e:

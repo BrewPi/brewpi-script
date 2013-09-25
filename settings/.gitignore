@@ -4,3 +4,5 @@
 !.gitignore
 # and default settings
 !defaults.cfg
+# and the config example
+!config.cfg.example
