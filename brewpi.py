@@ -495,12 +495,6 @@ while run:
 				           " is outside of allowed range " +
 				           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
 				           ". These limits can be changed in advanced settings.")
-		elif messageType == "setProfile":  # cs['mode'] set to profile
-			# read temperatures from currentprofile.csv
-			cs['mode'] = 'p'
-			ser.write("j{mode:p}")
-			logMessage("Notification: Profile mode enabled")
-			raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "setOff":  # cs['mode'] set to OFF
 			cs['mode'] = 'o'
 			ser.write("j{mode:o}")
@@ -582,6 +576,11 @@ while run:
 				conn.send("I/O Error(%d) updating profile: %s " % (e.errno, e.strerror))
 			else:
 				conn.send("Profile successfully updated")
+				if cs['mode'] is not 'p':
+					cs['mode'] = 'p'
+					ser.write("j{mode:p}")
+					logMessage("Notification: Profile mode enabled")
+					raise socket.timeout  # go to serial communication to update Arduino
 		elif messageType == "programArduino":
 			ser.close()  # close serial port before programming
 			del ser  # Arduino won't reset when serial port is not completely removed
