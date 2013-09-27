@@ -39,7 +39,13 @@ die () {
 ### Install required packages
 ############
 echo -e "\n***** Installing/updating required packages... *****\n"
-sudo apt-get update
+lastUpdate=$(stat -c %Y /var/lib/apt/lists)
+nowTime=$(date +%s)
+if [ $(($nowTime - $lastUpdate)) -gt 604800 ] ; then
+    echo "last apt-get update was over a week ago. Running apt-get update before updating dependencies"
+    sudo apt-get update
+fi
+
 sudo apt-get install -y rpi-update apache2 libapache2-mod-php5 php5-cli php5-common php5-cgi php5 python-serial python-simplejson python-configobj python-psutil python-setuptools python-git python-gitdb python-setuptools arduino-core git-core||die
 
 # the install path will be the location of this bash file
