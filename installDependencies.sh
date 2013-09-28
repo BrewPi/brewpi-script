@@ -57,41 +57,42 @@ installPath="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ############
 echo -e "\n***** Updating cron for the brewpi user... *****\n"
 
-sudo crontab -u brewpi -l > /tmp/oldcron||die
-> /tmp/newcron||die
-firstLine=true
-while read line
-do
-    case "$line" in
-        \#*) # just copy commented lines
-        echo "$line" >> /tmp/newcron;
-        continue ;;
-        *)
-        if ${firstLine} ; then
-            echo -e "You have some entries in the brewpi user's crontab."
-            echo -e "The cron job to start/restart brewpi has been moved to cron.d"
-            echo -e "This means the lines for brewpi in the crontab are not needed anymore."
-            echo -e "A menu will follow to ask you to keep or comment out each line. Most users will want to answer 'yes'"
-            echo -e "Please choose what you want to do with the following entries in the crontab:\n"
-            firstLine=false
-        fi
-        echo "crontab line: $line"
-        read -p "Do you want to comment out this line? [Y/n]: " yn </dev/tty
-        case "$yn" in
-            y | Y | yes | YES| Yes ) echo "Commenting line"; echo "# $line" >> /tmp/newcron;;
-            n | N | no | NO | No ) echo -e "Keeping original line\n"; echo "$line" >> /tmp/newcron;;
-            * ) echo "No valid choice received, assuming yes..."; echo "Commenting line"; echo "# $line" >> /tmp/newcron;;
-        esac
-    esac
-done < /tmp/oldcron
-sudo crontab -u brewpi /tmp/newcron||die
-rm /tmp/newcron||die
-if ! ${firstLine}; then
-    echo -e "Updated crontab to:"
-    sudo crontab -u brewpi -l
-    echo -e "Finished updating crontab"
+sudo crontab -u brewpi -l > /tmp/oldcron
+if [ -s /tmp/oldcron ]; then
+   > /tmp/newcron||die
+   firstLine=true
+   while read line
+   do
+       case "$line" in
+           \#*) # just copy commented lines
+           echo "$line" >> /tmp/newcron;
+           continue ;;
+           *)
+           if ${firstLine} ; then
+               echo -e "You have some entries in the brewpi user's crontab."
+               echo -e "The cron job to start/restart brewpi has been moved to cron.d"
+               echo -e "This means the lines for brewpi in the crontab are not needed anymore."
+               echo -e "A menu will follow to ask you to keep or comment out each line. Most users will want to answer 'yes'"
+               echo -e "Please choose what you want to do with the following entries in the crontab:\n"
+               firstLine=false
+           fi
+           echo "crontab line: $line"
+           read -p "Do you want to comment out this line? [Y/n]: " yn </dev/tty
+           case "$yn" in
+               y | Y | yes | YES| Yes ) echo "Commenting line"; echo "# $line" >> /tmp/newcron;;
+               n | N | no | NO | No ) echo -e "Keeping original line\n"; echo "$line" >> /tmp/newcron;;
+               * ) echo "No valid choice received, assuming yes..."; echo "Commenting line"; echo "# $line" >> /tmp/newcron;;
+           esac
+       esac
+   done < /tmp/oldcron
+   sudo crontab -u brewpi /tmp/newcron||die
+   rm /tmp/newcron||die
+   if ! ${firstLine}; then
+       echo -e "Updated crontab to:"
+       sudo crontab -u brewpi -l
+       echo -e "Finished updating crontab"
+   fi
 fi
-
 rm /tmp/oldcron||die
 echo -e "\ncopying new cron job to /etc/cron.d/brewpi"
 sudo cp "$installPath"/brewpi.cron /etc/cron.d/brewpi
