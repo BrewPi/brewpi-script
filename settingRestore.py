@@ -15,7 +15,7 @@
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
 restoreOrder = ("tempFormat", "tempSetMin", "tempSetMax",  # it is critical that these are applied first
-             "pidMax", "Kp", "Kp", "Ki", "Kd", "iMaxErr",
+             "pidMax", "Kp", "Ki", "Kd", "iMaxErr",
              "idleRangeH", "idleRangeL", "heatTargetH", "heatTargetL", "coolTargetH", "coolTargetL",
              "maxHeatTimeForEst", "maxCoolTimeForEst",
              "fridgeFastFilt", "fridgeSlowFilt", "fridgeSlopeFilt", "beerFastFilt", "beerSlowFilt",
