@@ -24,10 +24,13 @@ myPath="$( cd "$( dirname "${BASH_SOURCE[0]}")" && pwd )"
 scriptPath="$(dirname "$myPath")"
 webPath="/var/www"
 
-echo -e "\n***** Fixing file permissions, with 'sh $myPath/fixPermissions.sh' *****\n"
+echo -e "\n***** Fixing file permissions for $webPath *****\n"
 sudo chown -R www-data:www-data "$webPath"||warn
+sudo chmod -R g+rwx "$webPath"||warn
+sudo find "$webPath" -type d -exec chmod g+rwxs {} \;||warn
+
+echo -e "\n***** Fixing file permissions for $scriptPath *****\n"
 sudo chown -R brewpi:brewpi "$scriptPath"||warn
 sudo chmod -R g+rwx "$scriptPath"||warn
 sudo find "$scriptPath" -type d -exec chmod g+s {} \;||warn
-sudo chmod -R g+rwx "$webPath"||warn
-sudo find "$webPath" -type d -exec chmod g+rwxs {} \;||warn
+
