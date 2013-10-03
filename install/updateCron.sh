@@ -20,6 +20,7 @@ die () {
 # the script path will one dir above the location of this bash file
 unset CDPATH
 myPath="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+scriptPath="$(dirname "$myPath")"
 
 ############
 ### Install cron job
@@ -63,7 +64,16 @@ if [ -s /tmp/oldcron ]; then
    fi
 fi
 rm /tmp/oldcron||warn
+
 echo -e "\ncopying new cron job to /etc/cron.d/brewpi"
-sudo cp "$myPath"/brewpi.cron /etc/cron.d/brewpi||die
+
+if [[ "$scriptPath" != "/home/brewpi" ]]; then
+    echo "Using non-default script path, using sed to write modified cron file to /etc/cron.d/brewpi"
+    sudo sh -c "sed -e \"s,/home/brewpi,$scriptPath\",g $myPath/brewpi.cron > /etc/cron.d/brewpi"||die
+else
+    sudo cp "$myPath"/brewpi.cron /etc/cron.d/brewpi||die
+fi
+
+
 echo -e "Restarting cron"
 sudo /etc/init.d/cron restart||die
