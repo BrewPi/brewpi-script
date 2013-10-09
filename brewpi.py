@@ -210,7 +210,7 @@ def changeWwwSetting(settingName, value):
         wwwSettingsFile = open(wwwSettingsFileName, 'w+b') # create new file
         wwwSettings = {}
 
-    wwwSettings[settingName] = value
+    wwwSettings[settingName] = str(value)
     wwwSettingsFile.seek(0)
     wwwSettingsFile.write(json.dumps(wwwSettings))
     wwwSettingsFile.truncate()
@@ -226,39 +226,85 @@ def startBeer(beerName):
     global lastDay
     global day
 
-    # create directory for the data if it does not exist
-    dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
-    wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
+    if config['dataLogging'] == 'active':
+        # create directory for the data if it does not exist
+        dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
+        wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
 
-    if not os.path.exists(dataPath):
-        os.makedirs(dataPath)
-        os.chmod(dataPath, 0775)  # give group all permissions
-    if not os.path.exists(wwwDataPath):
-        os.makedirs(wwwDataPath)
-        os.chmod(wwwDataPath, 0775)  # sudgive group all permissions
+        if not os.path.exists(dataPath):
+            os.makedirs(dataPath)
+            os.chmod(dataPath, 0775)  # give group all permissions
+        if not os.path.exists(wwwDataPath):
+            os.makedirs(wwwDataPath)
+            os.chmod(wwwDataPath, 0775)  # give group all permissions
 
-    # Keep track of day and make new data tabe for each day
-    # This limits data table size, which can grow very big otherwise
-    day = time.strftime("%Y-%m-%d")
-    lastDay = day
-    # define a JSON file to store the data table
-    jsonFileName = config['beerName'] + '-' + day
-    #if a file for today already existed, add suffix
-    if os.path.isfile(dataPath + jsonFileName + '.json'):
-        i = 1
-        while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
-            i += 1
-        jsonFileName = jsonFileName + '-' + str(i)
-    localJsonFileName = dataPath + jsonFileName + '.json'
-    brewpiJson.newEmptyFile(localJsonFileName)
+        # Keep track of day and make new data file for each day
+        day = time.strftime("%Y-%m-%d")
+        lastDay = day
+        # define a JSON file to store the data
+        jsonFileName = config['beerName'] + '-' + day
+        #if a file for today already existed, add suffix
+        if os.path.isfile(dataPath + jsonFileName + '.json'):
+            i = 1
+            while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
+                i += 1
+            jsonFileName = jsonFileName + '-' + str(i)
+        localJsonFileName = dataPath + jsonFileName + '.json'
+        brewpiJson.newEmptyFile(localJsonFileName)
 
-    # Define a location on the web server to copy the file to after it is written
-    wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
+        # Define a location on the web server to copy the file to after it is written
+        wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
 
-    # Define a CSV file to store the data as CSV (might be useful one day)
-    localCsvFileName = (dataPath + config['beerName'] + '.csv')
-    wwwCsvFileName = (wwwDataPath + config['beerName'] + '.csv')
+        # Define a CSV file to store the data as CSV (might be useful one day)
+        localCsvFileName = (dataPath + config['beerName'] + '.csv')
+        wwwCsvFileName = (wwwDataPath + config['beerName'] + '.csv')
+
     changeWwwSetting('beerName', beerName)
+
+
+def startNewBrew(newName):
+    global config
+    if len(newName) > 1:     # shorter names are probably invalid
+        config = util.configSet(configFile, 'beerName', newName)
+        config = util.configSet(configFile, 'dataLogging', 'active')
+        startBeer(newName)
+        logMessage("Notification: Restarted logging for beer '%s'." % newName)
+        return {'status': 0, 'statusMessage': "Successfully started switched to new brew '%s'. " % newName +
+                                              "Please reload the page."}
+    else:
+        return {'status': 1, 'statusMessage': "Invalid new brew name '%s', "
+                                              "please enter a name with at least 2 characters" % newName}
+
+
+def stopLogging():
+    global config
+    logMessage("Stopped data logging, as requested in web interface. " +
+               "BrewPi will continue to control temperatures, but will not log any data.")
+    config = util.configSet(configFile, 'beerName', None)
+    config = util.configSet(configFile, 'dataLogging', 'stopped')
+    changeWwwSetting('beerName', None)
+    return {'status': 0, 'statusMessage': "Successfully stopped logging"}
+
+
+def pauseLogging():
+    global config
+    logMessage("Paused logging data, as requested in web interface. " +
+               "BrewPi will continue to control temperatures, but will not log any data until resumed.")
+    if config['dataLogging'] == 'active':
+        config = util.configSet(configFile, 'dataLogging', 'paused')
+        return {'status': 0, 'statusMessage': "Successfully paused logging."}
+    else:
+        return {'status': 1, 'statusMessage': "Logging already paused or stopped."}
+
+
+def resumeLogging():
+    global config
+    logMessage("Continued logging data, as requested in web interface.")
+    if config['dataLogging'] == 'paused':
+        config = util.configSet(configFile, 'dataLogging', 'active')
+        return {'status': 0, 'statusMessage': "Successfully continued logging."}
+    else:
+        return {'status': 1, 'statusMessage': "Logging was not paused."}
 
 
 ser = None
@@ -397,17 +443,17 @@ def renameTempKey(key):
     return rename.get(key, key)
 
 while run:
-
-    # Check whether it is a new day
-    lastDay = day
-    day = time.strftime("%Y-%m-%d")
-    if lastDay != day:
-        logMessage("Notification: New day, dropping data table and creating new JSON file.")
-        jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
-        localJsonFileName = util.addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
-        wwwJsonFileName = util.addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
-        # create new empty json file
-        brewpiJson.newEmptyFile(localJsonFileName)
+    if config['dataLogging'] == 'active':
+        # Check whether it is a new day
+        lastDay = day
+        day = time.strftime("%Y-%m-%d")
+        if lastDay != day:
+            logMessage("Notification: New day, dropping data table and creating new JSON file.")
+            jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
+            localJsonFileName = util.addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
+            wwwJsonFileName = util.addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
+            # create new empty json file
+            brewpiJson.newEmptyFile(localJsonFileName)
 
     # Wait for incoming socket connections.
     # When nothing is received, socket.timeout will be raised after
@@ -439,6 +485,7 @@ while run:
                 profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
                 with file(profileFile, 'r') as prof:
                     cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
+            cs['dataLogging'] = config['dataLogging']
             conn.send(json.dumps(cs))
         elif messageType == "getControlVariables":
             conn.send(json.dumps(cv))
@@ -544,12 +591,19 @@ while run:
                     continue
                 logMessage("Notification: Interval changed to " +
                            str(newInterval) + " seconds")
-        elif messageType == "name":  # new beer name
+        elif messageType == "startNewBrew":  # new beer name
             newName = value
-            if len(newName) > 3:     # shorter names are probably invalid
-                config = util.configSet(configFile, 'beerName', newName)
-                startBeer(newName)
-                logMessage("Notification: restarted for beer: " + newName)
+            result = startNewBrew(newName)
+            conn.send(json.dumps(result))
+        elif messageType == "pauseLogging":
+            result = pauseLogging()
+            conn.send(json.dumps(result))
+        elif messageType == "stopLogging":
+            result = stopLogging()
+            conn.send(json.dumps(result))
+        elif messageType == "resumeLogging":
+            result = resumeLogging()
+            conn.send(json.dumps(result))
         elif messageType == "dateTimeFormatDisplay":
             config = util.configSet(configFile, 'dateTimeFormatDisplay', value)
             changeWwwSetting('dateTimeFormatDisplay', value)
@@ -658,13 +712,19 @@ while run:
             #something is wrong: arduino is not responding to data requests
             logMessage("Error: Arduino is not responding to new data requests")
 
-        for line in ser.readlines():  # read all lines on serial interface
+        for line in ser:  # read all lines on serial interface
             try:
                 if line[0] == 'T':
-
                     # print it to stdout
                     if outputTemperature:
                         print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+
+                    # store time of last new data for interval check
+                    prevDataTime = time.time()
+
+                    if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
+                        continue  # skip if logging is paused or stopped
+
                     # process temperature line
                     newData = json.loads(line[2:])
                     # copy/rename keys
@@ -695,8 +755,7 @@ while run:
 
                     csvFile.close()
                     shutil.copyfile(localCsvFileName, wwwCsvFileName)
-                    # store time of last new data for interval check
-                    prevDataTime = time.time()
+
                 elif line[0] == 'D':
                     # debug message received
                     try:
