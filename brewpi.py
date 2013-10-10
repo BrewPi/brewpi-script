@@ -87,9 +87,11 @@ def logMessage(message):
 
 # Read in command line arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld", ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile'])
+    opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld",
+                               ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --help, --config <path to config file>, --status, --quit, --kill, --force, --log, --dontrunfile"
+    print "Unknown parameter, available Options: --help, --config <path to config file>, " \
+          "--status, --quit, --kill, --force, --log, --dontrunfile"
     sys.exit()
 
 configFile = None
@@ -177,7 +179,7 @@ myProcess = allProcesses.me()
 if allProcesses.findConflicts(myProcess):
     if not checkDontRunFile:
         logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
-                    "This instance will exit")
+                   "This instance will exit")
     exit(0)
 
 localJsonFileName = ""
@@ -207,7 +209,7 @@ def changeWwwSetting(settingName, value):
             logMessage("Error in decoding userSettings.json, creating new empty json file")
             wwwSettings = {}  # start with a fresh file when the json is corrupt.
     else:
-        wwwSettingsFile = open(wwwSettingsFileName, 'w+b') # create new file
+        wwwSettingsFile = open(wwwSettingsFileName, 'w+b')  # create new file
         wwwSettings = {}
 
     wwwSettings[settingName] = value
@@ -268,8 +270,13 @@ try:
     port = config['port']
     ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
 except serial.SerialException as e:
-    logMessage("Error opening serial port: %s" % str(e))
-    exit()
+    logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
+    try:
+        port = config['altport']
+        ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
+    except serial.SerialException as e:
+        logMessage("Error opening alternative serial port: %s. Script will exit." % str(e))
+        exit(1)
 
 dumpSerial = config.get('dumpSerial', False)
 
@@ -305,10 +312,10 @@ while requestVersion:
             data = line.strip('\n')[2:]
             avrVersion = AvrInfo(data)
             brewpiVersion = avrVersion.version
-            logMessage( "Found Arduino " + str(avrVersion.board) +
-                        " with a " + str(avrVersion.shield) + " shield, " +
-                        "running BrewPi version " + str(brewpiVersion) +
-                        " build " + str(avrVersion.build))
+            logMessage("Found Arduino " + str(avrVersion.board) +
+                       " with a " + str(avrVersion.shield) + " shield, " +
+                       "running BrewPi version " + str(brewpiVersion) +
+                       " build " + str(avrVersion.build))
             if brewpiVersion != compatibleBrewpiVersion:
                 logMessage("Warning: BrewPi version compatible with this script is " +
                            compatibleBrewpiVersion +
@@ -326,8 +333,8 @@ while requestVersion:
         retries += 1
         if retries > 10:
             logMessage("Warning: Cannot receive version number from Arduino. " +
-                   "Your Arduino is either not programmed or running a very old version of BrewPi. " +
-                   "Please upload a new version of BrewPi to your Arduino.")
+                       "Your Arduino is either not programmed or running a very old version of BrewPi. " +
+                       "Please upload a new version of BrewPi to your Arduino.")
             # script will continue so you can at least program the Arduino
             break
 
@@ -592,7 +599,8 @@ while run:
                 boardType = programParameters['boardType']
                 restoreSettings = programParameters['restoreSettings']
                 restoreDevices = programParameters['restoreDevices']
-                programmer.programArduino(config, boardType, hexFile, {'settings': restoreSettings, 'devices': restoreDevices})
+                programmer.programArduino(config, boardType, hexFile,
+                                          {'settings': restoreSettings, 'devices': restoreDevices})
                 logMessage("New program uploaded to Arduino, script will restart")
             except json.JSONDecodeError:
                 logMessage("Error: cannot decode programming parameters: " + value)
@@ -615,9 +623,9 @@ while run:
         elif messageType == "getDeviceList":
             if deviceList['listState'] in ["dh", "hd"]:
                 response = dict(board=avrVersion.board,
-                            shield=avrVersion.shield,
-                            deviceList=deviceList,
-                            pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
+                                shield=avrVersion.shield,
+                                deviceList=deviceList,
+                                pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
                 conn.send(json.dumps(response))
             else:
                 conn.send("device-list-not-up-to-date")
