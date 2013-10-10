@@ -291,7 +291,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                     "No settings are restored.")
         return 0
 
-    print "Restoring compatible settings from " + avrVersionOld.toString() + " to " + avrVersionNew.toString()
+    printStdErr("Trying to restore compatible settings from " +
+                avrVersionOld.toString() + " to " + avrVersionNew.toString())
     settingsRestoreLookupDict = {}
     if avrVersionNew.major == 0 and avrVersionNew.minor == 2:
         if avrVersionOld.major == 0:
@@ -313,7 +314,6 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                     settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_1
                 elif avrVersionNew.revision == 2:
                     settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
-
                 printStdErr("Restoring compatible settings")
     else:
         printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
@@ -323,14 +323,17 @@ def programArduino(config, boardType, hexFile, restoreWhat):
         ccOld = oldSettings['controlConstants']
         csOld = oldSettings['controlSettings']
 
-        ser.write('c')
-        ser.write('s')
-        time.sleep(2)
         ccNew = {}
         csNew = {}
-        while 1:  # read all lines on serial interface
-            line = ser.readline()
-            if line:  # line available?
+        tries = 0
+        while ccNew == {} or csNew == {}:
+            if ccNew == {}:
+                ser.write('c')
+                time.sleep(2)
+            if csNew == {}:
+                ser.write('s')
+                time.sleep(2)
+            for line in ser:
                 try:
                     if line[0] == 'C':
                         ccNew = json.loads(line[2:])
@@ -347,7 +350,10 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                         printStdErr("JSON decode error: " + str(e))
                         printStdErr("Line received was: " + line)
             else:
-                break
+                tries += 1
+                if tries > 5:
+                    printStdErr("Could not receive all keys for settings to restore from Arduino")
+                    break
 
         printStdErr("Trying to restore old control constants and settings")
         # find control constants to restore
