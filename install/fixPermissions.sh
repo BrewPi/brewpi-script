@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # This file can be used to automatically fix the permissions of files in /home/brewpi and /var/www on a Linux system
 # with a default BrewPi install
 
