@@ -24,13 +24,13 @@ import BrewPiUtil as util
 
 # Read in command line arguments
 if len(sys.argv) < 2:
-	print >> sys.stderr, 'Using default config path ./settings/config.cfg, to override use : %s <config file full path>' % sys.argv[0]
-	configFile = './settings/config.cfg'
+    print >> sys.stderr, 'Using default config path ./settings/config.cfg, to override use : %s <config file full path>' % sys.argv[0]
+    configFile = util.addSlash(sys.path[0]) + 'settings/config.cfg'
 else:
-	configFile = sys.argv[1]
+    configFile = sys.argv[1]
 
 if not os.path.exists(configFile):
-	sys.exit('ERROR: Config file "%s" was not found!' % configFile)
+    sys.exit('ERROR: Config file "%s" was not found!' % configFile)
 
 config = util.readCfgWithDefaults(configFile)
 
@@ -44,33 +44,33 @@ ser = 0
 
 # open serial port
 try:
-	ser = serial.Serial(config['port'], 57600, timeout=1)
+    ser = serial.Serial(config['port'], 57600, timeout=1)
 except serial.SerialException, e:
-	print e
-	exit()
+    print e
+    exit()
 
 while 1:
-	if msvcrt.kbhit():
-		received = msvcrt.getch()
-		if received == 's':
-			print "type the string you want to send to the Arduino: "
-			userInput = raw_input()
-			print "sending: " + userInput
-			ser.write(userInput)
-		elif received == 'q':
-			ser.close()
-			exit()
+    if msvcrt.kbhit():
+        received = msvcrt.getch()
+        if received == 's':
+            print "type the string you want to send to the Arduino: "
+            userInput = raw_input()
+            print "sending: " + userInput
+            ser.write(userInput)
+        elif received == 'q':
+            ser.close()
+            exit()
 
-	line = ser.readline()
-	if line:
-		if(line[0]=='D'):
-			try:
-				decoded = json.loads(line[2:])
-				print "debug message received: " + expandLogMessage.expandLogMessage(line[2:])
-			except json.JSONDecodeError:
-				# print line normally, is not json
-				print "debug message received: " + line[2:]
+    line = ser.readline()
+    if line:
+        if(line[0]=='D'):
+            try:
+                decoded = json.loads(line[2:])
+                print "debug message received: " + expandLogMessage.expandLogMessage(line[2:])
+            except json.JSONDecodeError:
+                # print line normally, is not json
+                print "debug message received: " + line[2:]
 
-		else:
-			print line
+        else:
+            print line
 

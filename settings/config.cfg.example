@@ -4,6 +4,7 @@
 # scriptPath = /home/brewpi/
 # wwwPath = /var/www/
 # port = /dev/ttyACM0
+# altport = /dev/ttyACM1
 # boardType = leonardo
 # startupDelay = 1.0
 # debug = true

@@ -351,9 +351,9 @@ useInetSocket = bool(config.get('useInetSocket', is_windows))
 if useInetSocket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    port = config.get('socketPort', 6332)
-    s.bind((config.get('socketHost', 'localhost'), int(port)))
-    logMessage('Bound to TCP socket on port %d ' % port)
+    socketPort = config.get('socketPort', 6332)
+    s.bind((config.get('socketHost', 'localhost'), int(socketPort)))
+    logMessage('Bound to TCP socket on port %d ' % int(socketPort))
 else:
     socketFile = util.addSlash(config['scriptPath']) + 'BEERSOCKET'
     if os.path.exists(socketFile):
