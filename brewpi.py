@@ -88,7 +88,7 @@ def logMessage(message):
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld",
-                               ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile'])
+                               ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile', 'checkstartuponly'])
 except getopt.GetoptError:
     print "Unknown parameter, available Options: --help, --config <path to config file>, " \
           "--status, --quit, --kill, --force, --log, --dontrunfile"
@@ -96,6 +96,7 @@ except getopt.GetoptError:
 
 configFile = None
 checkDontRunFile = False
+checkStartupOnly = False
 logToFiles = False
 serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 
@@ -111,6 +112,7 @@ for o, a in opts:
         print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
         print "--log: redirect stderr and stdout to log files"
         print "--dontrunfile: check dontrunfile in www directory and quit if it exists"
+        print "--checkstartuponly: exit after startup checks, return 1 if startup is allowed"
         exit()
     # supply a config file
     if o in ('-c', '--config'):
@@ -152,16 +154,17 @@ for o, a in opts:
     # redirect output of stderr and stdout to files in log directory
     if o in ('-l', '--log'):
         logToFiles = True
-    # only start brewpi when the donotrunfile is not found
+    # only start brewpi when the dontrunfile is not found
     if o in ('-d', '--dontrunfile'):
         checkDontRunFile = True
+    if o in ('--checkstartuponly'):
+        checkStartupOnly = True
 
 if not configFile:
     configFile = util.addSlash(sys.path[0]) + 'settings/config.cfg'
     if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
         print >> sys.stderr,    ("Using default config path %s, " % configFile +
                                  "to override use: %s --config <config file full path>" % sys.argv[0])
-
 
 config = util.readCfgWithDefaults(configFile)
 
@@ -170,7 +173,7 @@ dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
 if checkDontRunFile:
     if os.path.exists(dontRunFilePath):
         # do not print anything, this will flood the logs
-        exit()
+        exit(0)
 
 # check for other running instances of BrewPi that will cause conflicts with this instance
 allProcesses = BrewPiProcess.BrewPiProcesses()
@@ -181,6 +184,9 @@ if allProcesses.findConflicts(myProcess):
         logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
                    "This instance will exit")
     exit(0)
+
+if checkStartupOnly:
+    exit(1)
 
 localJsonFileName = ""
 localCsvFileName = ""
