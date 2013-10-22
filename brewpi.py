@@ -385,6 +385,7 @@ while requestVersion:
                        "Your Arduino is either not programmed or running a very old version of BrewPi. " +
                        "Please upload a new version of BrewPi to your Arduino.")
             # script will continue so you can at least program the Arduino
+            lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
             break
 
 if brewpiVersion:
