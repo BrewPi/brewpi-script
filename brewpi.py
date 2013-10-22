@@ -61,7 +61,7 @@ import BrewPiProcess
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.2.2"
+compatibleBrewpiVersion = "0.2.3"
 
 # Control Settings
 cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0, heatEstimator=0.2, coolEstimator=5)

@@ -15,11 +15,11 @@
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
 restoreOrder = ("tempFormat", "tempSetMin", "tempSetMax",  # it is critical that these are applied first
-             "pidMax", "Kp", "Ki", "Kd", "iMaxErr",
-             "idleRangeH", "idleRangeL", "heatTargetH", "heatTargetL", "coolTargetH", "coolTargetL",
-             "maxHeatTimeForEst", "maxCoolTimeForEst",
-             "fridgeFastFilt", "fridgeSlowFilt", "fridgeSlopeFilt", "beerFastFilt", "beerSlowFilt",
-             "beerSlopeFilt", "lah", "hs", "heatEst", "coolEst", "mode", "fridgeSet", "beerSet")
+                "pidMax", "Kp", "Ki", "Kd", "iMaxErr",
+                "idleRangeH", "idleRangeL", "heatTargetH", "heatTargetL", "coolTargetH", "coolTargetL",
+                "maxHeatTimeForEst", "maxCoolTimeForEst",
+                "fridgeFastFilt", "fridgeSlowFilt", "fridgeSlopeFilt", "beerFastFilt", "beerSlowFilt",
+                "beerSlopeFilt", "lah", "hs", "heatEst", "coolEst", "mode", "fridgeSet", "beerSet")
 
 keys_0_1_x_to_0_2_x = [{'key': "mode", 'validAliases': ["mode"]},
                        {'key': "beerSet", 'validAliases': ["beerSet"]},
@@ -29,7 +29,7 @@ keys_0_1_x_to_0_2_x = [{'key': "mode", 'validAliases': ["mode"]},
                        {'key': "tempFormat", 'validAliases': ["tempFormat"]},
                        {'key': "tempSetMin", 'validAliases': ["tempSetMin"]},
                        {'key': "tempSetMax", 'validAliases': ["tempSetMax"]},
-                       {'key': "pidMax", 'validAliases': ["pidMax"]},
+                       {'key': "pidMax", 'validAliases': []},
                        {'key': "Kp", 'validAliases': ["Kp"]},
                        {'key': "Ki", 'validAliases': ["Ki"]},
                        {'key': "Kd", 'validAliases': ["Kd"]},
@@ -60,7 +60,7 @@ keys_0_2_x_to_0_2_0 = [{'key': "mode", 'validAliases': ["mode"]},
                        {'key': "tempFormat", 'validAliases': ["tempFormat"]},
                        {'key': "tempSetMin", 'validAliases': ["tempSetMin"]},
                        {'key': "tempSetMax", 'validAliases': ["tempSetMax"]},
-                       {'key': "pidMax", 'validAliases': ["pidMax"]},
+                       {'key': "pidMax", 'validAliases': []},
                        {'key': "Kp", 'validAliases': ["Kp"]},
                        {'key': "Ki", 'validAliases': ["Ki"]},
                        {'key': "Kd", 'validAliases': ["Kd"]},
@@ -90,7 +90,7 @@ keys_0_2_x_to_0_2_2 = [{'key': "mode", 'validAliases': ["mode"]},
                        {'key': "tempFormat", 'validAliases': ["tempFormat"]},
                        {'key': "tempSetMin", 'validAliases': ["tempSetMin"]},
                        {'key': "tempSetMax", 'validAliases': ["tempSetMax"]},
-                       {'key': "pidMax", 'validAliases': ["pidMax"]},
+                       {'key': "pidMax", 'validAliases': []},
                        {'key': "Kp", 'validAliases': ["Kp"]},
                        {'key': "Ki", 'validAliases': ["Ki"]},
                        {'key': "Kd", 'validAliases': ["Kd"]},
@@ -114,12 +114,42 @@ keys_0_2_x_to_0_2_2 = [{'key': "mode", 'validAliases': ["mode"]},
 
 keys_0_2_x_to_0_2_1 = keys_0_2_x_to_0_2_2
 
+keys_0_2_x_to_0_2_3 = [{'key': "mode", 'validAliases': ["mode"]},
+                       {'key': "beerSet", 'validAliases': ["beerSet"]},
+                       {'key': "fridgeSet", 'validAliases': ["fridgeSet"]},
+                       {'key': "heatEst", 'validAliases': ["heatEst"]},
+                       {'key': "coolEst", 'validAliases': ["coolEst"]},
+                       {'key': "tempFormat", 'validAliases': ["tempFormat"]},
+                       {'key': "tempSetMin", 'validAliases': ["tempSetMin"]},
+                       {'key': "tempSetMax", 'validAliases': ["tempSetMax"]},
+                       {'key': "pidMax", 'validAliases': []},
+                       {'key': "Kp", 'validAliases': ["Kp"]},
+                       {'key': "Ki", 'validAliases': ["Ki"]},
+                       {'key': "Kd", 'validAliases': ["Kd"]},
+                       {'key': "iMaxErr", 'validAliases': ["iMaxErr"]},
+                       {'key': "idleRangeH", 'validAliases': ["idleRangeH"]},
+                       {'key': "idleRangeL", 'validAliases': ["idleRangeL"]},
+                       {'key': "heatTargetH", 'validAliases': ["heatTargetH"]},
+                       {'key': "heatTargetL", 'validAliases': ["heatTargetL"]},
+                       {'key': "coolTargetH", 'validAliases': ["coolTargetH"]},
+                       {'key': "coolTargetL", 'validAliases': ["coolTargetL"]},
+                       {'key': "maxHeatTimeForEst", 'validAliases': ["maxHeatTimeForEst"]},
+                       {'key': "maxCoolTimeForEst", 'validAliases': ["maxCoolTimeForEst"]},
+                       {'key': "fridgeFastFilt", 'validAliases': ["fridgeFastFilt"]},
+                       {'key': "fridgeSlowFilt", 'validAliases': ["fridgeSlowFilt"]},
+                       {'key': "fridgeSlopeFilt", 'validAliases': ["fridgeSlopeFilt"]},
+                       {'key': "beerFastFilt", 'validAliases': ["beerFastFilt"]},
+                       {'key': "beerSlowFilt", 'validAliases': []},
+                       {'key': "beerSlopeFilt", 'validAliases': []},
+                       {'key': "lah", 'validAliases': ["lah"]},
+                       {'key': "hs", 'validAliases': ["hs"]}]
+
 
 def getAliases(restoreDict, key):
-	for keyDict in restoreDict:
-		if keyDict['key'] == key:
-			return keyDict['validAliases']
-	return []
+    for keyDict in restoreDict:
+        if keyDict['key'] == key:
+            return keyDict['validAliases']
+    return []
 
 # defaults, will be overwritten
 ccNew = {"tempFormat": "C", "tempSetMin": 1.0, "tempSetMax": 30.0, "pidMax": 10.0, "Kp": 20.000, "Ki": 0.600, "Kd": -3.000,

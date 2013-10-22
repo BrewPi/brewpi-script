@@ -284,41 +284,48 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
     if avrVersionNew is None:
         printStdErr(("Warning: Cannot receive version number from Arduino after programming. " +
-                     "Something must have gone wrong. Porting settings failed.\n"))
+                     "Something must have gone wrong. Restoring settings/devices settings failed.\n"))
         return 0
     if avrVersionOld is None:
         printStdErr("Could not receive version number from old board, " +
-                    "No settings are restored.")
+                    "No settings/devices are restored.")
         return 0
 
-    printStdErr("Trying to restore compatible settings from " +
-                avrVersionOld.toString() + " to " + avrVersionNew.toString())
-    settingsRestoreLookupDict = {}
-    if avrVersionNew.major == 0 and avrVersionNew.minor == 2:
-        if avrVersionOld.major == 0:
-            if avrVersionOld.minor == 0:
-                printStdErr("Could not receive version number from old board, " +
-                            "resetting to defaults without restoring settings.")
-                restoreDevices = False
-                restoreSettings = False
-            elif avrVersionOld.minor == 1:
-                # version 0.1.x, try to restore most of the settings
-                settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_x
-                printStdErr("Settings can only be partially restored when going from 0.1.x to 0.2.x")
-                restoreDevices = False
-            elif avrVersionOld.minor == 2:
-                # restore settings and devices
-                if avrVersionNew.revision == 0:
-                    settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_0
-                elif avrVersionNew.revision == 1:
-                    settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_1
-                elif avrVersionNew.revision == 2:
-                    settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
-                printStdErr("Restoring compatible settings")
-    else:
-        printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
-
     if restoreSettings:
+        printStdErr("Trying to restore compatible settings from " +
+                    avrVersionOld.toString() + " to " + avrVersionNew.toString())
+        settingsRestoreLookupDict = {}
+
+        if avrVersionNew.toString() == avrVersionOld.toString():
+            printStdErr("New version is equal to old version, restoring all settings")
+            settingsRestoreLookupDict = "all"
+        elif avrVersionNew.major == 0 and avrVersionNew.minor == 2:
+            if avrVersionOld.major == 0:
+                if avrVersionOld.minor == 0:
+                    printStdErr("Could not receive version number from old board, " +
+                                "resetting to defaults without restoring settings.")
+                    restoreDevices = False
+                    restoreSettings = False
+                elif avrVersionOld.minor == 1:
+                    # version 0.1.x, try to restore most of the settings
+                    settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_x
+                    printStdErr("Settings can only be partially restored when going from 0.1.x to 0.2.x")
+                    restoreDevices = False
+                elif avrVersionOld.minor == 2:
+                    # restore settings and devices
+                    if avrVersionNew.revision == 0:
+                        settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_0
+                    elif avrVersionNew.revision == 1:
+                        settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_1
+                    elif avrVersionNew.revision == 2:
+                        settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
+                    elif avrVersionNew.revision == 3:
+                        settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_3
+                    printStdErr("Will try to restore compatible settings")
+        else:
+            printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
+
+
         restoredSettings = {}
         ccOld = oldSettings['controlConstants']
         csOld = oldSettings['controlSettings']
@@ -358,15 +365,21 @@ def programArduino(config, boardType, hexFile, restoreWhat):
         printStdErr("Trying to restore old control constants and settings")
         # find control constants to restore
         for key in ccNew.keys():  # for all new keys
-            for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get the valid aliases of old keys
-                if alias in ccOld.keys():  # if they are in the old settings
-                    restoredSettings[key] = ccOld[alias]  # add the old setting to the restoredSettings
+            if settingsRestoreLookupDict == "all":
+                restoredSettings[key] = ccOld[key]
+            else:
+                for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get valid aliases in old keys
+                    if alias in ccOld.keys():  # if they are in the old settings
+                        restoredSettings[key] = ccOld[alias]  # add the old setting to the restoredSettings
 
         # find control settings to restore
         for key in csNew.keys():  # for all new keys
-            for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get the valid aliases of old keys
-                if alias in csOld.keys():  # if they are in the old settings
-                    restoredSettings[key] = csOld[alias]  # add the old setting to the restoredSettings
+            if settingsRestoreLookupDict == "all":
+                restoredSettings[key] = csOld[key]
+            else:
+                for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get valid aliases in old keys
+                    if alias in csOld.keys():  # if they are in the old settings
+                        restoredSettings[key] = csOld[alias]  # add the old setting to the restoredSettings
 
         printStdErr("Restoring these settings: " + json.dumps(restoredSettings))
 
