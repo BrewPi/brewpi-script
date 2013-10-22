@@ -1,0 +1,2 @@
+* * * * * brewpi python /home/brewpi/brewpi.py --checkstartuponly --dontrunfile; [ $? != 0 ] && python -u /home/brewpi/brewpi.py 1>/home/brewpi/logs/stdout.txt 2>>/home/brewpi/logs/stderr.txt &
+

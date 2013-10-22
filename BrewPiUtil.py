@@ -19,10 +19,11 @@ import sys
 import os
 
 try:
-	from configobj import ConfigObj
+	import configobj
 except ImportError:
 	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
 	sys.exit(1)
+
 
 def addSlash(path):
 	"""
@@ -47,17 +48,30 @@ def readCfgWithDefaults(cfg):
 	ConfigObj of settings
 	"""
 	defaultCfg = scriptPath() + '/settings/defaults.cfg'
-	config = ConfigObj(defaultCfg)
+	config = configobj.ConfigObj(defaultCfg)
 
 	if cfg:
-		userConfig = ConfigObj(cfg)
-		config.merge(userConfig)
+		try:
+			userConfig = configobj.ConfigObj(cfg)
+			config.merge(userConfig)
+		except configobj.ParseError:
+			logMessage("ERROR: Could not parse user config file %s" % cfg)
+		except IOError:
+			logMessage("Could not open user config file %s. Using only default config file" % cfg)
 	return config
 
+
 def configSet(configFile, settingName, value):
-	config = ConfigObj(configFile)
-	config[settingName] = value
-	config.write()
+	if not os.path.isfile(configFile):
+		logMessage("User config file %s does not exist yet, creating it..." % configFile)
+	try:
+		config = configobj.ConfigObj(configFile)
+		config[settingName] = value
+		config.write()
+	except IOError as e:
+		logMessage("I/O error(%d) while updating %s: %s " % (e.errno, configFile, e.strerror))
+		logMessage("Probably your permissions are not set correctly. " +
+		           "To fix this, run 'sudo sh /home/brewpi/fixPermissions.sh'")
 	return readCfgWithDefaults(configFile)  # return updated ConfigObj
 
 
@@ -66,6 +80,7 @@ def logMessage(message):
 	Prints a timestamped message to stderr
 	"""
 	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+
 
 def scriptPath():
 	"""

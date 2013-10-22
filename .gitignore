@@ -28,12 +28,6 @@ pip-log.txt
 
 start.bat
 
-# make sure an empty logs directory is created
-logs/
 sftp-config.json
 requirements.txt
-data/
-settings/tempProfile.csv.old
-settings/config.cfg
-settings/avr-backup/
 !.gitignore
