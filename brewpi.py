@@ -162,9 +162,6 @@ for o, a in opts:
 
 if not configFile:
     configFile = util.addSlash(sys.path[0]) + 'settings/config.cfg'
-    if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
-        print >> sys.stderr,    ("Using default config path %s, " % configFile +
-                                 "to override use: %s --config <config file full path>" % sys.argv[0])
 
 config = util.readCfgWithDefaults(configFile)
 
