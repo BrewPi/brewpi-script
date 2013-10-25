@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2012 BrewPi
 # This file is part of BrewPi.
 
