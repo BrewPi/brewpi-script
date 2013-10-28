@@ -381,7 +381,7 @@ while requestVersion:
         ser.write('n')
         time.sleep(1)
         retries += 1
-        if retries > 10:
+        if retries > 15:
             logMessage("Warning: Cannot receive version number from Arduino. " +
                        "Your Arduino is either not programmed or running a very old version of BrewPi. " +
                        "Please upload a new version of BrewPi to your Arduino.")

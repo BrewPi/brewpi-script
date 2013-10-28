@@ -116,7 +116,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
             ser.write('n')  # request version info
             time.sleep(1)
             retries += 1
-            if retries > 10:
+            if retries > 15:
                 printStdErr(("Warning: Cannot receive version number from Arduino. " +
                              "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
                              "Arduino will be reset to defaults."))
@@ -262,7 +262,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
             ser.write('n')  # request version info
             time.sleep(1)
             retries += 1
-            if retries > 10:
+            if retries > 15:
                 break
 
     printStdErr("Resetting EEPROM to default settings")
