@@ -78,11 +78,14 @@ class BrewPiProcess:
         if self.pid == otherProcess.pid:
             return 0  # this is me! I don't have a conflict with myself
         if otherProcess.cfg == self.cfg:
+            print "Conflict: same config file as another BrewPi instance already running."
             return 1
         if otherProcess.port == self.port:
+            print "Conflict: same serial port as another BrewPi instance already running."
             return 1
         if [otherProcess.sock.type, otherProcess.sock.file, otherProcess.sock.host, otherProcess.sock.port] == \
                 [self.sock.type, self.sock.file, self.sock.host, self.sock.port]:
+            print "Conflict: same socket as another BrewPi instance already running."
             return 1
         return 0
 
