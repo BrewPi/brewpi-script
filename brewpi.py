@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2012 BrewPi
 # This file is part of BrewPi.
 
@@ -27,6 +28,7 @@ import os
 import getopt
 from pprint import pprint
 import shutil
+import traceback
 
 # load non standard packages, exit when they are not installed
 try:
@@ -60,7 +62,7 @@ import BrewPiProcess
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.2.2"
+compatibleBrewpiVersion = "0.2.3"
 
 # Control Settings
 cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0, heatEstimator=0.2, coolEstimator=5)
@@ -87,13 +89,15 @@ def logMessage(message):
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld",
-                               ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile'])
+                               ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile', 'checkstartuponly'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --help, --config <path to config file>, --status, --quit, --kill, --force, --log, --dontrunfile"
+    print "Unknown parameter, available Options: --help, --config <path to config file>, " \
+          "--status, --quit, --kill, --force, --log, --dontrunfile"
     sys.exit()
 
 configFile = None
 checkDontRunFile = False
+checkStartupOnly = False
 logToFiles = False
 serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 
@@ -109,6 +113,7 @@ for o, a in opts:
         print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
         print "--log: redirect stderr and stdout to log files"
         print "--dontrunfile: check dontrunfile in www directory and quit if it exists"
+        print "--checkstartuponly: exit after startup checks, return 1 if startup is allowed"
         exit()
     # supply a config file
     if o in ('-c', '--config'):
@@ -150,15 +155,14 @@ for o, a in opts:
     # redirect output of stderr and stdout to files in log directory
     if o in ('-l', '--log'):
         logToFiles = True
-    # only start brewpi when the donotrunfile is not found
+    # only start brewpi when the dontrunfile is not found
     if o in ('-d', '--dontrunfile'):
         checkDontRunFile = True
+    if o in ('--checkstartuponly'):
+        checkStartupOnly = True
 
 if not configFile:
     configFile = util.addSlash(sys.path[0]) + 'settings/config.cfg'
-    if not checkDontRunFile:  # Do not print when this option is active. CRON uses it and it will flood the logs
-        print >> sys.stderr, ("Using default config path %s, " % configFile +
-                              "to override use: %s --config <config file full path>" % sys.argv[0])
 
 config = util.readCfgWithDefaults(configFile)
 
@@ -167,7 +171,7 @@ dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
 if checkDontRunFile:
     if os.path.exists(dontRunFilePath):
         # do not print anything, this will flood the logs
-        exit()
+        exit(0)
 
 # check for other running instances of BrewPi that will cause conflicts with this instance
 allProcesses = BrewPiProcess.BrewPiProcesses()
@@ -178,6 +182,9 @@ if allProcesses.findConflicts(myProcess):
         logMessage("Another instance of BrewPi is already running, which will conflict with this instance. " +
                    "This instance will exit")
     exit(0)
+
+if checkStartupOnly:
+    exit(1)
 
 localJsonFileName = ""
 localCsvFileName = ""
@@ -193,11 +200,12 @@ if logToFiles:
     sys.stderr = open(logPath + 'stderr.txt', 'a', 0)  # append to stderr file, unbuffered
     sys.stdout = open(logPath + 'stdout.txt', 'w', 0)  # overwrite stdout file on script start, unbuffered
 
+
 # userSettings.json is a copy of some of the settings that are needed by the web server.
 # This allows the web server to load properly, even when the script is not running.
 def changeWwwSetting(settingName, value):
     wwwSettingsFileName = util.addSlash(config['wwwPath']) + 'userSettings.json'
-    if (os.path.exists(wwwSettingsFileName)):
+    if os.path.exists(wwwSettingsFileName):
         wwwSettingsFile = open(wwwSettingsFileName, 'r+b')
         try:
             wwwSettings = json.load(wwwSettingsFile)  # read existing settings
@@ -205,10 +213,10 @@ def changeWwwSetting(settingName, value):
             logMessage("Error in decoding userSettings.json, creating new empty json file")
             wwwSettings = {}  # start with a fresh file when the json is corrupt.
     else:
-        wwwSettingsFile = open(wwwSettingsFileName, 'w+b') # create new file
+        wwwSettingsFile = open(wwwSettingsFileName, 'w+b')  # create new file
         wwwSettings = {}
 
-    wwwSettings[settingName] = value
+    wwwSettings[settingName] = str(value)
     wwwSettingsFile.seek(0)
     wwwSettingsFile.write(json.dumps(wwwSettings))
     wwwSettingsFile.truncate()
@@ -224,50 +232,101 @@ def startBeer(beerName):
     global lastDay
     global day
 
-    # create directory for the data if it does not exist
-    dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
-    wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
+    if config['dataLogging'] == 'active':
+        # create directory for the data if it does not exist
+        dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
+        wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
 
-    if not os.path.exists(dataPath):
-        os.makedirs(dataPath)
-        os.chmod(dataPath, 0775)  # give group all permissions
-    if not os.path.exists(wwwDataPath):
-        os.makedirs(wwwDataPath)
-        os.chmod(wwwDataPath, 0775)  # sudgive group all permissions
+        if not os.path.exists(dataPath):
+            os.makedirs(dataPath)
+            os.chmod(dataPath, 0775)  # give group all permissions
+        if not os.path.exists(wwwDataPath):
+            os.makedirs(wwwDataPath)
+            os.chmod(wwwDataPath, 0775)  # give group all permissions
 
-    # Keep track of day and make new data tabe for each day
-    # This limits data table size, which can grow very big otherwise
-    day = time.strftime("%Y-%m-%d")
-    lastDay = day
-    # define a JSON file to store the data table
-    jsonFileName = config['beerName'] + '-' + day
-    #if a file for today already existed, add suffix
-    if os.path.isfile(dataPath + jsonFileName + '.json'):
-        i = 1
-        while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
-            i += 1
-        jsonFileName = jsonFileName + '-' + str(i)
-    localJsonFileName = dataPath + jsonFileName + '.json'
-    brewpiJson.newEmptyFile(localJsonFileName)
+        # Keep track of day and make new data file for each day
+        day = time.strftime("%Y-%m-%d")
+        lastDay = day
+        # define a JSON file to store the data
+        jsonFileName = config['beerName'] + '-' + day
+        #if a file for today already existed, add suffix
+        if os.path.isfile(dataPath + jsonFileName + '.json'):
+            i = 1
+            while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
+                i += 1
+            jsonFileName = jsonFileName + '-' + str(i)
+        localJsonFileName = dataPath + jsonFileName + '.json'
+        brewpiJson.newEmptyFile(localJsonFileName)
 
-    # Define a location on the web server to copy the file to after it is written
-    wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
+        # Define a location on the web server to copy the file to after it is written
+        wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
 
-    # Define a CSV file to store the data as CSV (might be useful one day)
-    localCsvFileName = (dataPath + config['beerName'] + '.csv')
-    wwwCsvFileName = (wwwDataPath + config['beerName'] + '.csv')
+        # Define a CSV file to store the data as CSV (might be useful one day)
+        localCsvFileName = (dataPath + config['beerName'] + '.csv')
+        wwwCsvFileName = (wwwDataPath + config['beerName'] + '.csv')
+
     changeWwwSetting('beerName', beerName)
 
 
-ser = 0
-con = 0
+def startNewBrew(newName):
+    global config
+    if len(newName) > 1:     # shorter names are probably invalid
+        config = util.configSet(configFile, 'beerName', newName)
+        config = util.configSet(configFile, 'dataLogging', 'active')
+        startBeer(newName)
+        logMessage("Notification: Restarted logging for beer '%s'." % newName)
+        return {'status': 0, 'statusMessage': "Successfully started switched to new brew '%s'. " % newName +
+                                              "Please reload the page."}
+    else:
+        return {'status': 1, 'statusMessage': "Invalid new brew name '%s', "
+                                              "please enter a name with at least 2 characters" % newName}
+
+
+def stopLogging():
+    global config
+    logMessage("Stopped data logging, as requested in web interface. " +
+               "BrewPi will continue to control temperatures, but will not log any data.")
+    config = util.configSet(configFile, 'beerName', None)
+    config = util.configSet(configFile, 'dataLogging', 'stopped')
+    changeWwwSetting('beerName', None)
+    return {'status': 0, 'statusMessage': "Successfully stopped logging"}
+
+
+def pauseLogging():
+    global config
+    logMessage("Paused logging data, as requested in web interface. " +
+               "BrewPi will continue to control temperatures, but will not log any data until resumed.")
+    if config['dataLogging'] == 'active':
+        config = util.configSet(configFile, 'dataLogging', 'paused')
+        return {'status': 0, 'statusMessage': "Successfully paused logging."}
+    else:
+        return {'status': 1, 'statusMessage': "Logging already paused or stopped."}
+
+
+def resumeLogging():
+    global config
+    logMessage("Continued logging data, as requested in web interface.")
+    if config['dataLogging'] == 'paused':
+        config = util.configSet(configFile, 'dataLogging', 'active')
+        return {'status': 0, 'statusMessage': "Successfully continued logging."}
+    else:
+        return {'status': 1, 'statusMessage': "Logging was not paused."}
+
+
+ser = None
+conn = None
 # open serial port
 try:
     port = config['port']
     ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-except serial.SerialException, e:
-    print >> sys.stderr, e
-    exit()
+except serial.SerialException as e:
+    logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
+    try:
+        port = config['altport']
+        ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
+    except serial.SerialException as e:
+        logMessage("Error opening alternative serial port: %s. Script will exit." % str(e))
+        exit(1)
 
 dumpSerial = config.get('dumpSerial', False)
 
@@ -284,9 +343,9 @@ if dumpSerial:
     def writeAndDump(data):
         ser.writeOriginal(data)
         sys.stderr.write(data)
-
     ser.read = readAndDump
     ser.write = writeAndDump
+
 
 logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
@@ -322,29 +381,30 @@ while requestVersion:
         ser.write('n')
         time.sleep(1)
         retries += 1
-        if retries > 10:
+        if retries > 15:
             logMessage("Warning: Cannot receive version number from Arduino. " +
                        "Your Arduino is either not programmed or running a very old version of BrewPi. " +
                        "Please upload a new version of BrewPi to your Arduino.")
             # script will continue so you can at least program the Arduino
+            lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
             break
 
 if brewpiVersion:
     ser.flush()
     # request settings from Arduino, processed later when reply is received
     ser.write('s')  # request control settings cs
-    ser.write('c') # request control constants cc
-# answer from Arduino is received asynchronously later.
+    ser.write('c')  # request control constants cc
+    # answer from Arduino is received asynchronously later.
 
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows))
-if (useInetSocket):
+if useInetSocket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    port = int(config.get('socketPort', 6332))
-    s.bind((config.get('socketHost', 'localhost'), port))
-    logMessage('Bound to TCP socket on port %d ' % port)
+    socketPort = config.get('socketPort', 6332)
+    s.bind((config.get('socketHost', 'localhost'), int(socketPort)))
+    logMessage('Bound to TCP socket on port %d ' % int(socketPort))
 else:
     socketFile = util.addSlash(config['scriptPath']) + 'BEERSOCKET'
     if os.path.exists(socketFile):
@@ -378,8 +438,7 @@ prevTempJson = {
     "RoomTemp": None,
     "State": None,
     "BeerSet": 0,
-    "FridgeSet": 0
-}
+    "FridgeSet": 0}
 
 
 def renameTempKey(key):
@@ -392,23 +451,21 @@ def renameTempKey(key):
         "fa": "FridgeAnn",
         "rt": "RoomTemp",
         "s": "State",
-        "t": "Time"
-    }
+        "t": "Time"}
     return rename.get(key, key)
 
-
 while run:
-
-    # Check whether it is a new day
-    lastDay = day
-    day = time.strftime("%Y-%m-%d")
-    if lastDay != day:
-        logMessage("Notification: New day, dropping data table and creating new JSON file.")
-        jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
-        localJsonFileName = util.addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
-        wwwJsonFileName = util.addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
-        # create new empty json file
-        brewpiJson.newEmptyFile(localJsonFileName)
+    if config['dataLogging'] == 'active':
+        # Check whether it is a new day
+        lastDay = day
+        day = time.strftime("%Y-%m-%d")
+        if lastDay != day:
+            logMessage("Notification: New day, dropping data table and creating new JSON file.")
+            jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
+            localJsonFileName = util.addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
+            wwwJsonFileName = util.addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
+            # create new empty json file
+            brewpiJson.newEmptyFile(localJsonFileName)
 
     # Wait for incoming socket connections.
     # When nothing is received, socket.timeout will be raised after
@@ -440,6 +497,7 @@ while run:
                 profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
                 with file(profileFile, 'r') as prof:
                     cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
+            cs['dataLogging'] = config['dataLogging']
             conn.send(json.dumps(cs))
         elif messageType == "getControlVariables":
             conn.send(json.dumps(cv))
@@ -498,12 +556,6 @@ while run:
                            " is outside of allowed range " +
                            str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
                            ". These limits can be changed in advanced settings.")
-        elif messageType == "setProfile":  # cs['mode'] set to profile
-            # read temperatures from currentprofile.csv
-            cs['mode'] = 'p'
-            ser.write("j{mode:p}")
-            logMessage("Notification: Profile mode enabled")
-            raise socket.timeout  # go to serial communication to update Arduino
         elif messageType == "setOff":  # cs['mode'] set to OFF
             cs['mode'] = 'o'
             ser.write("j{mode:o}")
@@ -551,23 +603,28 @@ while run:
                     continue
                 logMessage("Notification: Interval changed to " +
                            str(newInterval) + " seconds")
-        elif messageType == "name":  # new beer name
+        elif messageType == "startNewBrew":  # new beer name
             newName = value
-            if len(newName) > 3:     # shorter names are probably invalid
-                config = util.configSet(configFile, 'beerName', newName)
-                startBeer(newName)
-                logMessage("Notification: restarted for beer: " + newName)
+            result = startNewBrew(newName)
+            conn.send(json.dumps(result))
+        elif messageType == "pauseLogging":
+            result = pauseLogging()
+            conn.send(json.dumps(result))
+        elif messageType == "stopLogging":
+            result = stopLogging()
+            conn.send(json.dumps(result))
+        elif messageType == "resumeLogging":
+            result = resumeLogging()
+            conn.send(json.dumps(result))
         elif messageType == "dateTimeFormatDisplay":
             config = util.configSet(configFile, 'dateTimeFormatDisplay', value)
             changeWwwSetting('dateTimeFormatDisplay', value)
             logMessage("Changing date format config setting: " + value)
-        elif messageType == "profileName":
+        elif messageType == "setActiveProfile":
+            # copy the profile CSV file to the working directory
+            logMessage("Setting profile '%s' as active profile" % value)
             config = util.configSet(configFile, 'profileName', value)
             changeWwwSetting('profileName', value)
-            logMessage("Changing profile config setting: " + value)
-        elif messageType == "uploadProfile":
-            # copy the profile CSV file to the working directory
-            logMessage("Uploading profile: " + value)
             profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
             profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
             profileDestFileOld = profileDestFile + '.old'
@@ -583,10 +640,15 @@ while run:
                     rest = original.read()
                 with file(profileDestFile, 'w') as modified:
                     modified.write(line1 + "," + value + "\n" + rest)
-            except IOError, ioe:  # catch all exceptions and report back an error
-                conn.send("Error updating profile: " + str(ioe))
+            except IOError as e:  # catch all exceptions and report back an error
+                conn.send("I/O Error(%d) updating profile: %s " % (e.errno, e.strerror))
             else:
                 conn.send("Profile successfully updated")
+                if cs['mode'] is not 'p':
+                    cs['mode'] = 'p'
+                    ser.write("j{mode:p}")
+                    logMessage("Notification: Profile mode enabled")
+                    raise socket.timeout  # go to serial communication to update Arduino
         elif messageType == "programArduino":
             ser.close()  # close serial port before programming
             del ser  # Arduino won't reset when serial port is not completely removed
@@ -648,7 +710,7 @@ while run:
         prevTimeOut = time.time()
 
         if brewpiVersion is None:
-            continue  #  do nothing with the serial port when the arduino has not been recognized
+            continue  # do nothing with the serial port when the arduino has not been recognized
 
         # request new LCD text
         ser.write('l')
@@ -663,13 +725,19 @@ while run:
             #something is wrong: arduino is not responding to data requests
             logMessage("Error: Arduino is not responding to new data requests")
 
-        for line in ser.readlines():  # read all lines on serial interface
+        for line in ser:  # read all lines on serial interface
             try:
                 if line[0] == 'T':
-
                     # print it to stdout
                     if outputTemperature:
                         print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+
+                    # store time of last new data for interval check
+                    prevDataTime = time.time()
+
+                    if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
+                        continue  # skip if logging is paused or stopped
+
                     # process temperature line
                     newData = json.loads(line[2:])
                     # copy/rename keys
@@ -700,8 +768,7 @@ while run:
 
                     csvFile.close()
                     shutil.copyfile(localCsvFileName, wwwCsvFileName)
-                    # store time of last new data for interval check
-                    prevDataTime = time.time()
+
                 elif line[0] == 'D':
                     # debug message received
                     try:
@@ -747,7 +814,7 @@ while run:
             except json.decoder.JSONDecodeError, e:
                 logMessage("JSON decode error: %s" % str(e))
                 logMessage("Line received was: " + line)
-            except UnicodeDecodeError, e:
+            except UnicodeDecodeError as e:
                 logMessage("Unicode decode error: %s" % str(e))
                 logMessage("Line received was: " + line)
 
@@ -764,8 +831,9 @@ while run:
                     logMessage("Temperature control disabled by empty cell in profile.")
                     ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
 
-    except socket.error, e:
-        logMessage("socket error: %s" % str(e))
+    except socket.error as e:
+        logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
+        traceback.print_exc()
 
 if ser:
     ser.close()  # close port
