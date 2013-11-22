@@ -20,7 +20,7 @@ import serial
 import time
 import simplejson as json
 import os
-from brewpiVersion import AvrInfo
+import brewpiVersion
 import expandLogMessage
 import settingRestore
 from sys import stderr
@@ -96,31 +96,17 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
     printStdErr("Checking old version before programming.")
 
-    avrVersionOld = None
-
-    retries = 0
-    requestVersion = True
-    while requestVersion:
-        for line in ser:
-            if line[0] == 'N':
-                data = line.strip('\n')[2:]
-                avrVersionOld = AvrInfo(data)
-                printStdErr("Found Arduino " + str(avrVersionOld.board) +
-                            " with a " + str(avrVersionOld.shield) + " shield, " +
-                            "running BrewPi version " + str(avrVersionOld.version) +
-                            " build " + str(avrVersionOld.build) +
-                            " on port " + port + "\n")
-                requestVersion = False
-                break
-        else:
-            ser.write('n')  # request version info
-            time.sleep(1)
-            retries += 1
-            if retries > 15:
-                printStdErr(("Warning: Cannot receive version number from Arduino. " +
-                             "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
-                             "Arduino will be reset to defaults."))
-                break
+    avrVersionOld = brewpiVersion.getVersionFromSerial(ser)
+    if avrVersionOld is None:
+        printStdErr(("Warning: Cannot receive version number from Arduino. " +
+                     "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
+                     "Arduino will be reset to defaults."))
+    else:
+        printStdErr("Found Arduino " + str(avrVersionOld.board) +
+                    " with a " + str(avrVersionOld.shield) + " shield, " +
+                    "running BrewPi version " + str(avrVersionOld.version) +
+                    " build " + str(avrVersionOld.build) +
+                    " on port " + port + "\n")
 
     oldSettings = {}
 
@@ -242,28 +228,17 @@ def programArduino(config, boardType, hexFile, restoreWhat):
     printStdErr("Now checking which settings and devices can be restored...")
 
     # read new version
-    avrVersionNew = None
-    retries = 0
-    requestVersion = True
-    while requestVersion:
-        for line in ser:
-            if line[0] == 'N':
-                data = line.strip('\n')[2:]
-                avrVersionNew = AvrInfo(data)
-                printStdErr("Checking new version: Found Arduino " + avrVersionNew.board +
-                            " with a " + str(avrVersionNew.shield) + " shield, " +
-                            "running BrewPi version " + str(avrVersionNew.version) +
-                            " build " + str(avrVersionNew.build) +
-                            " on port " + port + "\n")
-                requestVersion = False
-                break
-
-        else:
-            ser.write('n')  # request version info
-            time.sleep(1)
-            retries += 1
-            if retries > 15:
-                break
+    avrVersionNew = brewpiVersion.getVersionFromSerial(ser)
+    if avrVersionNew is None:
+        printStdErr(("Warning: Cannot receive version number from Arduino. " +
+                     "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
+                     "Arduino will be reset to defaults."))
+    else:
+        printStdErr("Checking new version: Found Arduino " + avrVersionNew.board +
+                    " with a " + str(avrVersionNew.shield) + " shield, " +
+                    "running BrewPi version " + str(avrVersionNew.version) +
+                    " build " + str(avrVersionNew.build) +
+                    " on port " + port + "\n")
 
     printStdErr("Resetting EEPROM to default settings")
     ser.write('E')

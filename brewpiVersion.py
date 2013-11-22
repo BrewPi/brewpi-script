@@ -16,6 +16,34 @@
 
 import simplejson as json
 import sys
+import time
+
+
+def getVersionFromSerial(ser):
+    version = None
+    retries = 0
+    requestVersion = True
+    while requestVersion:
+        startTime = time.time()
+        retry = True
+        for line in ser:
+            if line[0] == 'N':
+                data = line.strip('\n')[2:]
+                version = AvrInfo(data)
+                requestVersion = False
+                retry = False
+                break
+            if time.time() - startTime > ser.timeout:
+                # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
+                break
+
+        if retry:
+            ser.write('n')  # request version info
+            time.sleep(1)
+            retries += 1
+            if retries > 15:
+                break
+    return version
 
 
 class AvrInfo:

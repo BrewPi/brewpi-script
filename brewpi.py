@@ -53,7 +53,7 @@ import temperatureProfile
 import programArduino as programmer
 import brewpiJson
 import BrewPiUtil as util
-from brewpiVersion import AvrInfo
+import brewpiVersion
 import pinList
 import expandLogMessage
 import BrewPiProcess
@@ -62,7 +62,7 @@ import BrewPiProcess
 # Settings will be read from Arduino, initialize with same defaults as Arduino
 # This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
 
-compatibleBrewpiVersion = "0.2.3"
+compatibleHwVersion = "0.2.3"
 
 # Control Settings
 cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0, heatEstimator=0.2, coolEstimator=5)
@@ -352,44 +352,31 @@ logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 time.sleep(float(config.get('startupDelay', 10)))
 
 ser.flush()
-brewpiVersion = None
-retries = 0
 
-requestVersion = True
-while requestVersion:
-    for line in ser.readlines():
-        if line[0] == 'N':
-            data = line.strip('\n')[2:]
-            avrVersion = AvrInfo(data)
-            brewpiVersion = avrVersion.version
-            logMessage("Found Arduino " + str(avrVersion.board) +
-                       " with a " + str(avrVersion.shield) + " shield, " +
-                       "running BrewPi version " + str(brewpiVersion) +
-                       " build " + str(avrVersion.build))
-            if brewpiVersion != compatibleBrewpiVersion:
-                logMessage("Warning: BrewPi version compatible with this script is " +
-                           compatibleBrewpiVersion +
-                           " but version number received is " + brewpiVersion)
-            if int(avrVersion.log) != int(expandLogMessage.getVersion()):
-                logMessage("Warning: version number of local copy of logMessages.h " +
-                           "does not match log version number received from Arduino." +
-                           "Arduino version = " + str(avrVersion.log) +
-                           ", local copy version = " + str(expandLogMessage.getVersion()))
-            requestVersion = False
-            break
-    else:
-        ser.write('n')
-        time.sleep(1)
-        retries += 1
-        if retries > 15:
-            logMessage("Warning: Cannot receive version number from Arduino. " +
-                       "Your Arduino is either not programmed or running a very old version of BrewPi. " +
-                       "Please upload a new version of BrewPi to your Arduino.")
-            # script will continue so you can at least program the Arduino
-            lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
-            break
+hwVersion = brewpiVersion.getVersionFromSerial(ser)
+if hwVersion is None:
+    logMessage("Warning: Cannot receive version number from Arduino. " +
+               "Your Arduino is either not programmed or running a very old version of BrewPi. " +
+               "Please upload a new version of BrewPi to your Arduino.")
+    # script will continue so you can at least program the Arduino
+    lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
+else:
+    logMessage("Found Arduino " + str(hwVersion.board) +
+               " with a " + str(hwVersion.shield) + " shield, " +
+               "running BrewPi version " + hwVersion.toString() +
+               " build " + str(hwVersion.build) +
+               " on port " + port + "\n")
+    if hwVersion.toString() != compatibleHwVersion:
+        logMessage("Warning: BrewPi version compatible with this script is " +
+                   compatibleHwVersion +
+                   " but version number received is " + hwVersion.toString())
+    if int(hwVersion.log) != int(expandLogMessage.getVersion()):
+        logMessage("Warning: version number of local copy of logMessages.h " +
+                   "does not match log version number received from Arduino." +
+                   "Arduino version = " + str(hwVersion.log) +
+                   ", local copy version = " + str(expandLogMessage.getVersion()))
 
-if brewpiVersion:
+if hwVersion is not None:
     ser.flush()
     # request settings from Arduino, processed later when reply is received
     ser.write('s')  # request control settings cs
@@ -681,10 +668,10 @@ while run:
                 ser.write("h{u:-1}")  # request available, but not installed devices
         elif messageType == "getDeviceList":
             if deviceList['listState'] in ["dh", "hd"]:
-                response = dict(board=avrVersion.board,
-                                shield=avrVersion.shield,
+                response = dict(board=hwVersion.board,
+                                shield=hwVersion.shield,
                                 deviceList=deviceList,
-                                pinList=pinList.getPinList(avrVersion.board, avrVersion.shield))
+                                pinList=pinList.getPinList(hwVersion.board, hwVersion.shield))
                 conn.send(json.dumps(response))
             else:
                 conn.send("device-list-not-up-to-date")
@@ -709,7 +696,7 @@ while run:
         # Do serial communication and update settings every SerialCheckInterval
         prevTimeOut = time.time()
 
-        if brewpiVersion is None:
+        if hwVersion is None:
             continue  # do nothing with the serial port when the arduino has not been recognized
 
         # request new LCD text
