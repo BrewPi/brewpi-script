@@ -460,6 +460,7 @@ while run:
     # When messages are expected on serial, the timeout is raised 'manually'
     try:
         conn, addr = s.accept()
+        conn.setblocking(1)
         # blocking receive, times out in serialCheckInterval
         message = conn.recv(4096)
         if "=" in message:
