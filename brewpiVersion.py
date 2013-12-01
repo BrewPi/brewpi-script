@@ -17,6 +17,42 @@
 import simplejson as json
 import sys
 import time
+import serial
+
+def setupSerial():
+	ser = None
+	conn = None
+	# open serial port
+	try:
+	    port = config['port']
+	    ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
+	except serial.SerialException as e:
+	    logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
+	    try:
+	        port = config['altport']
+	        ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
+	    except serial.SerialException as e:
+	        logMessage("Error opening alternative serial port: %s. Script will exit." % str(e))
+	        exit(1)
+	
+	dumpSerial = config.get('dumpSerial', False)
+	
+	# yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
+	if dumpSerial:
+	    ser.readOriginal = ser.read
+	    ser.writeOriginal = ser.write
+	
+	    def readAndDump(size=1):
+	        r = ser.readOriginal(size)
+	        sys.stdout.write(r)
+	        return r
+
+	    def writeAndDump(data):
+	        ser.writeOriginal(data)
+	        sys.stderr.write(data)
+	    ser.read = readAndDump
+	    ser.write = writeAndDump
+	return ser, conn
 
 
 def getVersionFromSerial(ser):
