@@ -19,12 +19,13 @@ import sys
 import time
 import serial
 
-def setupSerial():
+def setupSerial(config):
 	ser = None
 	conn = None
+	port = config['port']
+	dumpSerial = config.get('dumpSerial', False)
 	# open serial port
 	try:
-	    port = config['port']
 	    ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
 	except serial.SerialException as e:
 	    logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
@@ -34,8 +35,6 @@ def setupSerial():
 	    except serial.SerialException as e:
 	        logMessage("Error opening alternative serial port: %s. Script will exit." % str(e))
 	        exit(1)
-	
-	dumpSerial = config.get('dumpSerial', False)
 	
 	# yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
 	if dumpSerial:
