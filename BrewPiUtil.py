@@ -88,3 +88,12 @@ def scriptPath():
 	That is why this function is needed.
 	"""
 	return os.path.dirname(__file__)
+
+def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
+	if os.path.isfile(path):
+		os.remove(path)
+		print "BrewPi was restarted"
+	else:
+		print path +"dontRunFile does not exist at "+path
+		print "BrewPi was not restarted"
+	
