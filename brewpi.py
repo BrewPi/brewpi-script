@@ -313,7 +313,7 @@ def resumeLogging():
         return {'status': 1, 'statusMessage': "Logging was not paused."}
 
 port = config['port']
-ser, conn = brewpiVersion.setupSerial(config)
+ser, conn = util.setupSerial(config)
 
 logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
