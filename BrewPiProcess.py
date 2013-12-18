@@ -189,6 +189,21 @@ class BrewPiProcesses():
                 continue
             else:
                 p.quit()
+    def stopAll(self, dontRunFilePath):
+        """
+        Ask all running Brewpi processes to exit, and prevent restarting by writing
+        the do_not_run file
+        """
+        dontrunfile = open(dontRunFilePath, "w")
+        dontrunfile.write("1")
+        dontrunfile.close()        
+        myPid = os.getpid()
+        self.update()
+        for p in self.list:
+            if p.pid == myPid:  # do not send quit message to myself
+                continue
+            else:
+                p.quit()
 
     def killAll(self):
         """
