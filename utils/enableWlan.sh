@@ -13,7 +13,6 @@ DIR=`pwd`
 
 if [ "$1" = "install" ]; then
     echo "Installing wifi check/enable script..."
-    gateway=$(/sbin/ip route | awk '/default/ { print $3 }')
     ### Make sure auto wlan0 is added to /etc/network/interfaces, otherwise it causes trouble bringing the interface back up
     grep "auto wlan0" /etc/network/interfaces
     if [ $? -ne 0 ]; then
@@ -25,6 +24,7 @@ if [ "$1" = "install" ]; then
     if [ $? -eq 0 ]; then
          echo "Cron entry already exists, skipping..."
     else
+        ### Look at cron entry to find location of log files
         logPath=$(grep brewpi.py /etc/cron.d/brewpi|sed -r 's/.*(1>.*)$/\1/')
         echo "Installing cron job for Wifi checking..."
         echo "*/10 * * * * $DIR/enableWlan.sh $logPath" >> /etc/cron.d/brewpi
@@ -35,6 +35,7 @@ if [ "$1" = "install" ]; then
 fi
 
 fails=0
+gateway=$(/sbin/ip route | awk '/default/ { print $3 }')
 
 while [ $fails -lt $MAX_FAILURES ]; do
 ### Try pinging, and if host is up, exit
