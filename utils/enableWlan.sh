@@ -9,7 +9,7 @@ MAX_FAILURES=3
 # Time to wait between failed attempts contacting the router
 INTERVAL=15
 ###  DO NOT EDIT BELOW HERE!  ###
-DIR=`pwd`
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}")" && pwd )
 
 if [ "$1" = "install" ]; then
     echo "Installing wifi check/enable script..."
