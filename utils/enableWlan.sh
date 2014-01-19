@@ -56,6 +56,7 @@ done
 ### Restart wlan0 interface
     if [ $fails -ge $MAX_FAILURES ]; then
         echo "Unable to reach router. Restarting wlan0 interface..." 1>&2
+        /sbin/ifdown wlan0
         /sbin/ifup wlan0
     fi
 
