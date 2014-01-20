@@ -18,7 +18,6 @@ import simplejson as json
 import sys
 import time
 
-
 def getVersionFromSerial(ser):
     version = None
     retries = 0
