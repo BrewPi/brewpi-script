@@ -290,6 +290,13 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                         settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
                     elif avrVersionNew.revision == 3:
                         settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_3
+                    elif avrVersionNew.revision == 4:
+                        if avrVersionOld.revision >= 3:
+                            settingsRestoreLookupDict = settingRestore.keys_0_2_3_to_0_2_4
+                        else:
+                            settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_4
+
+
                     printStdErr("Will try to restore compatible settings")
         else:
             printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
