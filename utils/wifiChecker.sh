@@ -18,7 +18,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 if [ "$1" = "install" ]; then
-    echo "Installing wifi checking script"
+    echo "Installing wifi checking script to /etc/cron.d/brewpi"
     ### Make sure auto wlan0 is added to /etc/network/interfaces, otherwise it causes trouble bringing the interface back up
     grep "auto wlan0" /etc/network/interfaces > /dev/null
     if [ $? -ne 0 ]; then
