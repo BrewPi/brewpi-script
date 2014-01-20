@@ -11,22 +11,28 @@ INTERVAL=15
 ###  DO NOT EDIT BELOW HERE!  ###
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}")" && pwd )
 
+### Check if we have root privs to run
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root: sudo ./wifiChecker.sh)" 1>&2
+   exit 1
+fi
+
 if [ "$1" = "install" ]; then
-    echo "Installing wifi checking script to /etc/cron.d/brewpi"
+    echo "Installing wifi checking script"
     ### Make sure auto wlan0 is added to /etc/network/interfaces, otherwise it causes trouble bringing the interface back up
-    grep "auto wlan0" /etc/network/interfaces
+    grep "auto wlan0" /etc/network/interfaces > /dev/null
     if [ $? -ne 0 ]; then
         printf '%s\n' 0a "auto wlan0" . w | ed -s /etc/network/interfaces
     fi
 
     ### Check if enableWlan is already added to cron file and, if not, add it
-    grep "enableWlan.sh" /etc/cron.d/brewpi
+    grep "enableWlan.sh" /etc/cron.d/brewpi > /dev/null
     if [ $? -eq 0 ]; then
          echo "Cron entry already exists, skipping..."
     else
         ### Look at cron entry to find location of log files
-        logPath=$(grep brewpi.py /etc/cron.d/brewpi|sed -r 's/.*(1>.*)$/\1/')|sed -r 's/>/>>/'
-        echo "Installing cron job for Wifi checking..."
+        logPath=$(grep brewpi.py /etc/cron.d/brewpi|sed -r 's/.*(1>.*)$/\1/')|sed -r 's/>/>>/' >/dev/null
+        echo "Adding cron job for Wifi checking to /etc/cron.d/brewpi"
         echo "*/10 * * * * $DIR/enableWlan.sh $logPath" >> /etc/cron.d/brewpi
     fi
     echo "Wifi checking script installed! No further action is needed."
@@ -42,20 +48,20 @@ while [ $fails -lt $MAX_FAILURES ]; do
     ping -c 1 -I wlan0 $gateway > /dev/null
     if [ $? -eq 0 ]; then
         fails=0
-        echo "Successfully pinged $gateway"
+        echo "BrewPi: wifiChecker: Successfully pinged $gateway"
         break
     fi
 ### If that didn't work...
     let fails=fails+1
     if [ $fails -lt $MAX_FAILURES ]; then
-        echo "Attempt $fails to reach $gateway failed" 1>&2
+        echo "BrewPi: wifiChecker: Attempt $fails to reach $gateway failed" 1>&2
         sleep $INTERVAL
     fi
 done
 
 ### Restart wlan0 interface
     if [ $fails -ge $MAX_FAILURES ]; then
-        echo "Unable to reach router. Restarting wlan0 interface..." 1>&2
+        echo "BrewPi: wifiChecker: Unable to reach router. Restarting wlan0 interface..." 1>&2
         /sbin/ifdown wlan0
         /sbin/ifup wlan0
     fi
