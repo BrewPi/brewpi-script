@@ -42,6 +42,13 @@ fi
 
 fails=0
 gateway=$(/sbin/ip route | awk '/default/ { print $3 }')
+### Sometimes network is so hosed, gateway IP is missing from ip route
+if [ -z $gateway ]; then
+    echo "BrewPi: wifiChecker: Cannot find gateway IP. Restarting wlan0 interface..." 1>&2
+    /sbin/ifdown wlan0
+    /sbin/ifup wlan0
+    exit 0
+fi
 
 while [ $fails -lt $MAX_FAILURES ]; do
 ### Try pinging, and if host is up, exit
