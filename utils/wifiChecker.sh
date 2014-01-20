@@ -12,7 +12,7 @@ INTERVAL=15
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}")" && pwd )
 
 if [ "$1" = "install" ]; then
-    echo "Installing wifi check/enable script..."
+    echo "Installing wifi checking script to /etc/cron.d/brewpi"
     ### Make sure auto wlan0 is added to /etc/network/interfaces, otherwise it causes trouble bringing the interface back up
     grep "auto wlan0" /etc/network/interfaces
     if [ $? -ne 0 ]; then
@@ -29,8 +29,8 @@ if [ "$1" = "install" ]; then
         echo "Installing cron job for Wifi checking..."
         echo "*/10 * * * * $DIR/enableWlan.sh $logPath" >> /etc/cron.d/brewpi
     fi
-    echo "Wifi check script installed! No further action is needed."
-    echo "You can run ./enablewifi.sh from this directory to manually test if you like."
+    echo "Wifi checking script installed! No further action is needed."
+    echo "You can run ./wifiChecker.sh from $DIR to manually test if you like."
     exit 0
 fi
 
