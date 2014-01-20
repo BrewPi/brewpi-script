@@ -102,10 +102,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                      "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
                      "Arduino will be reset to defaults."))
     else:
-        printStdErr("Found Arduino " + str(avrVersionOld.board) +
-                    " with a " + str(avrVersionOld.shield) + " shield, " +
-                    "running BrewPi version " + str(avrVersionOld.version) +
-                    " build " + str(avrVersionOld.build) +
+        printStdErr("Found " + avrVersionOld.toExtendedString() + \
                     " on port " + port + "\n")
 
     oldSettings = {}
@@ -234,10 +231,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                      "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
                      "Arduino will be reset to defaults."))
     else:
-        printStdErr("Checking new version: Found Arduino " + avrVersionNew.board +
-                    " with a " + str(avrVersionNew.shield) + " shield, " +
-                    "running BrewPi version " + str(avrVersionNew.version) +
-                    " build " + str(avrVersionNew.build) +
+        printStdErr("Checking new version: Found " + avrVersionNew.toExtendedString() +
                     " on port " + port + "\n")
 
     printStdErr("Resetting EEPROM to default settings")

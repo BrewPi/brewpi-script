@@ -361,10 +361,7 @@ if hwVersion is None:
     # script will continue so you can at least program the Arduino
     lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
 else:
-    logMessage("Found Arduino " + str(hwVersion.board) +
-               " with a " + str(hwVersion.shield) + " shield, " +
-               "running BrewPi version " + hwVersion.toString() +
-               " build " + str(hwVersion.build) +
+    logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + port + "\n")
     if hwVersion.toString() != compatibleHwVersion:
         logMessage("Warning: BrewPi version compatible with this script is " +

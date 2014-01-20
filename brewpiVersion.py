@@ -54,6 +54,7 @@ class AvrInfo:
     board = "b"
     shield = "s"
     log = "l"
+    commit = "c"
 
     shield_revA = "revA"
     shield_revC = "revC"
@@ -72,6 +73,7 @@ class AvrInfo:
         self.revision = 0
         self.version = None
         self.build = 0
+        self.commit = None
         self.simulator = False
         self.board = None
         self.shield = None
@@ -110,6 +112,8 @@ class AvrInfo:
             self.log = j[AvrInfo.log]
         if AvrInfo.build in j:
             self.build = j[AvrInfo.build]
+        if AvrInfo.commit in j:
+            self.commit = j[AvrInfo.commit]
 
     def parseStringVersion(self, s):
         s = s.strip()
@@ -121,5 +125,17 @@ class AvrInfo:
     def toString(self):
         return str(self.major) + "." + str(self.minor) + "." + str(self.revision)
 
-
+    def toExtendedString(self):
+        string = "BrewPi v" + self.toString()
+        if self.commit:
+            string += ", running commit " + str(self.commit)
+        if self.build:
+            string += " build " + str(self.build)
+        if self.board:
+            string += ", on an Arduino " + str(self.board)
+        if self.shield:
+            string += " with a " + str(self.shield) + " shield"
+        if(self.simulator):
+           string += ", running as simulator"
+        return string
 
