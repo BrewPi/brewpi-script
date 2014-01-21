@@ -130,8 +130,6 @@ def programArduino(config, boardType, hexFile, restoreWhat):
             printStdErr("JSON decode error: " + str(e))
             printStdErr("Line received was: " + line)
 
-    ser.close()
-    del ser  # Arduino won't reset when serial port is not completely removed
     oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
     printStdErr("Saving old settings to file " + oldSettingsFileName)
 
@@ -193,6 +191,8 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
     # open and close serial port at 1200 baud. This resets the Arduino Leonardo
     # the Arduino Uno resets every time the serial port is opened automatically
+    ser.close()
+    del ser  # Arduino won't reset when serial port is not completely removed
     if boardType == 'leonardo':
         ser, port = openSerial(config['port'], config['altport'], 1200, 0.2)
         if ser is None:
