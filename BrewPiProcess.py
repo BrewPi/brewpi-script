@@ -194,9 +194,11 @@ class BrewPiProcesses():
         Ask all running Brewpi processes to exit, and prevent restarting by writing
         the do_not_run file
         """
-        dontrunfile = open(dontRunFilePath, "w")
-        dontrunfile.write("1")
-        dontrunfile.close()        
+        if not os.path.exists(dontRunFilePath):
+            # if do not run file does not exist, create it
+            dontrunfile = open(dontRunFilePath, "w")
+            dontrunfile.write("1")
+            dontrunfile.close()
         myPid = os.getpid()
         self.update()
         for p in self.list:
