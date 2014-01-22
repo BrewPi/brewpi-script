@@ -389,10 +389,10 @@ def programArduino(config, boardType, hexFile, restoreWhat):
         detectedDevices = None
         for device in oldSettings['installedDevices']:
             printStdErr("Restoring device: " + json.dumps(device))
-            if "a" in device.keys: # check for sensors configured as first on bus
+            if "a" in device.keys(): # check for sensors configured as first on bus
                 if(int(device['a'], 16) == 0 ):
                     printStdErr("OneWire sensor was configured to autodetect the first sensor on the bus, " +
-                                "but this is no longer supported." +
+                                "but this is no longer supported. " +
                                 "We'll attempt to automatically find the address and add the sensor based on its address")
                     if detectedDevices is None:
                         ser.write("h{}")  # installed devices
@@ -406,7 +406,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                                 printStdErr("JSON decode error: " + str(e))
                                 printStdErr("Line received was: " + line)
                     for detectedDevice in detectedDevices:
-                        if device['p'] == detectedDevice['pin']:
+                        if device['p'] == detectedDevice['p']:
                             device['a'] = detectedDevice['a'] # get address from sensor that was first on bus
 
             ser.write("U" + json.dumps(device))
