@@ -107,9 +107,10 @@ def programArduino(config, boardType, hexFile, restoreWhat):
 
     oldSettings = {}
 
-    printStdErr("Requesting old settings from Arduino...")
+
     # request all settings from board before programming
     if avrVersionOld is not None:
+        printStdErr("Requesting old settings from Arduino...")
         if avrVersionOld.minor > 1:  # older versions did not have a device manager
             ser.write("d{}")  # installed devices
             time.sleep(1)
@@ -117,31 +118,31 @@ def programArduino(config, boardType, hexFile, restoreWhat):
         ser.write("s")  # control settings
         time.sleep(2)
 
-    for line in ser:
-        try:
-            if line[0] == 'C':
-                oldSettings['controlConstants'] = json.loads(line[2:])
-            elif line[0] == 'S':
-                oldSettings['controlSettings'] = json.loads(line[2:])
-            elif line[0] == 'd':
-                oldSettings['installedDevices'] = json.loads(line[2:])
+        for line in ser:
+            try:
+                if line[0] == 'C':
+                    oldSettings['controlConstants'] = json.loads(line[2:])
+                elif line[0] == 'S':
+                    oldSettings['controlSettings'] = json.loads(line[2:])
+                elif line[0] == 'd':
+                    oldSettings['installedDevices'] = json.loads(line[2:])
 
-        except json.decoder.JSONDecodeError, e:
-            printStdErr("JSON decode error: " + str(e))
-            printStdErr("Line received was: " + line)
+            except json.decoder.JSONDecodeError, e:
+                printStdErr("JSON decode error: " + str(e))
+                printStdErr("Line received was: " + line)
 
-    oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
-    printStdErr("Saving old settings to file " + oldSettingsFileName)
+        oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
+        printStdErr("Saving old settings to file " + oldSettingsFileName)
 
-    scriptDir = util.scriptPath()  # <-- absolute dir the script is in
-    if not os.path.exists(scriptDir + '/settings/avr-backup/'):
-        os.makedirs(scriptDir + '/settings/avr-backup/')
+        scriptDir = util.scriptPath()  # <-- absolute dir the script is in
+        if not os.path.exists(scriptDir + '/settings/avr-backup/'):
+            os.makedirs(scriptDir + '/settings/avr-backup/')
 
-    oldSettingsFile = open(scriptDir + '/settings/avr-backup/' + oldSettingsFileName, 'wb')
-    oldSettingsFile.write(json.dumps(oldSettings))
+        oldSettingsFile = open(scriptDir + '/settings/avr-backup/' + oldSettingsFileName, 'wb')
+        oldSettingsFile.write(json.dumps(oldSettings))
 
-    oldSettingsFile.truncate()
-    oldSettingsFile.close()
+        oldSettingsFile.truncate()
+        oldSettingsFile.close()
 
     printStdErr("Loading programming settings from board.txt")
 
@@ -329,7 +330,7 @@ def programArduino(config, boardType, hexFile, restoreWhat):
                         except Exception, e:  # catch all exceptions, because out of date file could cause errors
                             printStdErr("Error while expanding log message: " + str(e))
                             printStdErr("Arduino debug message: " + line[2:])
-                except json.decoder.JSONDecodeError, e:
+                except json.JSONDecodeError, e:
                         printStdErr("JSON decode error: " + str(e))
                         printStdErr("Line received was: " + line)
             else:
