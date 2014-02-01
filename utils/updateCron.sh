@@ -20,10 +20,10 @@ die () {
 # the script path will one dir above the location of this bash file
 unset CDPATH
 myPath="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-scriptPath="$(dirname "$myPath")"
+defaultScriptPath="$(dirname "$myPath")"
 
 ############
-### Install cron job
+### Check for old crontab entry
 ############
 echo -e "\n***** Updating cron for the brewpi user... *****\n"
 
@@ -66,13 +66,177 @@ if [ -s /tmp/oldcron ]; then
 fi
 rm /tmp/oldcron||warn
 
-echo -e "\ncopying new cron job to /etc/cron.d/brewpi"
+############
+# Update etc/cron.d/brewpi
+# Settings are stored in the cron file itself: active entries, scriptpath and stdout/stderr redirect paths
+#
+# Entries is a list of entries that should be active.
+#   entries="brewpi wifichecker"
+# If an entry is disabled, it is prepended with ~
+#   entries="brewpi ~wifichecker"
+#
+# Each entry is two lines, one comment with the entry name, one for the actual entry
+#   entry:wifichecker
+#   */10 * * * * $scriptpath/util/wifiChecker.sh 1>$stdoutpath 2>>$stderrpath &
+#
+# This script checks the available entries whether they are up-to-date.# If not, it can replace the entry with a new version.
+# If the entry is not in entries (enabled or disabled), it needs to be disabled or added.
+# Known entries: brewpi wifichecker
+#
+# Full Example:
+#   stderrpath="/home/brewpi/logs/stderr.txt"
+#   stdoutpath="/home/brewpi/logs/stdout.txt"
+#   scriptpath="/home/brewpi"
+#   entries="brewpi wifichecker"
+#   # entry:brewpi
+#   * * * * * brewpi python $scriptpath/brewpi.py --checkstartuponly --dontrunfile; [ $? != 0 ] && python -u $scriptpath/brewpi.py 1>$stdoutpath 2>>$stderrpath &
+#   # entry:wifichecker
+#   */10 * * * * $scriptpath/util/wifiChecker.sh 1>$stdoutpath 2>>$stderrpath &
+#
+############
 
-if [[ "$scriptPath" != "/home/brewpi" ]]; then
-    echo "Using non-default script path, using sed to write modified cron file to /etc/cron.d/brewpi"
-    sudo sh -c "sed -e \"s,/home/brewpi,$scriptPath\",g $myPath/brewpi.cron > /etc/cron.d/brewpi"||die
-else
-    sudo cp "$myPath"/brewpi.cron /etc/cron.d/brewpi||die
+# default cron lines for brewpi
+cronfile="/etc/cron.d/brewpi"
+# make sure it exists
+sudo touch "$cronfile"
+
+brewpicron='* * * * * brewpi python $scriptpath/brewpi.py --checkstartuponly --dontrunfile; [ $? != 0 ] && python -u $scriptpath/brewpi.py 1>$stdoutpath 2>>$stderrpath &'
+wificheckcron='*/10 * * * * $scriptpath/util/wifiChecker.sh 1>$stdoutpath 2>>$stderrpath &'
+
+# get variables from old cron job. First grep gets the line, second one the sting, tr removes the quotes.
+# in cron file: entries="brewpi wifichecker"
+entries=$(grep -m1 'entries=".*"' /etc/cron.d/brewpi | grep -oE '".*"' | tr -d \")
+scriptpath=$(grep -m1 'scriptpath=".*"' /etc/cron.d/brewpi | grep -oE '".*"' | tr -d \")
+stdoutpath=$(grep -m1 'stdoutpath=".*"' /etc/cron.d/brewpi | grep -oE '".*"' | tr -d \")
+stderrpath=$(grep -m1 'stderrpath=".*"' /etc/cron.d/brewpi | grep -oE '".*"' | tr -d \")
+
+# if the variables did not exist, add the defaults
+if [ -z "$entries" ]; then
+    entries="brewpi"
+    echo "Cron file is old version, starting fresh"
+    sudo rm -f "$cronfile"
+    echo "entries=\"brewpi\"" | sudo tee "$cronfile" > /dev/null
+fi
+
+if [ -z "$scriptpath" ]; then
+    scriptpath="$defaultScriptPath"
+    echo "No previous setting for scriptpath found, using default $scriptpath"
+    sudo sed -i '1iscriptpath="/home/brewpi"' "$cronfile"
+fi
+
+if [ -z "$stdoutpath" ]; then
+    stdoutpath="/home/brewpi/logs/stdout.txt"
+    echo "No previous setting for stdoutpath found, using default $stdoutpath"
+    sudo sed -i '1istdoutpath="/home/brewpi/logs/stdout.txt"' "$cronfile"
+fi
+
+if [ -z "$stderrpath" ]; then
+    stderrpath="/home/brewpi/logs/stdout.txt"
+    echo "No previous setting for stdoutpath found, using default $stderrpath"
+    sudo sed -i '1istderrpath="/home/brewpi/logs/stderr.txt"' "$cronfile"
+fi
+
+function checkEntry {
+    entry=$1 # entry name
+    newEntry=$2 # new cron job
+    echo "Checking entry for $entry ..."
+    # find old entry for this name
+    oldEntry=$(grep -A1 "entry:$entry" "$cronfile" | tail -n 1)
+    # check whether it is up to date
+    if [ "$oldEntry" != "$newEntry" ]; then
+        # if not up to date, prompt to replace
+        echo -e "\nYour current cron entry:"
+        if [ -z "$oldEntry" ]; then
+            echo "None"
+        else
+            echo "$oldEntry"
+        fi
+        echo -e "\nLatest version of this cron entry:"
+        echo "$newEntry"
+        echo -e "\n"
+        read -p "Your current cron entry differs from the latest version, would you like me to update? [Y/n]: " yn
+        if [ -z "$yn" ]; then
+            yn="y" # no entry/enter = yes
+        fi
+        case "$yn" in
+            y | Y | yes | YES| Yes )
+                line=$(grep -n "entry:$entry" /etc/cron.d/brewpi | cut -d: -f 1)
+                if [ -z "$line" ]; then
+                    echo -e "\nAdding new cron entry to file"
+                    # entry did not exist, add at end of file
+                    echo "# entry:$entry" | sudo tee -a "$cronfile" > /dev/null
+                    echo "$newEntry" | sudo tee -a "$cronfile" > /dev/null
+                else
+                    echo -e "\nReplacing cron entry on line $line with newest version"
+                    # get line number to replace
+                    cp "$cronfile" /tmp/brewpi.cron
+                    # write head of old cron file until replaced line
+                    head -"$line" /tmp/brewpi.cron | sudo tee "$cronfile" > /dev/null
+                    # write replacement
+                    echo "$newEntry" | sudo tee -a "$cronfile" > /dev/null
+                    # write remainder of old file
+                    tail -n +$((line+2)) /tmp/brewpi.cron | sudo tee -a "$cronfile" > /dev/null
+                fi
+                ;;
+            * )
+                echo "Skipping entry for $entry"
+                ;;
+        esac
+    fi
+    echo "Done checking entry $entry ..."
+}
+
+# Entry for brewpi.py
+found=false
+for entry in $entries; do
+    # entry for brewpi.py
+    if [ "$entry" == "brewpi" ] ; then
+        found=true
+        checkEntry brewpi "$brewpicron"
+        break
+    fi
+done
+
+# Entry for WiFi check script
+found=false
+for entry in $entries; do
+    if [ "$entry" == "wifichecker" ] ; then
+        # check whether cron entry is up to date
+        found=true
+        checkEntry wifichecker "$wificheckcron"
+        break
+    elif [ "$entry" == "~wifichecker" ] ; then
+        echo "WiFi checker is disabled."
+        found=true
+        break
+    fi
+done
+# If there was no entry for wifichecker, ask to add it or disable it
+if [ "$found" == false ] ; then
+    echo "No setting found for wifi check script"
+    if [ -n "$(ifconfig | grep wlan)" ]; then
+        echo -e "\nIt looks like you're running a wifi adapter on your Pi"
+    else
+        echo -e "\nIt looks like you're not running a wifi adapter on your Pi."
+    fi
+    echo "We recently added a utility script that can attempt to restart the WiFi connection on your Pi"
+    read -p "if the connection were to drop. Would you like to enable the cron entry? [Y/n]: " yn
+    if [ -z "$yn" ]; then
+        yn="y"
+    fi
+    case "$yn" in
+        y | Y | yes | YES| Yes )
+            # update entries="..." to entries="... wifichecker"
+            sudo sed -i '/entries=.*/ s/"$/ wifichecker"/' "$cronfile"
+            checkEntry wifichecker "$wificheckcron"
+            sudo bash "$scriptpath"/utils/wifiChecker.sh checkinterfaces
+            ;;
+        * )
+            # update entries="..." to entries="... ~wifichecker"
+            sudo sed -i '/entries=.*/ s/"$/ ~wifichecker"/' "$cronfile"
+            echo "Setting wifichecker to disabled"
+            ;;
+    esac
 fi
 
 
