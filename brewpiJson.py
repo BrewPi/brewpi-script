@@ -93,12 +93,12 @@ def addRow(jsonFileName, row):
 	if row['RoomTemp'] is None:
 		jsonFile.write("null,")
 	else:
-		jsonFile.write("{\"v\":\"" + str(row['RoomTemp']) + "\"},")
+		jsonFile.write("{\"v\":" + str(row['RoomTemp']) + "},")
 
 	if row['State'] is None:
 		jsonFile.write("null")
 	else:
-		jsonFile.write("{\"v\":\"" + str(row['State']) + "\"}")
+		jsonFile.write("{\"v\":" + str(row['State']) + "}")
 
 	# rewrite end of json file
 	jsonFile.write("]}]}")
