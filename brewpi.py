@@ -29,6 +29,7 @@ import getopt
 from pprint import pprint
 import shutil
 import traceback
+import urllib
 
 # load non standard packages, exit when they are not installed
 try:
@@ -222,8 +223,7 @@ def changeWwwSetting(settingName, value):
     wwwSettingsFile.truncate()
     wwwSettingsFile.close()
 
-
-def startBeer(beerName):
+def setFiles():
     global config
     global localJsonFileName
     global localCsvFileName
@@ -232,38 +232,47 @@ def startBeer(beerName):
     global lastDay
     global day
 
+    # create directory for the data if it does not exist
+    beerFileName = config['beerName']
+    dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerFileName)
+    wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerFileName)
+
+    if not os.path.exists(dataPath):
+        os.makedirs(dataPath)
+        os.chmod(dataPath, 0775)  # give group all permissions
+    if not os.path.exists(wwwDataPath):
+        os.makedirs(wwwDataPath)
+        os.chmod(wwwDataPath, 0775)  # give group all permissions
+
+    # Keep track of day and make new data file for each day
+    day = time.strftime("%Y-%m-%d")
+    lastDay = day
+    # define a JSON file to store the data
+    jsonFileName = beerFileName + '-' + day
+
+    #if a file for today already existed, add suffix
+    if os.path.isfile(dataPath + jsonFileName + '.json'):
+        i = 1
+        while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
+            i += 1
+        jsonFileName = jsonFileName + '-' + str(i)
+
+    localJsonFileName = dataPath + jsonFileName + '.json'
+    brewpiJson.newEmptyFile(localJsonFileName)
+
+    # Define a location on the web server to copy the file to after it is written
+    wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
+
+    # Define a CSV file to store the data as CSV (might be useful one day)
+    localCsvFileName = (dataPath + beerFileName + '.csv')
+    wwwCsvFileName = (wwwDataPath + beerFileName + '.csv')
+
+    # create new empty json file
+    brewpiJson.newEmptyFile(localJsonFileName)
+
+def startBeer(beerName):
     if config['dataLogging'] == 'active':
-        # create directory for the data if it does not exist
-        dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerName)
-        wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerName)
-
-        if not os.path.exists(dataPath):
-            os.makedirs(dataPath)
-            os.chmod(dataPath, 0775)  # give group all permissions
-        if not os.path.exists(wwwDataPath):
-            os.makedirs(wwwDataPath)
-            os.chmod(wwwDataPath, 0775)  # give group all permissions
-
-        # Keep track of day and make new data file for each day
-        day = time.strftime("%Y-%m-%d")
-        lastDay = day
-        # define a JSON file to store the data
-        jsonFileName = config['beerName'] + '-' + day
-        #if a file for today already existed, add suffix
-        if os.path.isfile(dataPath + jsonFileName + '.json'):
-            i = 1
-            while os.path.isfile(dataPath + jsonFileName + '-' + str(i) + '.json'):
-                i += 1
-            jsonFileName = jsonFileName + '-' + str(i)
-        localJsonFileName = dataPath + jsonFileName + '.json'
-        brewpiJson.newEmptyFile(localJsonFileName)
-
-        # Define a location on the web server to copy the file to after it is written
-        wwwJsonFileName = wwwDataPath + jsonFileName + '.json'
-
-        # Define a CSV file to store the data as CSV (might be useful one day)
-        localCsvFileName = (dataPath + config['beerName'] + '.csv')
-        wwwCsvFileName = (wwwDataPath + config['beerName'] + '.csv')
+        setFiles()
 
     changeWwwSetting('beerName', beerName)
 
@@ -275,11 +284,11 @@ def startNewBrew(newName):
         config = util.configSet(configFile, 'dataLogging', 'active')
         startBeer(newName)
         logMessage("Notification: Restarted logging for beer '%s'." % newName)
-        return {'status': 0, 'statusMessage': "Successfully started switched to new brew '%s'. " % newName +
+        return {'status': 0, 'statusMessage': "Successfully started switched to new brew '%s'. " % urllib.unquote(newName) +
                                               "Please reload the page."}
     else:
         return {'status': 1, 'statusMessage': "Invalid new brew name '%s', "
-                                              "please enter a name with at least 2 characters" % newName}
+                                              "please enter a name with at least 2 characters" % urllib.unquote(newName)}
 
 
 def stopLogging():
@@ -315,7 +324,7 @@ def resumeLogging():
 port = config['port']
 ser, conn = util.setupSerial(config)
 
-logMessage("Notification: Script started for beer '" + config['beerName'] + "'")
+logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
 time.sleep(float(config.get('startupDelay', 10)))
 
@@ -412,12 +421,8 @@ while run:
         lastDay = day
         day = time.strftime("%Y-%m-%d")
         if lastDay != day:
-            logMessage("Notification: New day, dropping data table and creating new JSON file.")
-            jsonFileName = config['beerName'] + '/' + config['beerName'] + '-' + day
-            localJsonFileName = util.addSlash(config['scriptPath']) + 'data/' + jsonFileName + '.json'
-            wwwJsonFileName = util.addSlash(config['wwwPath']) + 'data/' + jsonFileName + '.json'
-            # create new empty json file
-            brewpiJson.newEmptyFile(localJsonFileName)
+            logMessage("Notification: New day, creating new JSON file.")
+            setFiles()
 
     # Wait for incoming socket connections.
     # When nothing is received, socket.timeout will be raised after
