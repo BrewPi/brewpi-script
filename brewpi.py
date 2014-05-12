@@ -284,7 +284,7 @@ def startNewBrew(newName):
         config = util.configSet(configFile, 'dataLogging', 'active')
         startBeer(newName)
         logMessage("Notification: Restarted logging for beer '%s'." % newName)
-        return {'status': 0, 'statusMessage': "Successfully started switched to new brew '%s'. " % urllib.unquote(newName) +
+        return {'status': 0, 'statusMessage': "Successfully switched to new brew '%s'. " % urllib.unquote(newName) +
                                               "Please reload the page."}
     else:
         return {'status': 1, 'statusMessage': "Invalid new brew name '%s', "
