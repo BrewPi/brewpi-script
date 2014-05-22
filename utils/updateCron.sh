@@ -100,7 +100,7 @@ cronfile="/etc/cron.d/brewpi"
 # make sure it exists
 sudo touch "$cronfile"
 
-brewpicron='* * * * * brewpi python $scriptpath/brewpi.py --checkstartuponly --dontrunfile; [ $? != 0 ] && python -u $scriptpath/brewpi.py 1>$stdoutpath 2>>$stderrpath &'
+brewpicron='* * * * * brewpi python $scriptpath/brewpi.py --checkstartuponly --dontrunfile $scriptpath/brewpi.py 1>/dev/null 2>>$stderrpath; [ $? != 0 ] && python -u $scriptpath/brewpi.py 1>$stdoutpath 2>>$stderrpath &'
 wificheckcron='*/10 * * * * root $scriptpath/utils/wifiChecker.sh 1>>$stdoutpath 2>>$stderrpath &'
 
 # get variables from old cron job. First grep gets the line, second one the sting, tr removes the quotes.

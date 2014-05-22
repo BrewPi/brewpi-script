@@ -1,5 +1,5 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Always use LF line endings, even on Windows. This prevents git from changing files when switching branches.
+text eol=lf
 
 # Custom for Visual Studio
 *.cs     diff=csharp

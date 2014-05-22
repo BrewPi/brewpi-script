@@ -22,8 +22,8 @@ def getVersionFromSerial(ser):
     version = None
     retries = 0
     requestVersion = True
+    startTime = time.time()
     while requestVersion:
-        startTime = time.time()
         retry = True
         for line in ser:
             if line[0] == 'N':
