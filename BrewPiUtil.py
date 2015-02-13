@@ -48,6 +48,9 @@ def readCfgWithDefaults(cfg):
 	Returns:
 	ConfigObj of settings
 	"""
+	if not cfg:
+		cfg = addSlash(sys.path[0]) + 'settings/config.cfg'
+
 	defaultCfg = scriptPath() + '/settings/defaults.cfg'
 	config = configobj.ConfigObj(defaultCfg)
 

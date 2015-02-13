@@ -23,9 +23,11 @@ def getVersionFromSerial(ser):
     retries = 0
     requestVersion = True
     startTime = time.time()
+    ser.write('n')  # request version info
     while requestVersion:
         retry = True
-        for line in ser:
+        line = ser.readline()
+        if line:
             if line[0] == 'N':
                 data = line.strip('\n')[2:]
                 version = AvrInfo(data)
