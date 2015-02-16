@@ -93,12 +93,14 @@ def scriptPath():
     """
     return os.path.dirname(__file__)
 
+
 def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
     if os.path.isfile(path):
         os.remove(path)
         print "BrewPi set to be automatically restarted by cron"
     else:
         print "File do_not_run_brewpi does not exist at " + path
+
 
 def setupSerial(config):
     ser = None
