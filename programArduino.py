@@ -34,6 +34,7 @@ def printStdErr(string):
 def asbyte(v):
     return chr(v & 0xFF)
 
+
 class LightYModem:
     """
     Receive_Packet
@@ -168,14 +169,17 @@ def json_decode_response(line):
         printStdErr("JSON decode error: " + str(e))
         printStdErr("Line received was: " + line)
 
+msg_map = { "a" : "Arduino" }
 
 class SerialProgrammer:
 
     @staticmethod
     def create(config, boardType):
-        if boardType=='sparkcore':
+        if boardType=='spark-core':
+            msg_map["a"] = "Spark Core"
             programmer = SparkProgrammer(config, boardType)
         else:
+            msg_map["a"] = "Arduino"
             programmer = ArduinoProgrammer(config, boardType)
         return programmer
 
@@ -190,7 +194,7 @@ class SerialProgrammer:
         self.oldSettings = {}
 
     def program(self, hexFile, restoreWhat):
-        printStdErr("****    Arduino Program script started    ****")
+        printStdErr("****    %(a)s Program script started    ****" % msg_map)
 
         self.parse_restore_settings(restoreWhat)
         if not self.open_serial(self.config, 57600, 0.2):
@@ -231,8 +235,8 @@ class SerialProgrammer:
 
         printStdErr("Now checking which settings and devices can be restored...")
         if self.avrVersionNew is None:
-            printStdErr(("Warning: Cannot receive version number from Arduino after programming. " +
-                         "Something must have gone wrong. Restoring settings/devices settings failed.\n"))
+            printStdErr(("Warning: Cannot receive version number from %(a)s after programming. " +
+                         "Something must have gone wrong. Restoring settings/devices settings failed.\n" % msg_map))
             return 0
         if self.avrVersionOld is None:
             printStdErr("Could not receive version number from old board, " +
@@ -277,9 +281,9 @@ class SerialProgrammer:
     def fetch_version(self, msg):
         version = brewpiVersion.getVersionFromSerial(self.ser)
         if version is None:
-            printStdErr(("Warning: Cannot receive version number from Arduino. " +
-                         "Your Arduino is either not programmed yet or running a very old version of BrewPi. "
-                         "Arduino will be reset to defaults."))
+            printStdErr(("Warning: Cannot receive version number from %(a)s. " +
+                         "Your %(a)s is either not programmed yet or running a very old version of BrewPi. "
+                         "%(a)s will be reset to defaults." % msg_map))
         else:
             printStdErr(msg+"Found " + version.toExtendedString() +
                         " on port " + self.port + "\n")
@@ -296,7 +300,7 @@ class SerialProgrammer:
     def save_settings(self):
         ser, oldSettings = self.ser, self.oldSettings
         oldSettings.clear()
-        printStdErr("Requesting old settings from Arduino...")
+        printStdErr("Requesting old settings from %(a)s..." % msg_map)
         expected_responses = 2
         if self.avrVersionOld.minor > 1:  # older versions did not have a device manager
             expected_responses += 1
@@ -350,10 +354,10 @@ class SerialProgrammer:
                 # debug message received
                 try:
                     expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-                    printStdErr("Arduino debug message: " + expandedMessage)
+                    printStdErr(("%(a)s debug message: " % msg_map) + expandedMessage)
                 except Exception, e:  # catch all exceptions, because out of date file could cause errors
                     printStdErr("Error while expanding log message: " + str(e))
-                    printStdErr("Arduino debug message was: " + line[2:])
+                    printStdErr(("%(a)s debug message was: " % msg_map) + line[2:])
 
     def print_debug_log(self, line):
         try:  # debug message received
@@ -361,7 +365,7 @@ class SerialProgrammer:
             printStdErr(expandedMessage)
         except Exception, e:  # catch all exceptions, because out of date file could cause errors
             printStdErr("Error while expanding log message: " + str(e))
-            printStdErr("Arduino debug message: " + line[2:])
+            printStdErr(("%(a)s debug message: " % msg_map) + line[2:])
 
     def restore_settings(self):
         ser, avrVersionOld, avrVersionNew, oldSettings = self.ser, self.avrVersionOld, self.avrVersionNew, self.oldSettings
@@ -454,7 +458,7 @@ class SerialProgrammer:
                 line = ser.readline() if outstanding else None
 
             if tries>10:
-                printStdErr("Could not receive all keys for settings to restore from Arduino")
+                printStdErr("Could not receive all keys for settings to restore from %(a)s" % msg_map)
                 break
 
         return ccNew, csNew
@@ -522,7 +526,7 @@ class SerialProgrammer:
                         if line[0] == 'D':
                             self.print_debug_log(line)
                         elif line[0] == 'U':
-                            printStdErr("Arduino reports: device updated to: " + line[2:])
+                            printStdErr(("%(a)s reports: device updated to: " % msg_map) + line[2:])
                     else:
                         break
             printStdErr("Restoring installed devices done!")
@@ -638,7 +642,7 @@ class ArduinoProgrammer(SerialProgrammer):
 def test_program_spark_core():
     file = "R:\\dev\\brewpi\\firmware\\platform\\spark\\target\\brewpi.bin"
     config = { "port" : "COM22" }
-    result = programArduino(config, "sparkcore", file, { "settings":True, "devices":True})
+    result = programArduino(config, "spark-core", file, { "settings":True, "devices":True})
     printStdErr("Result is "+str(result))
 
 if __name__ == '__main__':
