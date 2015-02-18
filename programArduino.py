@@ -64,6 +64,10 @@ class LightYModem:
     abort1 = 0x41
     abort2 = 0x61
 
+    def __init__(self):
+        self.seq = None
+        self.ymodem = None
+
     def _read_response(self):
         ch1 = ''
         while not ch1:
@@ -86,22 +90,30 @@ class LightYModem:
             raise Exception("packet length is wrong!")
 
         self.ymodem.write(packet)
+        self.ymodem.flush()
         response = self._read_response()
         if response==LightYModem.ack:
+            printStdErr("sent packet nr %d " % (self.seq))
             self.seq += 1
         return response
 
     def _send_close(self):
         self.ymodem.write(asbyte(LightYModem.eot))
+        self.ymodem.flush()
+        response = self._read_response()
+        if response == LightYModem.ack:
+            self.send_filename_header("", 0)
+            self.ymodem.close()
 
     def send_packet(self, file, output):
         response = LightYModem.eot
         data = file.read(LightYModem.packet_len)
-        if data:
+        if len(data):
             response = self._send_ymodem_packet(data)
         return response
 
     def send_filename_header(self, name, size):
+        self.seq = 0
         packet = name + asbyte(0) + str(size) + ' '
         return self._send_ymodem_packet(packet)
 
@@ -115,11 +127,11 @@ class LightYModem:
         file.seek(0, os.SEEK_END)
         size = file.tell()
         file.seek(0, os.SEEK_SET)
-        self.seq = 0
         response = self.send_filename_header("binary", size)
         while response==LightYModem.ack:
             response = self.send_packet(file, output)
 
+        file.close()
         if response==LightYModem.eot:
             self._send_close()
 
@@ -209,6 +221,8 @@ class SerialProgrammer:
 
         if not self.flash_file(hexFile):
             return 0
+
+        printStdErr("Waiting for device to reset.")
 
         # wait for serial to close
         retries = 30
