@@ -654,6 +654,10 @@ while run:
                 continue
             ser.write("U" + value)
             deviceList['listState'] = ""  # invalidate local copy
+        elif messageType == "getVersion":
+            response = hwVersion.__dict__ if hwVersion else {}
+            response_str = json.dumps(response)
+            conn.send(response_str)
         else:
             logMessage("Error: Received invalid message on socket: " + message)
 
