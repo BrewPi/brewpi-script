@@ -105,7 +105,7 @@ class BrewPiProcesses():
         Returns: list of BrewPiProcess objects
         """
         bpList = []
-        matching = [p for p in psutil.process_iter() if any('python' in p.name and 'brewpi.py'in s for s in p.cmdline)]
+        matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'brewpi.py'in s for s in p.cmdline())]
         for p in matching:
             bp = self.parseProcess(p)
             bpList.append(bp)
@@ -121,7 +121,7 @@ class BrewPiProcesses():
         bp = BrewPiProcess()
         bp.pid = process._pid
 
-        cfg = [s for s in process.cmdline if '.cfg' in s]  # get config file argument
+        cfg = [s for s in process.cmdline() if '.cfg' in s]  # get config file argument
         if cfg:
             cfg = cfg[0]  # add full path to config file
         bp.cfg = util.readCfgWithDefaults(cfg)
