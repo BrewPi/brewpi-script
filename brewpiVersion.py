@@ -59,8 +59,9 @@ class AvrInfo:
 
     shield_revA = "revA"
     shield_revC = "revC"
+    spark_shield_revC = "Rev-C"
 
-    shields = {1: shield_revA, 2: shield_revC}
+    shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_revC}
 
     board_leonardo = "leonardo"
     board_standard = "standard"
