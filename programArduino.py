@@ -159,12 +159,11 @@ def openSerial(port, altport, baud, timeoutVal):
         return [ser, port]
     except serial.SerialException as e:
         if altport:
-            printStdErr("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), altport))
             try:
                 ser = serial.Serial(altport, baud, timeout=timeoutVal)
                 return [ser, altport]
             except serial.SerialException as e:
-                printStdErr("Error opening alternative serial port: %s. Script will exit." % str(e))
+                pass
         return [None, None]
 
 

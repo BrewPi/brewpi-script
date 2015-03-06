@@ -83,7 +83,6 @@ deviceList = dict(listState="", installed=[], available=[])
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
-
 def logMessage(message):
     print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
 
@@ -324,6 +323,24 @@ def resumeLogging():
 port = config['port']
 ser, conn = util.setupSerial(config)
 
+# bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
+serialBuffer = ''
+ser.setTimeout(0) # non blocking mode
+
+def lineFromSerial(serial):
+    global serialBuffer
+    serialBuffer = serialBuffer + serial.read(serial.inWaiting())
+    if '\n' in serialBuffer:
+        lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
+        if(lines[1] == ''):
+            # separator not found, first element is incomplete line
+            serialBuffer = lines[0]
+            return None
+        else:
+            serialBuffer = lines[2]
+            return lines[0]
+
+
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
 time.sleep(float(config.get('startupDelay', 10)))
@@ -383,6 +400,7 @@ s.listen(10)  # Create a backlog queue for up to 10 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(serialCheckInterval)
 
+
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
 
@@ -400,7 +418,6 @@ prevTempJson = {
     "State": None,
     "BeerSet": 0,
     "FridgeSet": 0}
-
 
 def renameTempKey(key):
     rename = {
@@ -631,8 +648,6 @@ while run:
             deviceList['listState'] = ""  # invalidate local copy
             if value.find("readValues") != -1:
                 ser.write("d{r:1}")  # request installed devices
-                serialRestoreTimeOut = ser.getTimeout()
-                ser.setTimeout(2)  # set timeOut to 2 seconds because retreiving values takes a while
                 ser.write("h{u:-1,v:1}")  # request available, but not installed devices
             else:
                 ser.write("d{}")  # request installed devices
@@ -681,13 +696,19 @@ while run:
 
         # if no new data has been received for serialRequestInteval seconds
         if (time.time() - prevDataTime) >= float(config['interval']):
-            ser.write("t")  # request new from arduino
+            ser.write("t")  # request new from controller
+            prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
 
         elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
             #something is wrong: arduino is not responding to data requests
             logMessage("Error: Arduino is not responding to new data requests")
 
-        for line in ser:  # read all lines on serial interface
+
+        while True:
+            line = lineFromSerial(ser)
+            if line is None:
+                break
+
             try:
                 if line[0] == 'T':
                     # print it to stdout
@@ -760,9 +781,6 @@ while run:
                     oldListState = deviceList['listState']
                     deviceList['listState'] = oldListState.strip('h') + "h"
                     logMessage("Available devices received: " + str(deviceList['available']))
-                    if serialRestoreTimeOut:
-                        ser.setTimeout(serialRestoreTimeOut)
-                        serialRestoreTimeOut = None
                 elif line[0] == 'd':
                     deviceList['installed'] = json.loads(line[2:])
                     oldListState = deviceList['listState']
@@ -802,3 +820,4 @@ if ser:
 if conn:
     conn.shutdown(socket.SHUT_RDWR)  # close socket
     conn.close()
+
