@@ -124,9 +124,9 @@ def getPinList(boardType, shieldType):
                    {'val': 21, 'text': 'A3', 'type': 'free'},
                    {'val': 22, 'text': 'A4', 'type': 'free'}]
     elif boardType == "spark-core" and shieldType == "Rev-C":
-        pinList = [{'val': 10, 'text': 'Act 1 (A1)', 'type': 'act'},
-                   {'val': 11, 'text': 'Act 2 (A2)', 'type': 'act'},
-                   {'val': 16, 'text': 'Act 3 (A6)', 'type': 'act'},
+        pinList = [{'val': 16, 'text': 'Output 1 (A6)', 'type': 'act'},
+                   {'val': 11, 'text': 'Output 2 (A1)', 'type': 'act'},
+                   {'val': 10, 'text': 'Output 3 (A0)', 'type': 'act'},
                    {'val': 0, 'text': 'OneWire', 'type': 'onewire'}]
     else:
         print 'Unknown Arduino or board type'
