@@ -22,6 +22,14 @@ from time import sleep
 
 try:
     import psutil
+    if psutil.version_info < (2, 0, 0):
+        print >> sys.stderr, "BrewPi requires psutil 2.0 or higher, please upgrade your version of psutil.\n" \
+        "This can best be done via pip, please run:\n" \
+        "  sudo apt-get install build-essential python-dev python-pip\n" \
+        "  sudo pip install psutil --upgrade\n"
+        sys.exit(1)
+
+
 except ImportError:
     print "BrewPi requires psutil to run, please install it with 'sudo apt-get install python-psutil"
     sys.exit(1)
