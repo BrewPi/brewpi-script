@@ -19,14 +19,16 @@ import pprint
 import os
 import sys
 from time import sleep
+from distutils.version import LooseVersion
 
 try:
     import psutil
-    if psutil.version_info < (2, 0, 0):
-        print >> sys.stderr, "BrewPi requires psutil 2.0 or higher, please upgrade your version of psutil.\n" \
+    if LooseVersion(psutil.__version__) < LooseVersion("2.0"):
+        print >> sys.stderr, "Your version of pstuil is %s \n" \
+        "BrewPi requires psutil 2.0 or higher, please upgrade your version of psutil.\n" \
         "This can best be done via pip, please run:\n" \
         "  sudo apt-get install build-essential python-dev python-pip\n" \
-        "  sudo pip install psutil --upgrade\n"
+        "  sudo pip install psutil --upgrade\n" % psutil.__version__
         sys.exit(1)
 
 
