@@ -23,6 +23,8 @@ def getVersionFromSerial(ser):
     retries = 0
     requestVersion = True
     startTime = time.time()
+    oldTimeOut = ser.timeout;
+    ser.setTimeout(1);
     ser.write('n')  # request version info
     while requestVersion:
         retry = True
@@ -44,6 +46,7 @@ def getVersionFromSerial(ser):
             retries += 1
             if retries > 15:
                 break
+    ser.setTimeout(oldTimeOut); # restore previous serial timeout value
     return version
 
 
