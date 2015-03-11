@@ -19,9 +19,19 @@ import pprint
 import os
 import sys
 from time import sleep
+from distutils.version import LooseVersion
 
 try:
     import psutil
+    if LooseVersion(psutil.__version__) < LooseVersion("2.0"):
+        print >> sys.stderr, "Your version of pstuil is %s \n" \
+        "BrewPi requires psutil 2.0 or higher, please upgrade your version of psutil.\n" \
+        "This can best be done via pip, please run:\n" \
+        "  sudo apt-get install build-essential python-dev python-pip\n" \
+        "  sudo pip install psutil --upgrade\n" % psutil.__version__
+        sys.exit(1)
+
+
 except ImportError:
     print "BrewPi requires psutil to run, please install it with 'sudo apt-get install python-psutil"
     sys.exit(1)
@@ -105,7 +115,7 @@ class BrewPiProcesses():
         Returns: list of BrewPiProcess objects
         """
         bpList = []
-        matching = [p for p in psutil.process_iter() if any('python' in p.name and 'brewpi.py'in s for s in p.cmdline)]
+        matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'brewpi.py'in s for s in p.cmdline())]
         for p in matching:
             bp = self.parseProcess(p)
             bpList.append(bp)
@@ -121,7 +131,7 @@ class BrewPiProcesses():
         bp = BrewPiProcess()
         bp.pid = process._pid
 
-        cfg = [s for s in process.cmdline if '.cfg' in s]  # get config file argument
+        cfg = [s for s in process.cmdline() if '.cfg' in s]  # get config file argument
         if cfg:
             cfg = cfg[0]  # add full path to config file
         bp.cfg = util.readCfgWithDefaults(cfg)

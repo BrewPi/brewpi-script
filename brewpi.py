@@ -30,10 +30,18 @@ from pprint import pprint
 import shutil
 import traceback
 import urllib
+from distutils.version import LooseVersion
 
 # load non standard packages, exit when they are not installed
 try:
     import serial
+    if LooseVersion(serial.VERSION) < LooseVersion("2.7"):
+        print >> sys.stderr, "BrewPi requires pyserial 2.7, you have version %s installed.\n" \
+                             "Please upgrade pyserial via pip, by running:\n" \
+                             "  sudo pip install pyserial --upgrade\n" \
+                             "If you do not have pip installed, install it with:\n" \
+                             "  sudo apt-get install build-essential python-dev python-pip\n" % serial.VERSION
+        sys.exit(1)
 except ImportError:
     print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
     sys.exit(1)
@@ -82,7 +90,6 @@ cv = dict(beerDiff=0.000, diffIntegral=0.000, beerSlope=0.000, p=0.000, i=0.000,
 deviceList = dict(listState="", installed=[], available=[])
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
-
 
 def logMessage(message):
     print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
@@ -324,6 +331,24 @@ def resumeLogging():
 port = config['port']
 ser, conn = util.setupSerial(config)
 
+# bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
+serialBuffer = ''
+ser.setTimeout(0) # non blocking mode
+
+def lineFromSerial(serial):
+    global serialBuffer
+    serialBuffer = serialBuffer + serial.read(serial.inWaiting())
+    if '\n' in serialBuffer:
+        lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
+        if(lines[1] == ''):
+            # separator not found, first element is incomplete line
+            serialBuffer = lines[0]
+            return None
+        else:
+            serialBuffer = lines[2]
+            return lines[0]
+
+
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
 time.sleep(float(config.get('startupDelay', 10)))
@@ -340,8 +365,8 @@ if hwVersion is None:
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + port + "\n")
-    if hwVersion.toString() != compatibleHwVersion:
-        logMessage("Warning: BrewPi version compatible with this script is " +
+    if LooseVersion( hwVersion.toString() ) < LooseVersion(compatibleHwVersion):
+        logMessage("Warning: minimum BrewPi version compatible with this script is " +
                    compatibleHwVersion +
                    " but version number received is " + hwVersion.toString())
     if int(hwVersion.log) != int(expandLogMessage.getVersion()):
@@ -383,6 +408,7 @@ s.listen(10)  # Create a backlog queue for up to 10 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(serialCheckInterval)
 
+
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
 
@@ -400,7 +426,6 @@ prevTempJson = {
     "State": None,
     "BeerSet": 0,
     "FridgeSet": 0}
-
 
 def renameTempKey(key):
     rename = {
@@ -631,8 +656,6 @@ while run:
             deviceList['listState'] = ""  # invalidate local copy
             if value.find("readValues") != -1:
                 ser.write("d{r:1}")  # request installed devices
-                serialRestoreTimeOut = ser.getTimeout()
-                ser.setTimeout(2)  # set timeOut to 2 seconds because retreiving values takes a while
                 ser.write("h{u:-1,v:1}")  # request available, but not installed devices
             else:
                 ser.write("d{}")  # request installed devices
@@ -654,6 +677,10 @@ while run:
                 continue
             ser.write("U" + value)
             deviceList['listState'] = ""  # invalidate local copy
+        elif messageType == "getVersion":
+            response = hwVersion.__dict__ if hwVersion else {}
+            response_str = json.dumps(response)
+            conn.send(response_str)
         else:
             logMessage("Error: Received invalid message on socket: " + message)
 
@@ -677,13 +704,19 @@ while run:
 
         # if no new data has been received for serialRequestInteval seconds
         if (time.time() - prevDataTime) >= float(config['interval']):
-            ser.write("t")  # request new from arduino
+            ser.write("t")  # request new from controller
+            prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
 
         elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
             #something is wrong: arduino is not responding to data requests
             logMessage("Error: Arduino is not responding to new data requests")
 
-        for line in ser:  # read all lines on serial interface
+
+        while True:
+            line = lineFromSerial(ser)
+            if line is None:
+                break
+
             try:
                 if line[0] == 'T':
                     # print it to stdout
@@ -756,9 +789,6 @@ while run:
                     oldListState = deviceList['listState']
                     deviceList['listState'] = oldListState.strip('h') + "h"
                     logMessage("Available devices received: " + str(deviceList['available']))
-                    if serialRestoreTimeOut:
-                        ser.setTimeout(serialRestoreTimeOut)
-                        serialRestoreTimeOut = None
                 elif line[0] == 'd':
                     deviceList['installed'] = json.loads(line[2:])
                     oldListState = deviceList['listState']
@@ -798,3 +828,4 @@ if ser:
 if conn:
     conn.shutdown(socket.SHUT_RDWR)  # close socket
     conn.close()
+

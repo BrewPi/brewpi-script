@@ -17,8 +17,8 @@
 import simplejson as json
 
 
-def getPinList(arduinoType, shieldType):
-    if arduinoType == "leonardo" and shieldType == "revC":
+def getPinList(boardType, shieldType):
+    if boardType == "leonardo" and shieldType == "revC":
         pinList = [{'val': 6, 'text': ' 6 (Act 1)', 'type': 'act'},
                    {'val': 5, 'text': ' 5 (Act 2)', 'type': 'act'},
                    {'val': 2, 'text': ' 2 (Act 3)', 'type': 'act'},
@@ -39,7 +39,7 @@ def getPinList(arduinoType, shieldType):
                    {'val': 19, 'text': 'A1', 'type': 'free'},
                    {'val': 20, 'text': 'A2', 'type': 'free'},
                    {'val': 21, 'text': 'A3', 'type': 'free'}]
-    elif arduinoType == "standard" and shieldType == "revC":
+    elif boardType == "standard" and shieldType == "revC":
         pinList = [{'val': 6, 'text': ' 6 (Act 1)', 'type': 'act'},
                    {'val': 5, 'text': ' 5 (Act 2)', 'type': 'act'},
                    {'val': 2, 'text': ' 2 (Act 3)', 'type': 'act'},
@@ -60,7 +60,7 @@ def getPinList(arduinoType, shieldType):
                    {'val': 15, 'text': 'A1', 'type': 'free'},
                    {'val': 16, 'text': 'A2', 'type': 'free'},
                    {'val': 17, 'text': 'A3', 'type': 'free'}]
-    elif arduinoType == "leonardo" and shieldType == "revA":
+    elif boardType == "leonardo" and shieldType == "revA":
         pinList = [{'val': 6, 'text': '  6 (Cool)', 'type': 'act'},
                    {'val': 5, 'text': '  5 (Heat)', 'type': 'act'},
                    {'val': 4, 'text': ' 4 (Door)', 'type': 'door'},
@@ -81,7 +81,7 @@ def getPinList(arduinoType, shieldType):
                    {'val': 19, 'text': 'A1', 'type': 'free'},
                    {'val': 20, 'text': 'A2', 'type': 'free'},
                    {'val': 21, 'text': 'A3', 'type': 'free'}]
-    elif arduinoType == "standard" and shieldType == "revA":
+    elif boardType == "standard" and shieldType == "revA":
         pinList = [{'val': 6, 'text': '  6 (Cool)', 'type': 'act'},
                    {'val': 5, 'text': '  5 (Heat)', 'type': 'act'},
                    {'val': 4, 'text': ' 4 (Door)', 'type': 'door'},
@@ -102,7 +102,7 @@ def getPinList(arduinoType, shieldType):
                    {'val': 15, 'text': 'A1', 'type': 'free'},
                    {'val': 16, 'text': 'A2', 'type': 'free'},
                    {'val': 17, 'text': 'A3', 'type': 'free'}]
-    elif arduinoType == "leonardo" and shieldType == "diy":
+    elif boardType == "leonardo" and shieldType == "diy":
         pinList = [{'val': 12, 'text': '  12 (Cool)', 'type': 'act'},
                    {'val': 13, 'text': '  13 (Heat)', 'type': 'act'},
                    {'val': 23, 'text': ' A5 (Door)', 'type': 'door'},
@@ -123,15 +123,20 @@ def getPinList(arduinoType, shieldType):
                    {'val': 20, 'text': 'A2', 'type': 'free'},
                    {'val': 21, 'text': 'A3', 'type': 'free'},
                    {'val': 22, 'text': 'A4', 'type': 'free'}]
+    elif boardType == "spark-core" and shieldType == "Rev-C":
+        pinList = [{'val': 16, 'text': 'Output 1 (A6)', 'type': 'act'},
+                   {'val': 11, 'text': 'Output 2 (A1)', 'type': 'act'},
+                   {'val': 10, 'text': 'Output 3 (A0)', 'type': 'act'},
+                   {'val': 0, 'text': 'OneWire', 'type': 'onewire'}]
     else:
         print 'Unknown Arduino or board type'
         pinList = {}
     return pinList
 
 
-def getPinListJson(arduinoType, shieldType):
+def getPinListJson(boardType, shieldType):
     try:
-        pinList = getPinList(arduinoType, shieldType)
+        pinList = getPinList(boardType, shieldType)
         return json.dumps(pinList)
     except json.JSONDecodeError:
         print "Cannot process pin list JSON"
@@ -142,5 +147,6 @@ def pinListTest():
     print getPinListJson("standard", "revC")
     print getPinListJson("leonardo", "revA")
     print getPinListJson("standard", "revA")
+    print getPinListJson("spark-core", "Rev-C")
 
 # pinListTest()

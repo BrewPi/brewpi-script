@@ -20,83 +20,88 @@ import os
 import serial
 
 try:
-	import configobj
+    import configobj
 except ImportError:
-	print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
-	sys.exit(1)
+    print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
+    sys.exit(1)
 
 
 def addSlash(path):
-	"""
-	Adds a slash to the path, but only when it does not already have a slash at the end
-	Params: a string
-	Returns: a string
-	"""
-	if not path.endswith('/'):
-		path += '/'
-	return path
+    """
+    Adds a slash to the path, but only when it does not already have a slash at the end
+    Params: a string
+    Returns: a string
+    """
+    if not path.endswith('/'):
+        path += '/'
+    return path
 
 
 def readCfgWithDefaults(cfg):
-	"""
-	Reads a config file with the default config file as fallback
+    """
+    Reads a config file with the default config file as fallback
 
-	Params:
-	cfg: string, path to cfg file
-	defaultCfg: string, path to defaultConfig file.
+    Params:
+    cfg: string, path to cfg file
+    defaultCfg: string, path to defaultConfig file.
 
-	Returns:
-	ConfigObj of settings
-	"""
-	defaultCfg = scriptPath() + '/settings/defaults.cfg'
-	config = configobj.ConfigObj(defaultCfg)
+    Returns:
+    ConfigObj of settings
+    """
+    if not cfg:
+        cfg = addSlash(sys.path[0]) + 'settings/config.cfg'
 
-	if cfg:
-		try:
-			userConfig = configobj.ConfigObj(cfg)
-			config.merge(userConfig)
-		except configobj.ParseError:
-			logMessage("ERROR: Could not parse user config file %s" % cfg)
-		except IOError:
-			logMessage("Could not open user config file %s. Using only default config file" % cfg)
-	return config
+    defaultCfg = scriptPath() + '/settings/defaults.cfg'
+    config = configobj.ConfigObj(defaultCfg)
+
+    if cfg:
+        try:
+            userConfig = configobj.ConfigObj(cfg)
+            config.merge(userConfig)
+        except configobj.ParseError:
+            logMessage("ERROR: Could not parse user config file %s" % cfg)
+        except IOError:
+            logMessage("Could not open user config file %s. Using only default config file" % cfg)
+    return config
 
 
 def configSet(configFile, settingName, value):
-	if not os.path.isfile(configFile):
-		logMessage("User config file %s does not exist yet, creating it..." % configFile)
-	try:
-		config = configobj.ConfigObj(configFile)
-		config[settingName] = value
-		config.write()
-	except IOError as e:
-		logMessage("I/O error(%d) while updating %s: %s " % (e.errno, configFile, e.strerror))
-		logMessage("Probably your permissions are not set correctly. " +
-		           "To fix this, run 'sudo sh /home/brewpi/fixPermissions.sh'")
-	return readCfgWithDefaults(configFile)  # return updated ConfigObj
+    if not os.path.isfile(configFile):
+        logMessage("User config file %s does not exist yet, creating it..." % configFile)
+    try:
+        config = configobj.ConfigObj(configFile)
+        config[settingName] = value
+        config.write()
+    except IOError as e:
+        logMessage("I/O error(%d) while updating %s: %s " % (e.errno, configFile, e.strerror))
+        logMessage("Probably your permissions are not set correctly. " +
+                   "To fix this, run 'sudo sh /home/brewpi/fixPermissions.sh'")
+    return readCfgWithDefaults(configFile)  # return updated ConfigObj
 
 
 def logMessage(message):
-	"""
-	Prints a timestamped message to stderr
-	"""
-	print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+    """
+    Prints a timestamped message to stderr
+    """
+    print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
 
 
 def scriptPath():
-	"""
-	Return the path of BrewPiUtil.py. __file__ only works in modules, not in the main script.
-	That is why this function is needed.
-	"""
-	return os.path.dirname(__file__)
+    """
+    Return the path of BrewPiUtil.py. __file__ only works in modules, not in the main script.
+    That is why this function is needed.
+    """
+    return os.path.dirname(__file__)
+
 
 def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
-	if os.path.isfile(path):
-		os.remove(path)
-		print "BrewPi set to be automatically restarted by cron"
-	else:
-		print "File do_not_run_brewpi does not exist at "+path
-	
+    if os.path.isfile(path):
+        os.remove(path)
+        print "BrewPi set to be automatically restarted by cron"
+    else:
+        print "File do_not_run_brewpi does not exist at " + path
+
+
 def setupSerial(config):
     ser = None
     conn = None
@@ -105,7 +110,7 @@ def setupSerial(config):
     # open serial port
     try:
         ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-    except serial.SerialException as e:
+    except (OSError, serial.SerialException) as e:
         logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
         try:
             port = config['altport']

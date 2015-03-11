@@ -23,9 +23,13 @@ def getVersionFromSerial(ser):
     retries = 0
     requestVersion = True
     startTime = time.time()
+    oldTimeOut = ser.timeout;
+    ser.setTimeout(1);
+    ser.write('n')  # request version info
     while requestVersion:
         retry = True
-        for line in ser:
+        line = ser.readline()
+        if line:
             if line[0] == 'N':
                 data = line.strip('\n')[2:]
                 version = AvrInfo(data)
@@ -42,6 +46,7 @@ def getVersionFromSerial(ser):
             retries += 1
             if retries > 15:
                 break
+    ser.setTimeout(oldTimeOut); # restore previous serial timeout value
     return version
 
 
@@ -57,14 +62,29 @@ class AvrInfo:
 
     shield_revA = "revA"
     shield_revC = "revC"
+    spark_shield_revC = "Rev-C"
 
-    shields = {1: shield_revA, 2: shield_revC}
+    shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_revC}
 
     board_leonardo = "leonardo"
     board_standard = "standard"
     board_mega = "mega"
+    board_spark_core = "spark-core"
 
-    boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega}
+    boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core}
+
+    family_arduino = "Arduino"
+    family_spark = "Spark"
+
+    families = { board_leonardo: family_arduino,
+                board_standard: family_arduino,
+                board_mega: family_arduino,
+                board_spark_core: family_spark}
+
+    board_names = { board_leonardo: "Leonardo",
+                board_standard: "Uno",
+                board_mega: "Mega",
+                board_spark_core: "Core"}
 
     def __init__(self, s=None):
         self.major = 0
@@ -99,12 +119,16 @@ class AvrInfo:
             print >> sys.stderr, "Unicode decode error: %s" % str(e)
             print >> sys.stderr, "Could not parse version number: " + s
 
+        self.family = None
+        self.board_name = None
         if AvrInfo.version in j:
             self.parseStringVersion(j[AvrInfo.version])
         if AvrInfo.simulator in j:
             self.simulator = j[AvrInfo.simulator] == 1
         if AvrInfo.board in j:
             self.board = AvrInfo.boards.get(j[AvrInfo.board])
+            self.family = AvrInfo.families.get(self.board)
+            self.board_name = AvrInfo.board_names.get(self.board)
         if AvrInfo.shield in j:
             self.shield = AvrInfo.shields.get(j[AvrInfo.shield])
         if AvrInfo.log in j:
@@ -124,6 +148,9 @@ class AvrInfo:
     def toString(self):
         return str(self.major) + "." + str(self.minor) + "." + str(self.revision)
 
+    def article(self, word):
+        return "a" if not word or word[1].lower() not in 'aeiou' else "an"
+
     def toExtendedString(self):
         string = "BrewPi v" + self.toString()
         if self.commit:
@@ -131,10 +158,9 @@ class AvrInfo:
         if self.build:
             string += " build " + str(self.build)
         if self.board:
-            string += ", on an Arduino " + str(self.board)
+            string += ", running on "+ self.article(self.family) + " " + str(self.family) + " " + str(self.board_name)
         if self.shield:
             string += " with a " + str(self.shield) + " shield"
         if(self.simulator):
            string += ", running as simulator"
         return string
-
