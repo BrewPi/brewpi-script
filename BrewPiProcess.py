@@ -33,7 +33,7 @@ try:
 
 
 except ImportError:
-    print "BrewPi requires psutil to run, please install it with 'sudo apt-get install python-psutil"
+    print "BrewPi requires psutil to run, please install it via pip: 'sudo pip install psutil --upgrade"
     sys.exit(1)
 
 import BrewPiSocket
@@ -82,7 +82,7 @@ class BrewPiProcess:
         try:
             process.kill()
             print "SIGKILL sent to BrewPi instance with pid %d!" % self.pid
-        except psutil.error.AccessDenied:
+        except psutil.AccessDenied:
             print >> sys.stderr, "Cannot kill process %d, you need root permission to do that." % self.pid
             print >> sys.stderr, "Is the process running under the same user?"
 
@@ -134,8 +134,10 @@ class BrewPiProcesses():
         cfg = [s for s in process.cmdline() if '.cfg' in s]  # get config file argument
         if cfg:
             cfg = cfg[0]  # add full path to config file
+        else:
+            # use default config file location
+            cfg = util.scriptPath() + "/settings/config.cfg"
         bp.cfg = util.readCfgWithDefaults(cfg)
-
         bp.port = bp.cfg['port']
         bp.sock = BrewPiSocket.BrewPiSocket(bp.cfg)
         return bp
