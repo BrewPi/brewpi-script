@@ -111,12 +111,12 @@ def setupSerial(config):
     try:
         ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
     except (OSError, serial.SerialException) as e:
-        logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
+        logMessage("Error opening serial port. Trying alternative serial port {0}.\n({1})".format(config['altport'], str(e)))
         try:
             port = config['altport']
             ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-        except serial.SerialException as e:
-            logMessage("Error opening alternative serial port: %s. Script will exit." % str(e))
+        except (OSError, serial.SerialException) as e:
+            logMessage("Error opening alternative serial port. Script will exit. Is your controller connected via USB?\n({0})".format(str(e)))
             exit(1)
 
     # yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
