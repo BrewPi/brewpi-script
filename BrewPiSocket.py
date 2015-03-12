@@ -39,9 +39,10 @@ class BrewPiSocket:
 		self.sock = 0
 
 		isWindows = sys.platform.startswith('win')
-		useInternetSocket = bool(cfg.get('useInternetSocket', isWindows))
+		useInternetSocket = bool(cfg.get('useInetSocket', isWindows))
 		if useInternetSocket:
-			self.port = cfg.get('socketPort', 6332)
+			self.port = int(cfg.get('socketPort', 6332))
+			self.host = cfg.get('socketHost', "localhost")
 			self.type = 'i'
 		else:
 			self.file = util.addSlash(cfg['scriptPath']) + 'BEERSOCKET'
@@ -86,7 +87,8 @@ class BrewPiSocket:
 				sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 				sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 				sock.connect(self.file)
-		except socket.error:
+		except socket.error as e:
+			print e
 			sock = False
 		finally:
 			return sock
