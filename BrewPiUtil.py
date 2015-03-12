@@ -110,7 +110,7 @@ def setupSerial(config):
     # open serial port
     try:
         ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-    except serial.SerialException as e:
+    except (OSError, serial.SerialException) as e:
         logMessage("Error opening serial port: %s. Trying alternative serial port %s." % (str(e), config['altport']))
         try:
             port = config['altport']

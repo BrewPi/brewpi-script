@@ -30,10 +30,18 @@ from pprint import pprint
 import shutil
 import traceback
 import urllib
+from distutils.version import LooseVersion
 
 # load non standard packages, exit when they are not installed
 try:
     import serial
+    if LooseVersion(serial.VERSION) < LooseVersion("2.7"):
+        print >> sys.stderr, "BrewPi requires pyserial 2.7, you have version %s installed.\n" \
+                             "Please upgrade pyserial via pip, by running:\n" \
+                             "  sudo pip install pyserial --upgrade\n" \
+                             "If you do not have pip installed, install it with:\n" \
+                             "  sudo apt-get install build-essential python-dev python-pip\n" % serial.VERSION
+        sys.exit(1)
 except ImportError:
     print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
     sys.exit(1)
@@ -357,8 +365,8 @@ if hwVersion is None:
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + port + "\n")
-    if hwVersion.toString() != compatibleHwVersion:
-        logMessage("Warning: BrewPi version compatible with this script is " +
+    if LooseVersion( hwVersion.toString() ) < LooseVersion(compatibleHwVersion):
+        logMessage("Warning: minimum BrewPi version compatible with this script is " +
                    compatibleHwVersion +
                    " but version number received is " + hwVersion.toString())
     if int(hwVersion.log) != int(expandLogMessage.getVersion()):
