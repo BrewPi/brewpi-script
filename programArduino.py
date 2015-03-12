@@ -157,12 +157,12 @@ def openSerial(port, altport, baud, timeoutVal):
     try:
         ser = serial.Serial(port, baud, timeout=timeoutVal)
         return [ser, port]
-    except serial.SerialException as e:
+    except (OSError, serial.SerialException) as e:
         if altport:
             try:
                 ser = serial.Serial(altport, baud, timeout=timeoutVal)
                 return [ser, altport]
-            except serial.SerialException as e:
+            except (OSError, serial.SerialException) as e:
                 pass
         return [None, None]
 

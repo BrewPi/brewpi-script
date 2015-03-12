@@ -45,7 +45,7 @@ ser = 0
 # open serial port
 try:
     ser = serial.Serial(config['port'], 57600, timeout=1)
-except serial.SerialException, e:
+except (OSError, serial.SerialException) as e:
     print e
     exit()
 
