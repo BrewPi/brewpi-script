@@ -46,6 +46,10 @@ if [ $(($nowTime - $lastUpdate)) -gt 604800 ] ; then
     sudo apt-get update||die
 fi
 
-sudo apt-get install -y rpi-update apache2 libapache2-mod-php5 php5-cli php5-common php5-cgi php5 python-serial python-simplejson python-configobj python-psutil python-git arduino-core git-core||die
+sudo apt-get install -y apache2 libapache2-mod-php5 php5-cli php5-common php5-cgi php5 git-core build-essential python-dev python-pip git-core || die
+
+echo -e "\n***** Installing/updating required python packages via pip... *****\n"
+
+sudo pip install pyserial psutil simplejson configobj gitpython --upgrade
 
 echo -e "\n***** Done processing BrewPi dependencies *****\n"
