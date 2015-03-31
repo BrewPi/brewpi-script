@@ -337,11 +337,13 @@ ser.setTimeout(0) # non blocking mode
 
 def lineFromSerial(serial):
     global serialBuffer
-    serialBuffer = serialBuffer + serial.read(serial.inWaiting())
+    newData = serial.read(serial.inWaiting())
+    if len(newData) > 0:
+        serialBuffer = serialBuffer + newData
     if '\n' in serialBuffer:
         lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
         if(lines[1] == ''):
-            # separator not found, first element is incomplete line
+            # '\n' not found, first element is incomplete line
             serialBuffer = lines[0]
             return None
         else:
@@ -364,7 +366,7 @@ if hwVersion is None:
     lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
-               " on port " + port + "\n")
+               " on port " + ser.name + "\n")
     if LooseVersion( hwVersion.toString() ) < LooseVersion(compatibleHwVersion):
         logMessage("Warning: minimum BrewPi version compatible with this script is " +
                    compatibleHwVersion +
@@ -411,6 +413,8 @@ s.settimeout(serialCheckInterval)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
+prevLcdUpdate = time.time()
+prevSettingsUpdate = time.time()
 
 run = 1
 
@@ -697,10 +701,16 @@ while run:
         if hwVersion is None:
             continue  # do nothing with the serial port when the arduino has not been recognized
 
-        # request new LCD text
-        ser.write('l')
-        # request Settings from Arduino to stay up to date
-        ser.write('s')
+        if(time.time() - prevLcdUpdate) > 5:
+            # request new LCD text
+            prevLcdUpdate += 5 # give the controller some time to respond
+            ser.write('l')
+
+        if(time.time() - prevSettingsUpdate) > 60:
+            # Request Settings from controller to stay up to date
+            # Controller should send updates on changes, this is a periodical update to ensure it is up to date
+            prevSettingsUpdate += 5 # give the controller some time to respond
+            ser.write('s')
 
         # if no new data has been received for serialRequestInteval seconds
         if (time.time() - prevDataTime) >= float(config['interval']):
@@ -770,6 +780,7 @@ while run:
 
                 elif line[0] == 'L':
                     # lcd content received
+                    prevLcdUpdate = time.time()
                     lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
                     lcdText = json.loads(lcdTextReplaced)
                 elif line[0] == 'C':
@@ -777,6 +788,7 @@ while run:
                     cc = json.loads(line[2:])
                 elif line[0] == 'S':
                     # Control settings received
+                    prevSettingsUpdate = time.time()
                     cs = json.loads(line[2:])
                 # do not print this to the log file. This is requested continuously.
                 elif line[0] == 'V':
