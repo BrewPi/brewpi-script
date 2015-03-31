@@ -223,19 +223,11 @@ class SerialProgrammer:
 
         printStdErr("Waiting for device to reset.")
 
-        # wait for serial to close
-        retries = 30
-        while retries and self.ser:
-            self.ser.close()
-            self.ser = None
-            time.sleep(1)
-            self.ser, self.port = openSerial(self.config['port'], self.config.get('altport'), 57600, 0.2)
-            retries -= 1
-
+        # reopen serial port
         retries = 30
         while retries and not self.ser:
             time.sleep(1)
-            self.ser, self.port = openSerial(self.config['port'], self.config.get('altport'), 57600, 0.2)
+            self.open_serial(self.config, 57600, 0.2)
             retries -= 1
 
         if not self.ser:
@@ -248,8 +240,8 @@ class SerialProgrammer:
 
         printStdErr("Now checking which settings and devices can be restored...")
         if self.avrVersionNew is None:
-            printStdErr(("Warning: Cannot receive version number from %(a)s after programming. " +
-                         "Something must have gone wrong. Restoring settings/devices settings failed.\n" % msg_map))
+            printStdErr(("Warning: Cannot receive version number from %(a)s after programming. " % msg_map +
+                         "Something must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
         if self.avrVersionOld is None:
             printStdErr("Could not receive version number from old board, " +
@@ -260,6 +252,7 @@ class SerialProgrammer:
         printStdErr("****    Program script done!    ****")
         printStdErr("If you started the program script from the web interface, BrewPi will restart automatically")
         self.ser.close()
+        self.ser = None
         return 1
 
     def parse_restore_settings(self, restoreWhat):
@@ -294,9 +287,9 @@ class SerialProgrammer:
     def fetch_version(self, msg):
         version = brewpiVersion.getVersionFromSerial(self.ser)
         if version is None:
-            printStdErr(("Warning: Cannot receive version number from %(a)s. " +
+            printStdErr(("Warning: Cannot receive version number from %(a)s. " % msg_map +
                          "Your %(a)s is either not programmed yet or running a very old version of BrewPi. "
-                         "%(a)s will be reset to defaults." % msg_map))
+                         "%(a)s will be reset to defaults."))
         else:
             printStdErr(msg+"Found " + version.toExtendedString() +
                         " on port " + self.port + "\n")
@@ -573,6 +566,19 @@ class ArduinoProgrammer(SerialProgrammer):
     def delay_serial_open(self):
         time.sleep(5)  # give the arduino some time to reboot in case of an Arduino UNO
 
+    def reset_leonardo(self):
+        del self.ser
+        self.ser = None
+        if self.open_serial(self.config, 1200, None):
+            self.ser.close()
+            time.sleep(2)  # give the bootloader time to start up
+            self.ser = None
+            return True
+        else:
+            printStdErr("Could not open serial port at 1200 baud to reset Arduino Leonardo")
+            return False
+
+
     def flash_file(self, hexFile):
         config, boardType = self.config, self.boardType
         printStdErr("Loading programming settings from board.txt")
@@ -616,6 +622,10 @@ class ArduinoProgrammer(SerialProgrammer):
         hexFileDir = os.path.dirname(hexFile)
         hexFileLocal = os.path.basename(hexFile)
 
+        if boardType == 'leonardo':
+            if not self.reset_leonardo():
+                return False
+
         programCommand = (avrdudehome + 'avrdude' +
                           ' -F ' +  # override device signature check
                           ' -e ' +  # erase flash and eeprom before programming. This prevents issues with corrupted EEPROM
@@ -628,25 +638,18 @@ class ArduinoProgrammer(SerialProgrammer):
 
         printStdErr("Programming Arduino with avrdude: " + programCommand)
 
-        # open and close serial port at 1200 baud. This resets the Arduino Leonardo
-        # the Arduino Uno resets every time the serial port is opened automatically
-        self.ser.close()
-        del self.ser  # Arduino won't reset when serial port is not completely removed
-        if boardType == 'leonardo':
-            if not self.open_serial(self.config, 1200, 0.2):
-                printStdErr("Could not open serial port at 1200 baud to reset Arduino Leonardo")
-                return False
-
-            self.ser.close()
-            time.sleep(1)  # give the bootloader time to start up
 
         p = sub.Popen(programCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True, cwd=hexFileDir)
         output, errors = p.communicate()
 
         # avrdude only uses stderr, append its output to the returnString
-        printStdErr("result of invoking avrdude:\n" + errors)
+        printStdErr("Result of invoking avrdude:\n" + errors)
 
-        printStdErr("avrdude done!")
+        if("bytes of flash verified" in errors):
+            printStdErr("Avrdude done, programming succesful!")
+        else:
+            printStdErr("There was an error while programming.")
+            return False
 
         printStdErr("Giving the Arduino a few seconds to power up...")
         self.delay(6)
@@ -660,3 +663,4 @@ def test_program_spark_core():
 
 if __name__ == '__main__':
     test_program_spark_core()
+

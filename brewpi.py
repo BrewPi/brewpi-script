@@ -357,6 +357,7 @@ time.sleep(float(config.get('startupDelay', 10)))
 
 ser.flush()
 
+logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(ser)
 if hwVersion is None:
     logMessage("Warning: Cannot receive version number from Arduino. " +
@@ -638,7 +639,7 @@ while run:
                     raise socket.timeout  # go to serial communication to update Arduino
         elif messageType == "programArduino":
             ser.close()  # close serial port before programming
-            del ser  # Arduino won't reset when serial port is not completely removed
+            # del ser  # Arduino won't reset when serial port is not completely removed
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']

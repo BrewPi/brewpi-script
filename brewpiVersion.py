@@ -26,26 +26,26 @@ def getVersionFromSerial(ser):
     oldTimeOut = ser.timeout;
     ser.setTimeout(1);
     ser.write('n')  # request version info
-    while requestVersion:
+    while True:
         retry = True
         line = ser.readline()
         if line:
             if line[0] == 'N':
                 data = line.strip('\n')[2:]
                 version = AvrInfo(data)
-                requestVersion = False
                 retry = False
-                break
-            if time.time() - startTime > ser.timeout:
+            if time.time() - startTime >= ser.timeout:
                 # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
-                break
+                retry = False
 
         if retry:
             ser.write('n')  # request version info
-            time.sleep(1)
+            # time.sleep(1) delay not needed because of blocking (timeout) readline
             retries += 1
-            if retries > 15:
+            if retries > 10:
                 break
+        else:
+            break
     ser.setTimeout(oldTimeOut); # restore previous serial timeout value
     return version
 
