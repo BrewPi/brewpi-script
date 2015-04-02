@@ -639,6 +639,7 @@ while run:
         elif messageType == "programArduino":
             ser.close()  # close serial port before programming
             del ser  # Arduino won't reset when serial port is not completely removed
+            ser = None
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']
@@ -830,6 +831,7 @@ while run:
                     # temperature control disabled by profile
                     logMessage("Temperature control disabled by empty cell in profile.")
                     ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
+
 
     except socket.error as e:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
