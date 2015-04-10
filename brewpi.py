@@ -59,7 +59,7 @@ except ImportError:
 
 #local imports
 import temperatureProfile
-import programArduino as programmer
+import programController as programmer
 import brewpiJson
 import BrewPiUtil as util
 import brewpiVersion
@@ -68,8 +68,8 @@ import expandLogMessage
 import BrewPiProcess
 
 
-# Settings will be read from Arduino, initialize with same defaults as Arduino
-# This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
+# Settings will be read from controller, initialize with same defaults as controller
+# This is mainly to show what's expected. Will all be overwritten on the first update from the controller
 
 compatibleHwVersion = "0.2.4"
 
@@ -360,11 +360,11 @@ ser.flush()
 logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(ser)
 if hwVersion is None:
-    logMessage("Warning: Cannot receive version number from Arduino. " +
-               "Your Arduino is either not programmed or running a very old version of BrewPi. " +
-               "Please upload a new version of BrewPi to your Arduino.")
-    # script will continue so you can at least program the Arduino
-    lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
+    logMessage("Warning: Cannot receive version number from controller. " +
+               "Your controller is either not programmed or running a very old version of BrewPi. " +
+               "Please upload a new version of BrewPi to your controller.")
+    # script will continue so you can at least program the controller
+    lcdText = ['Could not receive', 'version from controller', 'Please (re)program', 'your controller']
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + ser.name + "\n")
@@ -374,16 +374,16 @@ else:
                    " but version number received is " + hwVersion.toString())
     if int(hwVersion.log) != int(expandLogMessage.getVersion()):
         logMessage("Warning: version number of local copy of logMessages.h " +
-                   "does not match log version number received from Arduino." +
-                   "Arduino version = " + str(hwVersion.log) +
+                   "does not match log version number received from controller." +
+                   "controller version = " + str(hwVersion.log) +
                    ", local copy version = " + str(expandLogMessage.getVersion()))
 
 if hwVersion is not None:
     ser.flush()
-    # request settings from Arduino, processed later when reply is received
+    # request settings from controller, processed later when reply is received
     ser.write('s')  # request control settings cs
     ser.write('c')  # request control constants cc
-    # answer from Arduino is received asynchronously later.
+    # answer from controller is received asynchronously later.
 
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
@@ -518,7 +518,7 @@ while run:
                 logMessage("Notification: Beer temperature set to " +
                            str(cs['beerSet']) +
                            " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update Arduino
+                raise socket.timeout  # go to serial communication to update controller
             else:
                 logMessage("Beer temperature setting " + str(newTemp) +
                            " is outside of allowed range " +
@@ -538,7 +538,7 @@ while run:
                 logMessage("Notification: Fridge temperature set to " +
                            str(cs['fridgeSet']) +
                            " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update Arduino
+                raise socket.timeout  # go to serial communication to update controller
             else:
                 logMessage("Fridge temperature setting " + str(newTemp) +
                            " is outside of allowed range " +
@@ -550,7 +550,7 @@ while run:
             logMessage("Notification: Temperature control disabled")
             raise socket.timeout
         elif messageType == "setParameters":
-            # receive JSON key:value pairs to set parameters on the Arduino
+            # receive JSON key:value pairs to set parameters on the controller
             try:
                 decoded = json.loads(value)
                 ser.write("j" + json.dumps(decoded))
@@ -636,25 +636,24 @@ while run:
                     cs['mode'] = 'p'
                     ser.write("j{mode:p}")
                     logMessage("Notification: Profile mode enabled")
-                    raise socket.timeout  # go to serial communication to update Arduino
-        elif messageType == "programArduino":
+                    raise socket.timeout  # go to serial communication to update controller
+        elif messageType == "programController" or messageType == "programArduino":
             ser.close()  # close serial port before programming
-            # del ser  # Arduino won't reset when serial port is not completely removed
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']
                 boardType = programParameters['boardType']
                 restoreSettings = programParameters['restoreSettings']
                 restoreDevices = programParameters['restoreDevices']
-                programmer.programArduino(config, boardType, hexFile,
+                programmer.programController(config, boardType, hexFile,
                                           {'settings': restoreSettings, 'devices': restoreDevices})
-                logMessage("New program uploaded to Arduino, script will restart")
+                logMessage("New program uploaded to controller, script will restart")
             except json.JSONDecodeError:
                 logMessage("Error: cannot decode programming parameters: " + value)
                 logMessage("Restarting script without programming.")
 
             # restart the script when done. This replaces this process with the new one
-            time.sleep(5)  # give the Arduino time to reboot
+            time.sleep(5)  # give the controller time to reboot
             python = sys.executable
             os.execl(python, python, *sys.argv)
         elif messageType == "refreshDeviceList":
@@ -700,7 +699,7 @@ while run:
         prevTimeOut = time.time()
 
         if hwVersion is None:
-            continue  # do nothing with the serial port when the arduino has not been recognized
+            continue  # do nothing with the serial port when the controller has not been recognized
 
         if(time.time() - prevLcdUpdate) > 5:
             # request new LCD text
@@ -719,8 +718,8 @@ while run:
             prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
 
         elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
-            #something is wrong: arduino is not responding to data requests
-            logMessage("Error: Arduino is not responding to new data requests")
+            #something is wrong: controller is not responding to data requests
+            logMessage("Error: controller is not responding to new data requests")
 
 
         while True:
@@ -766,7 +765,7 @@ while run:
                                        str(newRow['RoomTemp']) + '\n')
                         csvFile.write(lineToWrite)
                     except KeyError, e:
-                        logMessage("KeyError in line from Arduino: %s" % str(e))
+                        logMessage("KeyError in line from controller: %s" % str(e))
 
                     csvFile.close()
                     shutil.copyfile(localCsvFileName, wwwCsvFileName)
@@ -775,7 +774,7 @@ while run:
                     # debug message received
                     try:
                         expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-                        logMessage("Arduino debug message: " + expandedMessage)
+                        logMessage("controller debug message: " + expandedMessage)
                     except Exception, e:  # catch all exceptions, because out of date file could cause errors
                         logMessage("Error while expanding log message '" + line[2:] + "'" + str(e))
 
@@ -810,7 +809,7 @@ while run:
                 elif line[0] == 'U':
                     logMessage("Device updated to: " + line[2:])
                 else:
-                    logMessage("Cannot process line from Arduino: " + line)
+                    logMessage("Cannot process line from controller: " + line)
                 # end or processing a line
             except json.decoder.JSONDecodeError, e:
                 logMessage("JSON decode error: %s" % str(e))
@@ -825,12 +824,12 @@ while run:
             if newTemp != cs['beerSet']:
                 cs['beerSet'] = newTemp
                 if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
-                    # if temperature has to be updated send settings to arduino
+                    # if temperature has to be updated send settings to controller
                     ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
                 elif newTemp is None:
                     # temperature control disabled by profile
                     logMessage("Temperature control disabled by empty cell in profile.")
-                    ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
+                    ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on controller
 
     except socket.error as e:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))

@@ -129,7 +129,7 @@ def getPinList(boardType, shieldType):
                    {'val': 10, 'text': 'Output 3 (A0)', 'type': 'act'},
                    {'val': 0, 'text': 'OneWire', 'type': 'onewire'}]
     else:
-        print 'Unknown Arduino or board type'
+        print 'Unknown controller or board type'
         pinList = {}
     return pinList
 

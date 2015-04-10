@@ -168,7 +168,7 @@ def openSerial(port, altport, baud, timeoutVal):
 
 
 
-def programArduino(config, boardType, hexFile, restoreWhat):
+def programController(config, boardType, hexFile, restoreWhat):
     programmer = SerialProgrammer.create(config, boardType)
     return programmer.program(hexFile, restoreWhat)
 
@@ -225,6 +225,7 @@ class SerialProgrammer:
 
         # reopen serial port
         retries = 30
+        self.ser = None
         while retries and not self.ser:
             time.sleep(1)
             self.open_serial(self.config, 57600, 0.2)
@@ -275,9 +276,9 @@ class SerialProgrammer:
         self.restoreDevices = restoreDevices
 
     def open_serial(self, config, baud, timeout):
+        self.ser = None
         self.ser, self.port = openSerial(config['port'], config.get('altport'), baud, timeout)
         if self.ser is None:
-            printStdErr("Could not open serial port. Programming aborted.")
             return False
         return True
 
@@ -422,7 +423,7 @@ class SerialProgrammer:
         printStdErr("Restoring these settings: " + json.dumps(restoredSettings))
         for key in settingRestore.restoreOrder:
             if key in restoredSettings.keys():
-                # send one by one or the arduino cannot keep up
+                # send one by one or the controller cannot keep up
                 if restoredSettings[key] is not None:
                     command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
                     ser.write(command)
@@ -523,9 +524,9 @@ class SerialProgrammer:
 
                 ser.write("U" + json.dumps(device))
 
-                time.sleep(3)  # give the Arduino time to respond
+                time.sleep(3)  # give the controller time to respond
 
-                # read log messages from arduino
+                # read log messages from controller
                 while 1:  # read all lines on serial interface
                     line = ser.readline()
                     if line:  # line available?
@@ -658,7 +659,7 @@ class ArduinoProgrammer(SerialProgrammer):
 def test_program_spark_core():
     file = "R:\\dev\\brewpi\\firmware\\platform\\spark\\target\\brewpi.bin"
     config = { "port" : "COM22" }
-    result = programArduino(config, "spark-core", file, { "settings":True, "devices":True})
+    result = programController(config, "spark-core", file, { "settings":True, "devices":True})
     printStdErr("Result is "+str(result))
 
 if __name__ == '__main__':

@@ -51,7 +51,7 @@ def getVersionFromSerial(ser):
 
 
 class AvrInfo:
-    """ Parses and stores the version and other compile-time details reported by the Arduino """
+    """ Parses and stores the version and other compile-time details reported by the controller """
     version = "v"
     build = "n"
     simulator = "y"
@@ -149,7 +149,7 @@ class AvrInfo:
         return str(self.major) + "." + str(self.minor) + "." + str(self.revision)
 
     def article(self, word):
-        return "a" if not word or word[1].lower() not in 'aeiou' else "an"
+        return "a" if not word[1].lower() not in 'aeiou' else "an"
 
     def toExtendedString(self):
         string = "BrewPi v" + self.toString()

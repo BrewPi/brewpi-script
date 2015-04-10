@@ -82,7 +82,7 @@ class VersionTestCase(unittest.TestCase):
 
     def test_canPrintExtendedVersionFull(self):
         v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
-        self.assertEqual('BrewPi v1.2.3, running commit 12345678, on an Arduino leonardo with a revC shield, running as simulator', v.toExtendedString());
+        self.assertEqual('BrewPi v1.2.3, running commit 12345678, running on an Arduino Leonardo with a revC shield, running as simulator', v.toExtendedString());
 
 if __name__ == '__main__':
     unittest.main()
