@@ -1,10 +1,10 @@
 from __future__ import print_function
 import sys
+sys.path.append("..") # append parent directory to be able to import files
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
 def printStdErr(*objs):
     print("", *objs, file=sys.stderr)
-
 
 # Quits all running instances of BrewPi
 def quitBrewPi(webPath):
