@@ -115,7 +115,14 @@ class BrewPiProcesses():
         Returns: list of BrewPiProcess objects
         """
         bpList = []
-        matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'brewpi.py'in s for s in p.cmdline())]
+        matching = []
+
+        # some OS's (OS X) do not allow processes to read info from other processes. 
+        try:
+            matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'brewpi.py'in s for s in p.cmdline())]
+        except psutil.AccessDenied:
+            pass
+
         for p in matching:
             bp = self.parseProcess(p)
             bpList.append(bp)
