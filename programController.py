@@ -22,7 +22,8 @@ import simplejson as json
 import os
 import brewpiVersion
 import expandLogMessage
-import settingRestore
+from distutils.version import LooseVersion
+from MigrateSettings import MigrateSettings
 from sys import stderr
 import BrewPiUtil as util
 
@@ -216,7 +217,8 @@ class SerialProgrammer:
         # request all settings from board before programming
         printStdErr("Checking old version before programming.")
         if self.fetch_current_version():
-            self.save_settings()
+            self.retrieve_settings_from_serial()
+            self.save_settings_to_file()
 
         if not self.flash_file(hexFile):
             return 0
@@ -244,12 +246,31 @@ class SerialProgrammer:
             printStdErr(("Warning: Cannot receive version number from %(a)s after programming. " % msg_map +
                          "Something must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
-        if self.avrVersionOld is None:
-            printStdErr("Could not receive version number from old board, " +
+
+        if(LooseVersion(self.avrVersionOld.toString()) < LooseVersion('0.1')):
+            printStdErr("Could not receive valid version number from old board, " +
                         "No settings/devices are restored.")
             return 0
-        self.restore_settings()
-        self.restore_devices()
+
+        if self.restoreSettings:
+            printStdErr("Trying to restore compatible settings from " +
+                        self.avrVersionOld.toString() + " to " + self.avrVersionNew.toString())
+
+            if(LooseVersion(self.avrVersionNew.toString()) < LooseVersion('0.2')):
+                printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
+                self.restoreSettings = False
+
+        if self.restoreDevices:
+            if(LooseVersion(self.avrVersionNew.toString()) < LooseVersion('0.2')):
+                printStdErr("Sorry, devices can only be restored when updating to BrewPi 0.2.0 or higher")
+                self.restoreSettings = False
+
+        if self.restoreSettings:
+            self.restore_settings()
+
+        if self.restoreDevices:
+            self.restore_devices()
+
         printStdErr("****    Program script done!    ****")
         printStdErr("If you started the program script from the web interface, BrewPi will restart automatically")
         self.ser.close()
@@ -304,9 +325,9 @@ class SerialProgrammer:
         self.avrVersionNew = self.fetch_version("Checking new version: ")
         return self.avrVersionNew
 
-    def save_settings(self):
-        ser, oldSettings = self.ser, self.oldSettings
-        oldSettings.clear()
+    def retrieve_settings_from_serial(self):
+        ser = self.ser
+        self.oldSettings.clear()
         printStdErr("Requesting old settings from %(a)s..." % msg_map)
         expected_responses = 2
         if self.avrVersionOld.minor > 1:  # older versions did not have a device manager
@@ -322,22 +343,23 @@ class SerialProgrammer:
             if line:
                 if line[0] == 'C':
                     expected_responses -= 1
-                    oldSettings['controlConstants'] = json_decode_response(line)
+                    self.oldSettings['controlConstants'] = json_decode_response(line)
                 elif line[0] == 'S':
                     expected_responses -= 1
-                    oldSettings['controlSettings'] = json_decode_response(line)
+                    self.oldSettings['controlSettings'] = json_decode_response(line)
                 elif line[0] == 'd':
                     expected_responses -= 1
-                    oldSettings['installedDevices'] = json_decode_response(line)
+                    self.oldSettings['installedDevices'] = json_decode_response(line)
 
+
+    def save_settings_to_file(self):
         oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
-
         scriptDir = util.scriptPath()  # <-- absolute dir the script is in
         if not os.path.exists(scriptDir + '/settings/avr-backup/'):
             os.makedirs(scriptDir + '/settings/avr-backup/')
 
         oldSettingsFile = open(scriptDir + '/settings/avr-backup/' + oldSettingsFileName, 'wb')
-        oldSettingsFile.write(json.dumps(oldSettings))
+        oldSettingsFile.write(json.dumps(self.oldSettings))
         oldSettingsFile.truncate()
         oldSettingsFile.close()
         printStdErr("Saved old settings to file " + oldSettingsFileName)
@@ -375,170 +397,87 @@ class SerialProgrammer:
             printStdErr(("%(a)s debug message: " % msg_map) + line[2:])
 
     def restore_settings(self):
-        ser, avrVersionOld, avrVersionNew, oldSettings = self.ser, self.avrVersionOld, self.avrVersionNew, self.oldSettings
-        if self.restoreSettings:
-            printStdErr("Trying to restore compatible settings from " +
-                        avrVersionOld.toString() + " to " + avrVersionNew.toString())
-            settingsRestoreLookupDict = {}
-            if avrVersionNew.toString() == avrVersionOld.toString():
-                printStdErr("New version is equal to old version, restoring all settings")
-                settingsRestoreLookupDict = "all"
-            elif avrVersionNew.major == 0 and avrVersionNew.minor == 2:
-                if avrVersionOld.major == 0:
-                    if avrVersionOld.minor == 0:
-                        printStdErr("Could not receive version number from old board, " +
-                                    "resetting to defaults without restoring settings.")
-                        self.restoreDevices = False
-                        self.restoreSettings = False
-                    elif avrVersionOld.minor == 1:
-                        # version 0.1.x, try to restore most of the settings
-                        settingsRestoreLookupDict = settingRestore.keys_0_1_x_to_0_2_x
-                        printStdErr("Settings can only be partially restored when going from 0.1.x to 0.2.x")
-                        self.restoreDevices = False
-                    elif avrVersionOld.minor == 2:
-                        # restore settings and devices
-                        if avrVersionNew.revision == 0:
-                            settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_0
-                        elif avrVersionNew.revision == 1:
-                            settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_1
-                        elif avrVersionNew.revision == 2:
-                            settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_2
-                        elif avrVersionNew.revision == 3:
-                            settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_3
-                        elif avrVersionNew.revision == 4:
-                            if avrVersionOld.revision >= 3:
-                                settingsRestoreLookupDict = settingRestore.keys_0_2_3_to_0_2_4
-                            else:
-                                settingsRestoreLookupDict = settingRestore.keys_0_2_x_to_0_2_4
-                        printStdErr("Will try to restore compatible settings")
-            else:
-                printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
+        oldSettingsDict = self.get_combined_settings_dict(self.oldSettings)
+        ms = MigrateSettings()
 
-            self.restore_settings_dict(ser, oldSettings, settingsRestoreLookupDict)
-            printStdErr("restoring settings done!")
-        else:
-            printStdErr("No settings to restore!")
+        print(oldSettingsDict)
+        restored, omitted = ms.getKeyValuePairs(oldSettingsDict,
+                                                self.avrVersionOld.toString(),
+                                                self.avrVersionNew.toString())
 
-    def send_restored_settings(self, restoredSettings, ser):
-        printStdErr("Restoring these settings: " + json.dumps(restoredSettings))
-        for key in settingRestore.restoreOrder:
-            if key in restoredSettings.keys():
-                # send one by one or the controller cannot keep up
-                if restoredSettings[key] is not None:
-                    command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
-                    ser.write(command)
-                    time.sleep(0.5)
-                # read all replies
-                while 1:
-                    line = ser.readline()
-                    if line:  # line available?
-                        if line[0] == 'D':
-                            self.print_debug_log(line)
-                    else:
-                        break
+        printStdErr("Migrating these settings: " + str(restored.items()))
+        printStdErr("Omitting these settings: " + str(omitted.items()))
 
-    def retrieve_settings(self, ser):
-        ccNew = {}
-        csNew = {}
-        tries = 0
-        outstanding = set()
-        while (ccNew == {} or csNew == {}) or len(outstanding):
-            if ccNew == {} and not 'c' in outstanding:
-                ser.write('c')
-                outstanding.add('c')
-                tries += 1
-            if csNew == {} and not 's' in outstanding:
-                ser.write('s')
-                outstanding.add('s')
-                tries += 1
+        self.send_restored_settings(restored)
 
-            line = ser.readline()
-            while line:
-                if line[0] == 'C':
-                    outstanding.remove('c')
-                    ccNew = json_decode_response(line)
-                elif line[0] == 'S':
-                    outstanding.remove('s')
-                    csNew = json_decode_response(line)
-                elif line[0] == 'D':
-                    self.print_debug_log(line)
-                line = ser.readline() if outstanding else None
 
-            if tries>10:
-                printStdErr("Could not receive all keys for settings to restore from %(a)s" % msg_map)
-                break
+    def get_combined_settings_dict(self, oldSettings):
+        combined = oldSettings['controlConstants'].copy() # copy keys/values from controlConstants
+        combined.update(oldSettings['controlSettings']) # add keys/values from controlSettings
+        return combined
 
-        return ccNew, csNew
-
-    def restore_settings_dict(self, ser, oldSettings, settingsRestoreLookupDict):
-        restoredSettings = {}
-        ccOld = oldSettings['controlConstants']
-        csOld = oldSettings['controlSettings']
-
-        ccNew, csNew = self.retrieve_settings(ser)
-
-        printStdErr("Trying to restore old control constants and settings")
-        # find control constants to restore
-        for key in ccNew.keys():  # for all new keys
-            if settingsRestoreLookupDict == "all":
-                restoredSettings[key] = ccOld[key]
-            else:
-                for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get valid aliases in old keys
-                    if alias in ccOld.keys():  # if they are in the old settings
-                        restoredSettings[key] = ccOld[alias]  # add the old setting to the restoredSettings
-
-        # find control settings to restore
-        for key in csNew.keys():  # for all new keys
-            if settingsRestoreLookupDict == "all":
-                restoredSettings[key] = csOld[key]
-            else:
-                for alias in settingRestore.getAliases(settingsRestoreLookupDict, key):  # get valid aliases in old keys
-                    if alias in csOld.keys():  # if they are in the old settings
-                        restoredSettings[key] = csOld[alias]  # add the old setting to the restoredSettings
-
-        self.send_restored_settings(restoredSettings, ser)
+    def send_restored_settings(self, restoredSettings):
+        for key in restoredSettings:
+            command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
+            self.ser.write(command)
+            print "sending " + command
+            # make readline blocking for max 5 seconds to give the controller time to respond after every setting
+            oldTimeout = self.ser.timeout
+            self.ser.setTimeout(5)
+            # read all replies
+            while 1:
+                line = self.ser.readline()
+                if line:  # line available?
+                    if line[0] == 'D':
+                        self.print_debug_log(line)
+                if self.ser.inWaiting() == 0:
+                    break
+            self.ser.setTimeout(oldTimeout)
 
     def restore_devices(self):
         ser = self.ser
-        if self.restoreDevices:
-            printStdErr("Now trying to restore previously installed devices: " + str(self.oldSettings['installedDevices']))
-            detectedDevices = None
-            for device in self.oldSettings['installedDevices']:
-                printStdErr("Restoring device: " + json.dumps(device))
-                if "a" in device.keys(): # check for sensors configured as first on bus
-                    if int(device['a'], 16) == 0:
-                        printStdErr("OneWire sensor was configured to autodetect the first sensor on the bus, " +
-                                    "but this is no longer supported. " +
-                                    "We'll attempt to automatically find the address and add the sensor based on its address")
-                        if detectedDevices is None:
-                            ser.write("h{}")  # installed devices
-                            time.sleep(1)
-                            # get list of detected devices
-                            for line in ser:
-                                if line[0] == 'h':
-                                    detectedDevices = json_decode_response(line)
 
-                        for detectedDevice in detectedDevices:
-                            if device['p'] == detectedDevice['p']:
-                                device['a'] = detectedDevice['a'] # get address from sensor that was first on bus
-
-                ser.write("U" + json.dumps(device))
-
-                time.sleep(3)  # give the controller time to respond
-
-                # read log messages from controller
-                while 1:  # read all lines on serial interface
-                    line = ser.readline()
-                    if line:  # line available?
-                        if line[0] == 'D':
-                            self.print_debug_log(line)
-                        elif line[0] == 'U':
-                            printStdErr(("%(a)s reports: device updated to: " % msg_map) + line[2:])
-                    else:
-                        break
-            printStdErr("Restoring installed devices done!")
+        oldDevices = self.oldSettings['installedDevices']
+        if oldDevices:
+            printStdErr("Now trying to restore previously installed devices: " + str(oldDevices))
         else:
             printStdErr("No devices to restore!")
+
+        detectedDevices = None
+        for device in oldDevices:
+            printStdErr("Restoring device: " + json.dumps(device))
+            if "a" in device.keys(): # check for sensors configured as first on bus
+                if int(device['a'], 16) == 0:
+                    printStdErr("OneWire sensor was configured to autodetect the first sensor on the bus, " +
+                                "but this is no longer supported. " +
+                                "We'll attempt to automatically find the address and add the sensor based on its address")
+                    if detectedDevices is None:
+                        ser.write("h{}")  # installed devices
+                        time.sleep(1)
+                        # get list of detected devices
+                        for line in ser:
+                            if line[0] == 'h':
+                                detectedDevices = json_decode_response(line)
+
+                    for detectedDevice in detectedDevices:
+                        if device['p'] == detectedDevice['p']:
+                            device['a'] = detectedDevice['a'] # get address from sensor that was first on bus
+
+            ser.write("U" + json.dumps(device))
+
+            time.sleep(3)  # give the Arduino time to respond
+
+            # read log messages from arduino
+            while 1:  # read all lines on serial interface
+                line = ser.readline()
+                if line:  # line available?
+                    if line[0] == 'D':
+                        self.print_debug_log(line)
+                    elif line[0] == 'U':
+                        printStdErr(("%(a)s reports: device updated to: " % msg_map) + line[2:])
+                else:
+                    break
+        printStdErr("Restoring installed devices done!")
 
 
 class SparkProgrammer(SerialProgrammer):

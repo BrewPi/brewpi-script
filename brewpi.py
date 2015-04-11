@@ -639,6 +639,7 @@ while run:
                     raise socket.timeout  # go to serial communication to update controller
         elif messageType == "programController" or messageType == "programArduino":
             ser.close()  # close serial port before programming
+            ser = None
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']
@@ -830,6 +831,7 @@ while run:
                     # temperature control disabled by profile
                     logMessage("Temperature control disabled by empty cell in profile.")
                     ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on controller
+
 
     except socket.error as e:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
