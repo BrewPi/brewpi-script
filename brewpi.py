@@ -683,7 +683,12 @@ while run:
             ser.write("U" + value)
             deviceList['listState'] = ""  # invalidate local copy
         elif messageType == "getVersion":
-            response = hwVersion.__dict__ if hwVersion else {}
+            if hwVersion:
+                response = hwVersion.__dict__
+                # replace LooseVersion with string, because it is not JSON serializable
+                response['version'] = hwVersion.toString()
+            else:
+                response = {}
             response_str = json.dumps(response)
             conn.send(response_str)
         else:

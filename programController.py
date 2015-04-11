@@ -1,4 +1,3 @@
-import os.path
 # Copyright 2012 BrewPi/Elco Jacobs.
 # This file is part of BrewPi.
 
@@ -15,6 +14,7 @@ import os.path
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
 import subprocess as sub
 import serial
 import time
@@ -27,10 +27,9 @@ from MigrateSettings import MigrateSettings
 from sys import stderr
 import BrewPiUtil as util
 
-
-def printStdErr(string):
-    print >> stderr, string + '\n'
-
+# print everything in this file to stderr so it ends up in the correct log file for the web UI
+def printStdErr(*objs):
+    print("", *objs, file=stderr)
 
 def asbyte(v):
     return chr(v & 0xFF)

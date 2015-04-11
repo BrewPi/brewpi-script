@@ -47,7 +47,7 @@ class gitHubReleases:
                 downloadUrl = url
 
         if not downloadUrl:
-            print "Could not find download in release {0} and words in file name: {1}".format(tag, str(wordsInFileName))
+            print "Could not find download in release {0} with these words in the file name: {1}".format(tag, str(wordsInFileName))
             return None
 
         if path == None:
