@@ -146,7 +146,11 @@ class AvrInfo:
             return "0.0.0"
 
     def article(self, word):
-        return "a" if not word[1].lower() not in 'aeiou' else "an"
+        firstLetter = word[0]
+        if firstLetter.lower() in 'aeiou':
+            return "an"
+        else:
+            return "a"
 
     def toExtendedString(self):
         string = "BrewPi v" + self.toString()

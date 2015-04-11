@@ -100,6 +100,10 @@ class VersionTestCase(unittest.TestCase):
     def test_articleFullName(self):
         v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
         self.assertEqual("an Arduino Leonardo",v.articleFullName())
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"s", "y":1, "s":2 }')
+        self.assertEqual("an Arduino Uno",v.articleFullName())
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"x", "y":1, "s":2 }')
+        self.assertEqual("a Spark Core",v.articleFullName())
 
 if __name__ == '__main__':
     unittest.main()
