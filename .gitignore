@@ -32,3 +32,4 @@ sftp-config.json
 requirements.txt
 !.gitignore
 .idea/
+utils/downloads/

@@ -184,7 +184,6 @@ def json_decode_response(line):
 msg_map = { "a" : "Arduino" }
 
 class SerialProgrammer:
-
     @staticmethod
     def create(config, boardType):
         if boardType=='spark-core':
@@ -243,8 +242,8 @@ class SerialProgrammer:
 
         printStdErr("Now checking which settings and devices can be restored...")
         if self.avrVersionNew is None:
-            printStdErr(("Warning: Cannot receive version number from %(a)s after programming. " % msg_map +
-                         "Something must have gone wrong. Restoring settings/devices settings failed.\n"))
+            printStdErr(("Warning: Cannot receive version number from controller after programming. "
+                         "\nSomething must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
 
         if(LooseVersion(self.avrVersionOld.toString()) < LooseVersion('0.1')):
@@ -330,7 +329,7 @@ class SerialProgrammer:
         self.oldSettings.clear()
         printStdErr("Requesting old settings from %(a)s..." % msg_map)
         expected_responses = 2
-        if self.avrVersionOld.minor > 1:  # older versions did not have a device manager
+        if not self.avrVersionOld.isNewer("2.0.0"):  # versions older than 2.0.0 did not have a device manager
             expected_responses += 1
             ser.write("d{}")  # installed devices
             time.sleep(1)
@@ -399,8 +398,6 @@ class SerialProgrammer:
     def restore_settings(self):
         oldSettingsDict = self.get_combined_settings_dict(self.oldSettings)
         ms = MigrateSettings()
-
-        print(oldSettingsDict)
         restored, omitted = ms.getKeyValuePairs(oldSettingsDict,
                                                 self.avrVersionOld.toString(),
                                                 self.avrVersionNew.toString())
@@ -412,15 +409,14 @@ class SerialProgrammer:
 
 
     def get_combined_settings_dict(self, oldSettings):
-        combined = oldSettings['controlConstants'].copy() # copy keys/values from controlConstants
-        combined.update(oldSettings['controlSettings']) # add keys/values from controlSettings
+        combined = oldSettings.get('controlConstants').copy() # copy keys/values from controlConstants
+        combined.update(oldSettings.get('controlSettings')) # add keys/values from controlSettings
         return combined
 
     def send_restored_settings(self, restoredSettings):
         for key in restoredSettings:
             command = "j{" + str(key) + ":" + str(restoredSettings[key]) + "}\n"
             self.ser.write(command)
-            print "sending " + command
             # make readline blocking for max 5 seconds to give the controller time to respond after every setting
             oldTimeout = self.ser.timeout
             self.ser.setTimeout(5)
@@ -437,11 +433,12 @@ class SerialProgrammer:
     def restore_devices(self):
         ser = self.ser
 
-        oldDevices = self.oldSettings['installedDevices']
+        oldDevices = self.oldSettings.get('installedDevices')
         if oldDevices:
             printStdErr("Now trying to restore previously installed devices: " + str(oldDevices))
         else:
             printStdErr("No devices to restore!")
+            return
 
         detectedDevices = None
         for device in oldDevices:

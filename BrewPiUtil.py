@@ -97,7 +97,8 @@ def scriptPath():
 def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
     if os.path.isfile(path):
         os.remove(path)
-        print "BrewPi set to be automatically restarted by cron"
+        if not sys.platform.startswith('win'): # cron not available
+            print "BrewPi script will restart automatically."
     else:
         print "File do_not_run_brewpi does not exist at " + path
 

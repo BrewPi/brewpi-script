@@ -155,9 +155,31 @@ class AvrInfo:
         if self.build:
             string += " build " + str(self.build)
         if self.board:
-            string += ", running on "+ self.article(self.family) + " " + str(self.family) + " " + str(self.board_name)
+            string += ", running on "+ self.articleFullName()
         if self.shield:
             string += " with a " + str(self.shield) + " shield"
         if(self.simulator):
            string += ", running as simulator"
         return string
+
+    def isNewer(self, versionString):
+        return self.version < LooseVersion(versionString)
+
+    def familyName(self):
+        family = AvrInfo.families.get(self.board)
+        if family == None:
+            family = "????"
+        return family
+
+    def boardName(self):
+        board = AvrInfo.board_names.get(self.board)
+        if board == None:
+            board = "????"
+        return board
+
+    def fullName(self):
+        return self.familyName() + " " + self.boardName()
+
+    def articleFullName(self):
+        return self.article(self.family) + " " + self.fullName()
+

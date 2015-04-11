@@ -82,5 +82,24 @@ class VersionTestCase(unittest.TestCase):
         v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
         self.assertEqual('BrewPi v1.2.3, running commit 12345678, running on an Arduino Leonardo with a revC shield, running as simulator', v.toExtendedString())
 
+    def test_isNewer(self):
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
+        self.assertFalse(v.isNewer("1.0.0"))
+        self.assertFalse(v.isNewer("1.2.3"))
+        self.assertTrue(v.isNewer("1.2.4"))
+        self.assertTrue(v.isNewer("2.0.0"))
+
+    def test_fullName(self):
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
+        self.assertEqual("Arduino Leonardo",v.fullName())
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"x", "y":1, "s":2 }')
+        self.assertEqual("Spark Core",v.fullName())
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"?", "y":1, "s":2 }')
+        self.assertEqual("???? ????",v.fullName())
+
+    def test_articleFullName(self):
+        v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
+        self.assertEqual("an Arduino Leonardo",v.articleFullName())
+
 if __name__ == '__main__':
     unittest.main()

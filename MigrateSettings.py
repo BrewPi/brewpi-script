@@ -121,7 +121,7 @@ class TestSettingsMigrate(unittest.TestCase):
                          OrderedDict([('key2', 2)]),
                          "Should only return key2")
 
-    def testReturningNotrestored(self):
+    def testReturningNotRestored(self):
         mg = MigrateSettings([
             SettingMigrate('key1', '0.2.0', '0.3.0', []),
             SettingMigrate('key2', '0.1.1', '1000', []),
