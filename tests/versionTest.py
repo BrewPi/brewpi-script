@@ -1,18 +1,16 @@
-__author__ = 'mat'
-
 import unittest
 from brewpiVersion import AvrInfo
+from distutils.version import LooseVersion
 
 
 class VersionTestCase(unittest.TestCase):
-    def assertVersionEqual(self, v, major, minor, rev, versionString):
-        self.assertEqual(major, v.major)
-        self.assertEqual(minor, v.minor)
-        self.assertEqual(rev, v.revision)
-        self.assertEqual(versionString, v.version)
+    def assertVersionEqual(self, v, versionString):
+        self.assertEqual(v.version, LooseVersion(versionString))
+        self.assertEqual(versionString, v.toString())
 
     def assertEmptyVersion(self, v):
-        self.assertVersionEqual(v, 0, 0, 0, None)
+        self.assertEqual(v.toString(), "0.0.0")
+        self.assertEqual(v.version, None)
 
     def newVersion(self):
         return AvrInfo()
@@ -35,12 +33,12 @@ class VersionTestCase(unittest.TestCase):
     def test_canParseStringVersion(self):
         v = self.newVersion()
         v.parse("0.1.0")
-        self.assertVersionEqual(v, 0, 1, 0, "0.1.0")
+        self.assertVersionEqual(v, "0.1.0")
 
     def test_canParseJsonVersion(self):
         v = self.newVersion()
         v.parse('{"v":"0.1.0"}')
-        self.assertVersionEqual(v, 0, 1, 0, "0.1.0")
+        self.assertVersionEqual(v, "0.1.0")
 
     def test_canParseJsonSimulatorEnabled(self):
         v = self.newVersion()
@@ -69,7 +67,7 @@ class VersionTestCase(unittest.TestCase):
 
     def test_canParseAll(self):
         v = AvrInfo('{"v":"1.2.3","n":"99","c":"12345678", "b":"l", "y":0, "s":2 }')
-        self.assertVersionEqual(v, 1, 2, 3, "1.2.3")
+        self.assertVersionEqual(v, "1.2.3")
         self.assertEqual(v.build, "99")
         self.assertEqual(v.commit, "12345678")
         self.assertEqual(v.board, AvrInfo.board_leonardo)
@@ -82,7 +80,7 @@ class VersionTestCase(unittest.TestCase):
 
     def test_canPrintExtendedVersionFull(self):
         v = AvrInfo('{"v":"1.2.3","c":"12345678", "b":"l", "y":1, "s":2 }')
-        self.assertEqual('BrewPi v1.2.3, running commit 12345678, running on an Arduino Leonardo with a revC shield, running as simulator', v.toExtendedString());
+        self.assertEqual('BrewPi v1.2.3, running commit 12345678, running on an Arduino Leonardo with a revC shield, running as simulator', v.toExtendedString())
 
 if __name__ == '__main__':
     unittest.main()

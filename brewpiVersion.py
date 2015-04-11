@@ -17,14 +17,14 @@
 import simplejson as json
 import sys
 import time
+from distutils.version import LooseVersion
 
 def getVersionFromSerial(ser):
     version = None
     retries = 0
-    requestVersion = True
     startTime = time.time()
-    oldTimeOut = ser.timeout;
-    ser.setTimeout(1);
+    oldTimeOut = ser.timeout
+    ser.setTimeout(1)
     ser.write('n')  # request version info
     while True:
         retry = True
@@ -46,7 +46,7 @@ def getVersionFromSerial(ser):
                 break
         else:
             break
-    ser.setTimeout(oldTimeOut); # restore previous serial timeout value
+    ser.setTimeout(oldTimeOut) # restore previous serial timeout value
     return version
 
 
@@ -87,9 +87,6 @@ class AvrInfo:
                 board_spark_core: "Core"}
 
     def __init__(self, s=None):
-        self.major = 0
-        self.minor = 0
-        self.revision = 0
         self.version = None
         self.build = 0
         self.commit = None
@@ -110,6 +107,7 @@ class AvrInfo:
                 self.parseStringVersion(s)
 
     def parseJsonVersion(self, s):
+        j = None
         try:
             j = json.loads(s)
         except json.decoder.JSONDecodeError, e:
@@ -139,14 +137,13 @@ class AvrInfo:
             self.commit = j[AvrInfo.commit]
 
     def parseStringVersion(self, s):
-        s = s.strip()
-        parts = [int(x) for x in s.split('.')]
-        parts += [0] * (3 - len(parts))			# pad to 3
-        self.major, self.minor, self.revision = parts[0], parts[1], parts[2]
-        self.version = s
+        self.version = LooseVersion(s)
 
     def toString(self):
-        return str(self.major) + "." + str(self.minor) + "." + str(self.revision)
+        if self.version:
+            return str(self.version)
+        else:
+            return "0.0.0"
 
     def article(self, word):
         return "a" if not word[1].lower() not in 'aeiou' else "an"
