@@ -351,12 +351,12 @@ class SerialProgrammer:
 
 
     def save_settings_to_file(self):
-        oldSettingsFileName = 'oldAvrSettings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
-        scriptDir = util.scriptPath()  # <-- absolute dir the script is in
-        if not os.path.exists(scriptDir + '/settings/avr-backup/'):
-            os.makedirs(scriptDir + '/settings/avr-backup/')
+        oldSettingsFileName = 'settings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
+        settingsBackupDir = util.scriptPath() + '/settings/controller-backup/'
+        if not os.path.exists(settingsBackupDir):
+            os.makedirs(settingsBackupDir)
 
-        oldSettingsFile = open(scriptDir + '/settings/avr-backup/' + oldSettingsFileName, 'wb')
+        oldSettingsFile = open(settingsBackupDir + oldSettingsFileName, 'wb')
         oldSettingsFile.write(json.dumps(self.oldSettings))
         oldSettingsFile.truncate()
         oldSettingsFile.close()
