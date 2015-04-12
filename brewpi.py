@@ -207,8 +207,7 @@ lastDay = ""
 day = ""
 
 if logToFiles:
-    logPath = util.addSlash(config['scriptPath']) + 'logs/'
-    print logPath
+    logPath = util.addSlash(util.scriptPath()) + 'logs/'
     logMessage("Redirecting output to log files in %s, output will not be shown in console" % logPath)
     sys.stderr = open(logPath + 'stderr.txt', 'a', 0)  # append to stderr file, unbuffered
     sys.stdout = open(logPath + 'stdout.txt', 'w', 0)  # overwrite stdout file on script start, unbuffered
@@ -246,7 +245,7 @@ def setFiles():
 
     # create directory for the data if it does not exist
     beerFileName = config['beerName']
-    dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerFileName)
+    dataPath = util.addSlash(util.addSlash(util.scriptPath()) + 'data/' + beerFileName)
     wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerFileName)
 
     if not os.path.exists(dataPath):
@@ -400,7 +399,7 @@ if useInetSocket:
     s.bind((config.get('socketHost', 'localhost'), int(socketPort)))
     logMessage('Bound to TCP socket on port %d ' % int(socketPort))
 else:
-    socketFile = util.addSlash(config['scriptPath']) + 'BEERSOCKET'
+    socketFile = util.addSlash(util.scriptPath()) + 'BEERSOCKET'
     if os.path.exists(socketFile):
     # if socket already exists, remove it
         os.remove(socketFile)
@@ -487,7 +486,7 @@ while run:
             conn.send(json.dumps(cc))
         elif messageType == "getControlSettings":
             if cs['mode'] == "p":
-                profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+                profileFile = util.addSlash(util.scriptPath()) + 'settings/tempProfile.csv'
                 with file(profileFile, 'r') as prof:
                     cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
             cs['dataLogging'] = config['dataLogging']
@@ -618,8 +617,8 @@ while run:
             logMessage("Setting profile '%s' as active profile" % value)
             config = util.configSet(configFile, 'profileName', value)
             changeWwwSetting('profileName', value)
-            profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
-            profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+            profileSrcFile = util.addSlash(config['wwwPath']) + "data/profiles/" + value + ".csv"
+            profileDestFile = util.addSlash(util.scriptPath()) + 'settings/tempProfile.csv'
             profileDestFileOld = profileDestFile + '.old'
             try:
                 if os.path.isfile(profileDestFile):
@@ -830,7 +829,7 @@ while run:
 
         # Check for update from temperature profile
         if cs['mode'] == 'p':
-            newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
+            newTemp = temperatureProfile.getNewTemp(util.scriptPath())
             if newTemp != cs['beerSet']:
                 cs['beerSet'] = newTemp
                 if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
