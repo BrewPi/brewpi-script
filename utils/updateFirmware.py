@@ -67,15 +67,15 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
                         " Would you like to do this?"
                         "\nType yes to reprogram or just press enter to keep your current firmware: ")
             choice = raw_input()
-            if choice not in ["yes", "Yes", "YES", "yes"]:
+            if choice not in ["yes", "Yes", "YES", "yes", "y", "Y"]:
                 return 0
             printStdErr("Would you like me to try to restore you settings after programming? [Y/n]: ")
             choice = raw_input()
-            if choice not in ["","yes", "Yes", "YES", "yes"]:
+            if choice not in ["yes", "Yes", "YES", "yes", "y", "Y"]:
                 restoreSettings = False
             printStdErr("Would you like me to try to restore your configured devices after programming? [Y/n]: ")
             choice = raw_input()
-            if choice not in ["","yes", "Yes", "YES", "yes"]:
+            if choice not in ["yes", "Yes", "YES", "yes", "y", "Y"]:
                 restoreDevices = False
         else:
             return 0
