@@ -18,6 +18,7 @@ import simplejson as json
 import sys
 import time
 from distutils.version import LooseVersion
+from BrewPiUtil import asciiToUnicode
 
 def getVersionFromSerial(ser):
     version = None
@@ -30,6 +31,7 @@ def getVersionFromSerial(ser):
         retry = True
         line = ser.readline()
         if line:
+            line = asciiToUnicode(line)
             if line[0] == 'N':
                 data = line.strip('\n')[2:]
                 version = AvrInfo(data)

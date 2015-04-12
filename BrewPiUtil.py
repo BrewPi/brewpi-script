@@ -136,3 +136,8 @@ def setupSerial(config):
         ser.read = readAndDump
         ser.write = writeAndDump
     return ser, conn
+
+# remove extended ascii characters from string, because they can raise UnicodeDecodeError later
+def asciiToUnicode(s):
+    s = s.replace(chr(0xB0),'&deg')
+    return unicode(s, 'ascii', 'ignore')

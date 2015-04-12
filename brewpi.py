@@ -351,8 +351,9 @@ def lineFromSerial(serial):
             serialBuffer = lines[0]
             return None
         else:
+            # complete line received, [0] is complete line [1] is separator [2] is the rest
             serialBuffer = lines[2]
-            return lines[0]
+            return util.asciiToUnicode(lines[0])
 
 
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
@@ -633,7 +634,9 @@ while run:
                 with file(profileDestFile, 'w') as modified:
                     modified.write(line1 + "," + value + "\n" + rest)
             except IOError as e:  # catch all exceptions and report back an error
-                conn.send("I/O Error(%d) updating profile: %s " % (e.errno, e.strerror))
+                error = "I/O Error(%d) updating profile: %s " % (e.errno, e.strerror)
+                conn.send(error)
+                printStdErr(error)
             else:
                 conn.send("Profile successfully updated")
                 if cs['mode'] is not 'p':
@@ -684,7 +687,7 @@ while run:
             except json.JSONDecodeError:
                 logMessage("Error: invalid JSON parameter string received: " + value)
                 continue
-            ser.write("U" + value)
+            ser.write("U" + json.dumps(configStringJson))
             deviceList['listState'] = ""  # invalidate local copy
         elif messageType == "getVersion":
             if hwVersion:
@@ -790,8 +793,7 @@ while run:
                 elif line[0] == 'L':
                     # lcd content received
                     prevLcdUpdate = time.time()
-                    lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
-                    lcdText = json.loads(lcdTextReplaced)
+                    lcdText = json.loads(line[2:])
                 elif line[0] == 'C':
                     # Control constants received
                     cc = json.loads(line[2:])
@@ -809,12 +811,12 @@ while run:
                     deviceList['available'] = json.loads(line[2:])
                     oldListState = deviceList['listState']
                     deviceList['listState'] = oldListState.strip('h') + "h"
-                    logMessage("Available devices received: " + str(deviceList['available']))
+                    logMessage("Available devices received: "+ json.dumps(deviceList['available']))
                 elif line[0] == 'd':
                     deviceList['installed'] = json.loads(line[2:])
                     oldListState = deviceList['listState']
                     deviceList['listState'] = oldListState.strip('d') + "d"
-                    logMessage("Installed devices received: " + str(deviceList['installed']))
+                    logMessage("Installed devices received: " + json.dumps(deviceList['installed']).encode('utf-8'))
                 elif line[0] == 'U':
                     logMessage("Device updated to: " + line[2:])
                 else:
@@ -822,9 +824,6 @@ while run:
                 # end or processing a line
             except json.decoder.JSONDecodeError, e:
                 logMessage("JSON decode error: %s" % str(e))
-                logMessage("Line received was: " + line)
-            except UnicodeDecodeError as e:
-                logMessage("Unicode decode error: %s" % str(e))
                 logMessage("Line received was: " + line)
 
         # Check for update from temperature profile

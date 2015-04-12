@@ -339,6 +339,7 @@ class SerialProgrammer:
         while expected_responses:
             line = ser.readline()
             if line:
+                line = util.asciiToUnicode(line)
                 if line[0] == 'C':
                     expected_responses -= 1
                     self.oldSettings['controlConstants'] = json_decode_response(line)
@@ -401,8 +402,8 @@ class SerialProgrammer:
                                                 self.avrVersionOld.toString(),
                                                 self.avrVersionNew.toString())
 
-        printStdErr("Migrating these settings: " + str(restored.items()))
-        printStdErr("Omitting these settings: " + str(omitted.items()))
+        printStdErr("Migrating these settings: " + json.dumps(restored.items()))
+        printStdErr("Omitting these settings: " + json.dumps(omitted.items()))
 
         self.send_restored_settings(restored)
 
