@@ -15,10 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
 import sys
+
+def printStdErr(*objs):
+    print("", *objs, file=sys.stderr)
+
 # Check needed software dependencies to nudge users to fix their setup
 if sys.version_info < (2, 7):
-    print "Sorry, requires Python 2.7."
+    printStdErr("Sorry, requires Python 2.7.")
     sys.exit(1)
 
 # standard libraries
@@ -36,24 +41,24 @@ from distutils.version import LooseVersion
 try:
     import serial
     if LooseVersion(serial.VERSION) < LooseVersion("2.7"):
-        print >> sys.stderr, "BrewPi requires pyserial 2.7, you have version %s installed.\n" \
-                             "Please upgrade pyserial via pip, by running:\n" \
-                             "  sudo pip install pyserial --upgrade\n" \
-                             "If you do not have pip installed, install it with:\n" \
-                             "  sudo apt-get install build-essential python-dev python-pip\n" % serial.VERSION
+        printStdErr("BrewPi requires pyserial 2.7, you have version {0} installed.\n".format(serial.VERSION) +
+                             "Please upgrade pyserial via pip, by running:\n" +
+                             "  sudo pip install pyserial --upgrade\n" +
+                             "If you do not have pip installed, install it with:\n" +
+                             "  sudo apt-get install build-essential python-dev python-pip\n")
         sys.exit(1)
 except ImportError:
-    print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
+    printStdErr("BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial")
     sys.exit(1)
 try:
     import simplejson as json
 except ImportError:
-    print "BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson"
+    printStdErr("BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson")
     sys.exit(1)
 try:
     from configobj import ConfigObj
 except ImportError:
-    print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
+    printStdErr("BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj")
     sys.exit(1)
 
 
@@ -92,15 +97,15 @@ deviceList = dict(listState="", installed=[], available=[])
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
 def logMessage(message):
-    print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+    printStdErr(time.strftime("%b %d %Y %H:%M:%S   ") + message)
 
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld",
                                ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile', 'checkstartuponly'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --help, --config <path to config file>, " \
-          "--status, --quit, --kill, --force, --log, --dontrunfile"
+    printStdErr("Unknown parameter, available Options: --help, --config <path to config file>, " +
+          "--status, --quit, --kill, --force, --log, --dontrunfile")
     sys.exit()
 
 configFile = None
@@ -112,16 +117,16 @@ serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 for o, a in opts:
     # print help message for command line options
     if o in ('-h', '--help'):
-        print "\n Available command line options: "
-        print "--help: print this help message"
-        print "--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used"
-        print "--status: check which scripts are already running"
-        print "--quit: ask all  instances of BrewPi to quit by sending a message to their socket"
-        print "--kill: kill all instances of BrewPi by sending SIGKILL"
-        print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
-        print "--log: redirect stderr and stdout to log files"
-        print "--dontrunfile: check dontrunfile in www directory and quit if it exists"
-        print "--checkstartuponly: exit after startup checks, return 1 if startup is allowed"
+        printStdErr("\n Available command line options: ")
+        printStdErr("--help: print this help message")
+        printStdErr("--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used")
+        printStdErr("--status: check which scripts are already running")
+        printStdErr("--quit: ask all  instances of BrewPi to quit by sending a message to their socket")
+        printStdErr("--kill: kill all instances of BrewPi by sending SIGKILL")
+        printStdErr("--force: Force quit/kill conflicting instances of BrewPi and keep this one")
+        printStdErr("--log: redirect stderr and stdout to log files")
+        printStdErr("--dontrunfile: check dontrunfile in www directory and quit if it exists")
+        printStdErr("--checkstartuponly: exit after startup checks, return 1 if startup is allowed")
         exit()
     # supply a config file
     if o in ('-c', '--config'):
@@ -136,7 +141,7 @@ for o, a in opts:
         if running:
             pprint(running)
         else:
-            print "No BrewPi scripts running"
+            printStdErr("No BrewPi scripts running")
         exit()
     # quit/kill running instances, then keep this one
     if o in ('-q', '--quit'):
@@ -159,7 +164,7 @@ for o, a in opts:
             allProcesses.quitAll()
             time.sleep(2)
             if len(allProcesses.update()) > 1:
-                print "Asking the other processes to quit nicely did not work. Killing them with force!"
+                printStdErr("Asking the other processes to quit nicely did not work. Killing them with force!")
     # redirect output of stderr and stdout to files in log directory
     if o in ('-l', '--log'):
         logToFiles = True
@@ -732,12 +737,11 @@ while run:
             line = lineFromSerial(ser)
             if line is None:
                 break
-
             try:
                 if line[0] == 'T':
                     # print it to stdout
                     if outputTemperature:
-                        print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+                        print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
 
                     # store time of last new data for interval check
                     prevDataTime = time.time()
