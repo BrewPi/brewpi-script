@@ -238,14 +238,14 @@ class SerialProgrammer:
         time.sleep(1)
         self.fetch_new_version()
         self.reset_settings(self.ser)
-
-        printStdErr("Now checking which settings and devices can be restored...")
+        if self.restoreSettings or self.restoreDevices:
+            printStdErr("Now checking which settings and devices can be restored...")
         if self.avrVersionNew is None:
             printStdErr(("Warning: Cannot receive version number from controller after programming. "
                          "\nSomething must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
 
-        if(LooseVersion(self.avrVersionOld.toString()) < LooseVersion('0.1')):
+        if(self.avrVersionOld.isNewer("0.1")):
             printStdErr("Could not receive valid version number from old board, " +
                         "No settings/devices are restored.")
             return 0
@@ -254,12 +254,12 @@ class SerialProgrammer:
             printStdErr("Trying to restore compatible settings from " +
                         self.avrVersionOld.toString() + " to " + self.avrVersionNew.toString())
 
-            if(LooseVersion(self.avrVersionNew.toString()) < LooseVersion('0.2')):
+            if(self.avrVersionNew.isNewer("0.2")):
                 printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
                 self.restoreSettings = False
 
         if self.restoreDevices:
-            if(LooseVersion(self.avrVersionNew.toString()) < LooseVersion('0.2')):
+            if(self.avrVersionNew.isNewer("0.2")):
                 printStdErr("Sorry, devices can only be restored when updating to BrewPi 0.2.0 or higher")
                 self.restoreSettings = False
 
@@ -270,7 +270,6 @@ class SerialProgrammer:
             self.restore_devices()
 
         printStdErr("****    Program script done!    ****")
-        printStdErr("If you started the program script from the web interface, BrewPi will restart automatically")
         self.ser.close()
         self.ser = None
         return 1
@@ -328,7 +327,7 @@ class SerialProgrammer:
         self.oldSettings.clear()
         printStdErr("Requesting old settings from %(a)s..." % msg_map)
         expected_responses = 2
-        if not self.avrVersionOld.isNewer("2.0.0"):  # versions older than 2.0.0 did not have a device manager
+        if not self.avrVersionOld.isNewer("0.2.0"):  # versions older than 2.0.0 did not have a device manager
             expected_responses += 1
             ser.write("d{}")  # installed devices
             time.sleep(1)

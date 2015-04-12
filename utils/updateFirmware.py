@@ -39,12 +39,13 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
         family = hwVersion.family
         shield = hwVersion.shield
         board = hwVersion.board
-
     except:
         printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable")
         printStdErr("Please go to https://github.com/BrewPi/firmware/releases to download and upload via the BrewPi web interface")
-    ser.close()  # close serial port
-    ser = None
+
+    if ser:
+        ser.close()  # close serial port
+        ser = None
 
     if not hwVersion:
         printStdErr("Unable to retrieve firmware version from controller")
