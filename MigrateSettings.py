@@ -53,9 +53,9 @@ MigrateSettingsDefaultRestoreValidity = [
     SettingMigrate('hs', '0', '1000', []),
     SettingMigrate('heatEst', '0', '1000', []),
     SettingMigrate('coolEst', '0', '1000', []),
-    SettingMigrate('mode', '0', '1000', []),
     SettingMigrate('fridgeSet', '0', '1000', []),
-    SettingMigrate('beerSet', '0', '1000', [])
+    SettingMigrate('beerSet', '0', '1000', []),
+    SettingMigrate('mode', '0', '1000', [])
 ]
 
 class MigrateSettings:
