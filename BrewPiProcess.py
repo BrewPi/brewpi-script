@@ -72,6 +72,8 @@ class BrewPiProcess:
             else:
                 print "Could not connect to socket of BrewPi process, maybe it just started and is not listening yet."
                 print "Could not send quit message to BrewPi instance with pid %d!" % self.pid
+                print "Killing it instead!"
+                self.kill()
                 return False
 
     def kill(self):
@@ -115,7 +117,14 @@ class BrewPiProcesses():
         Returns: list of BrewPiProcess objects
         """
         bpList = []
-        matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'brewpi.py'in s for s in p.cmdline())]
+        matching = []
+
+        # some OS's (OS X) do not allow processes to read info from other processes. 
+        try:
+            matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'brewpi.py'in s for s in p.cmdline())]
+        except psutil.AccessDenied:
+            pass
+
         for p in matching:
             bp = self.parseProcess(p)
             bpList.append(bp)

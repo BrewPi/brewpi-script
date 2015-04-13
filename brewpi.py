@@ -15,10 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import print_function
 import sys
+
+def printStdErr(*objs):
+    print("", *objs, file=sys.stderr)
+
 # Check needed software dependencies to nudge users to fix their setup
 if sys.version_info < (2, 7):
-    print "Sorry, requires Python 2.7."
+    printStdErr("Sorry, requires Python 2.7.")
     sys.exit(1)
 
 # standard libraries
@@ -36,30 +41,30 @@ from distutils.version import LooseVersion
 try:
     import serial
     if LooseVersion(serial.VERSION) < LooseVersion("2.7"):
-        print >> sys.stderr, "BrewPi requires pyserial 2.7, you have version %s installed.\n" \
-                             "Please upgrade pyserial via pip, by running:\n" \
-                             "  sudo pip install pyserial --upgrade\n" \
-                             "If you do not have pip installed, install it with:\n" \
-                             "  sudo apt-get install build-essential python-dev python-pip\n" % serial.VERSION
+        printStdErr("BrewPi requires pyserial 2.7, you have version {0} installed.\n".format(serial.VERSION) +
+                             "Please upgrade pyserial via pip, by running:\n" +
+                             "  sudo pip install pyserial --upgrade\n" +
+                             "If you do not have pip installed, install it with:\n" +
+                             "  sudo apt-get install build-essential python-dev python-pip\n")
         sys.exit(1)
 except ImportError:
-    print "BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial"
+    printStdErr("BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial")
     sys.exit(1)
 try:
     import simplejson as json
 except ImportError:
-    print "BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson"
+    printStdErr("BrewPi requires simplejson to run, please install it with 'sudo apt-get install python-simplejson")
     sys.exit(1)
 try:
     from configobj import ConfigObj
 except ImportError:
-    print "BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj"
+    printStdErr("BrewPi requires ConfigObj to run, please install it with 'sudo apt-get install python-configobj")
     sys.exit(1)
 
 
 #local imports
 import temperatureProfile
-import programArduino as programmer
+import programController as programmer
 import brewpiJson
 import BrewPiUtil as util
 import brewpiVersion
@@ -68,8 +73,8 @@ import expandLogMessage
 import BrewPiProcess
 
 
-# Settings will be read from Arduino, initialize with same defaults as Arduino
-# This is mainly to show what's expected. Will all be overwritten on the first update from the arduino
+# Settings will be read from controller, initialize with same defaults as controller
+# This is mainly to show what's expected. Will all be overwritten on the first update from the controller
 
 compatibleHwVersion = "0.2.4"
 
@@ -92,15 +97,15 @@ deviceList = dict(listState="", installed=[], available=[])
 lcdText = ['Script starting up', ' ', ' ', ' ']
 
 def logMessage(message):
-    print >> sys.stderr, time.strftime("%b %d %Y %H:%M:%S   ") + message
+    printStdErr(time.strftime("%b %d %Y %H:%M:%S   ") + message)
 
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld",
                                ['help', 'config=', 'status', 'quit', 'kill', 'force', 'log', 'dontrunfile', 'checkstartuponly'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --help, --config <path to config file>, " \
-          "--status, --quit, --kill, --force, --log, --dontrunfile"
+    printStdErr("Unknown parameter, available Options: --help, --config <path to config file>, " +
+          "--status, --quit, --kill, --force, --log, --dontrunfile")
     sys.exit()
 
 configFile = None
@@ -112,16 +117,16 @@ serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 for o, a in opts:
     # print help message for command line options
     if o in ('-h', '--help'):
-        print "\n Available command line options: "
-        print "--help: print this help message"
-        print "--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used"
-        print "--status: check which scripts are already running"
-        print "--quit: ask all  instances of BrewPi to quit by sending a message to their socket"
-        print "--kill: kill all instances of BrewPi by sending SIGKILL"
-        print "--force: Force quit/kill conflicting instances of BrewPi and keep this one"
-        print "--log: redirect stderr and stdout to log files"
-        print "--dontrunfile: check dontrunfile in www directory and quit if it exists"
-        print "--checkstartuponly: exit after startup checks, return 1 if startup is allowed"
+        printStdErr("\n Available command line options: ")
+        printStdErr("--help: print this help message")
+        printStdErr("--config <path to config file>: specify a config file to use. When omitted settings/config.cf is used")
+        printStdErr("--status: check which scripts are already running")
+        printStdErr("--quit: ask all  instances of BrewPi to quit by sending a message to their socket")
+        printStdErr("--kill: kill all instances of BrewPi by sending SIGKILL")
+        printStdErr("--force: Force quit/kill conflicting instances of BrewPi and keep this one")
+        printStdErr("--log: redirect stderr and stdout to log files")
+        printStdErr("--dontrunfile: check dontrunfile in www directory and quit if it exists")
+        printStdErr("--checkstartuponly: exit after startup checks, return 1 if startup is allowed")
         exit()
     # supply a config file
     if o in ('-c', '--config'):
@@ -136,7 +141,7 @@ for o, a in opts:
         if running:
             pprint(running)
         else:
-            print "No BrewPi scripts running"
+            printStdErr("No BrewPi scripts running")
         exit()
     # quit/kill running instances, then keep this one
     if o in ('-q', '--quit'):
@@ -159,7 +164,7 @@ for o, a in opts:
             allProcesses.quitAll()
             time.sleep(2)
             if len(allProcesses.update()) > 1:
-                print "Asking the other processes to quit nicely did not work. Killing them with force!"
+                printStdErr("Asking the other processes to quit nicely did not work. Killing them with force!")
     # redirect output of stderr and stdout to files in log directory
     if o in ('-l', '--log'):
         logToFiles = True
@@ -202,8 +207,7 @@ lastDay = ""
 day = ""
 
 if logToFiles:
-    logPath = util.addSlash(config['scriptPath']) + 'logs/'
-    print logPath
+    logPath = util.addSlash(util.scriptPath()) + 'logs/'
     logMessage("Redirecting output to log files in %s, output will not be shown in console" % logPath)
     sys.stderr = open(logPath + 'stderr.txt', 'a', 0)  # append to stderr file, unbuffered
     sys.stdout = open(logPath + 'stdout.txt', 'w', 0)  # overwrite stdout file on script start, unbuffered
@@ -241,7 +245,7 @@ def setFiles():
 
     # create directory for the data if it does not exist
     beerFileName = config['beerName']
-    dataPath = util.addSlash(util.addSlash(config['scriptPath']) + 'data/' + beerFileName)
+    dataPath = util.addSlash(util.addSlash(util.scriptPath()) + 'data/' + beerFileName)
     wwwDataPath = util.addSlash(util.addSlash(config['wwwPath']) + 'data/' + beerFileName)
 
     if not os.path.exists(dataPath):
@@ -331,22 +335,28 @@ def resumeLogging():
 port = config['port']
 ser, conn = util.setupSerial(config)
 
+if not ser:
+    exit(1)
+
 # bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
 serialBuffer = ''
 ser.setTimeout(0) # non blocking mode
 
 def lineFromSerial(serial):
     global serialBuffer
-    serialBuffer = serialBuffer + serial.read(serial.inWaiting())
+    newData = serial.read(serial.inWaiting())
+    if len(newData) > 0:
+        serialBuffer = serialBuffer + newData
     if '\n' in serialBuffer:
         lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
         if(lines[1] == ''):
-            # separator not found, first element is incomplete line
+            # '\n' not found, first element is incomplete line
             serialBuffer = lines[0]
             return None
         else:
+            # complete line received, [0] is complete line [1] is separator [2] is the rest
             serialBuffer = lines[2]
-            return lines[0]
+            return util.asciiToUnicode(lines[0])
 
 
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
@@ -355,32 +365,33 @@ time.sleep(float(config.get('startupDelay', 10)))
 
 ser.flush()
 
+logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(ser)
 if hwVersion is None:
-    logMessage("Warning: Cannot receive version number from Arduino. " +
-               "Your Arduino is either not programmed or running a very old version of BrewPi. " +
-               "Please upload a new version of BrewPi to your Arduino.")
-    # script will continue so you can at least program the Arduino
-    lcdText = ['Could not receive', 'version from Arduino', 'Please (re)program', 'your Arduino']
+    logMessage("Warning: Cannot receive version number from controller. " +
+               "Your controller is either not programmed or running a very old version of BrewPi. " +
+               "Please upload a new version of BrewPi to your controller.")
+    # script will continue so you can at least program the controller
+    lcdText = ['Could not receive', 'version from controller', 'Please (re)program', 'your controller']
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
-               " on port " + port + "\n")
+               " on port " + ser.name + "\n")
     if LooseVersion( hwVersion.toString() ) < LooseVersion(compatibleHwVersion):
         logMessage("Warning: minimum BrewPi version compatible with this script is " +
                    compatibleHwVersion +
                    " but version number received is " + hwVersion.toString())
     if int(hwVersion.log) != int(expandLogMessage.getVersion()):
         logMessage("Warning: version number of local copy of logMessages.h " +
-                   "does not match log version number received from Arduino." +
-                   "Arduino version = " + str(hwVersion.log) +
+                   "does not match log version number received from controller." +
+                   "controller version = " + str(hwVersion.log) +
                    ", local copy version = " + str(expandLogMessage.getVersion()))
 
 if hwVersion is not None:
     ser.flush()
-    # request settings from Arduino, processed later when reply is received
+    # request settings from controller, processed later when reply is received
     ser.write('s')  # request control settings cs
     ser.write('c')  # request control constants cc
-    # answer from Arduino is received asynchronously later.
+    # answer from controller is received asynchronously later.
 
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
@@ -392,7 +403,7 @@ if useInetSocket:
     s.bind((config.get('socketHost', 'localhost'), int(socketPort)))
     logMessage('Bound to TCP socket on port %d ' % int(socketPort))
 else:
-    socketFile = util.addSlash(config['scriptPath']) + 'BEERSOCKET'
+    socketFile = util.addSlash(util.scriptPath()) + 'BEERSOCKET'
     if os.path.exists(socketFile):
     # if socket already exists, remove it
         os.remove(socketFile)
@@ -411,6 +422,8 @@ s.settimeout(serialCheckInterval)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
+prevLcdUpdate = time.time()
+prevSettingsUpdate = time.time()
 
 run = 1
 
@@ -477,7 +490,7 @@ while run:
             conn.send(json.dumps(cc))
         elif messageType == "getControlSettings":
             if cs['mode'] == "p":
-                profileFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+                profileFile = util.addSlash(util.scriptPath()) + 'settings/tempProfile.csv'
                 with file(profileFile, 'r') as prof:
                     cs['profile'] = prof.readline().split(",")[-1].rstrip("\n")
             cs['dataLogging'] = config['dataLogging']
@@ -513,7 +526,7 @@ while run:
                 logMessage("Notification: Beer temperature set to " +
                            str(cs['beerSet']) +
                            " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update Arduino
+                raise socket.timeout  # go to serial communication to update controller
             else:
                 logMessage("Beer temperature setting " + str(newTemp) +
                            " is outside of allowed range " +
@@ -533,7 +546,7 @@ while run:
                 logMessage("Notification: Fridge temperature set to " +
                            str(cs['fridgeSet']) +
                            " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update Arduino
+                raise socket.timeout  # go to serial communication to update controller
             else:
                 logMessage("Fridge temperature setting " + str(newTemp) +
                            " is outside of allowed range " +
@@ -545,7 +558,7 @@ while run:
             logMessage("Notification: Temperature control disabled")
             raise socket.timeout
         elif messageType == "setParameters":
-            # receive JSON key:value pairs to set parameters on the Arduino
+            # receive JSON key:value pairs to set parameters on the controller
             try:
                 decoded = json.loads(value)
                 ser.write("j" + json.dumps(decoded))
@@ -608,8 +621,8 @@ while run:
             logMessage("Setting profile '%s' as active profile" % value)
             config = util.configSet(configFile, 'profileName', value)
             changeWwwSetting('profileName', value)
-            profileSrcFile = util.addSlash(config['wwwPath']) + "/data/profiles/" + value + ".csv"
-            profileDestFile = util.addSlash(config['scriptPath']) + 'settings/tempProfile.csv'
+            profileSrcFile = util.addSlash(config['wwwPath']) + "data/profiles/" + value + ".csv"
+            profileDestFile = util.addSlash(util.scriptPath()) + 'settings/tempProfile.csv'
             profileDestFileOld = profileDestFile + '.old'
             try:
                 if os.path.isfile(profileDestFile):
@@ -624,32 +637,34 @@ while run:
                 with file(profileDestFile, 'w') as modified:
                     modified.write(line1 + "," + value + "\n" + rest)
             except IOError as e:  # catch all exceptions and report back an error
-                conn.send("I/O Error(%d) updating profile: %s " % (e.errno, e.strerror))
+                error = "I/O Error(%d) updating profile: %s " % (e.errno, e.strerror)
+                conn.send(error)
+                printStdErr(error)
             else:
                 conn.send("Profile successfully updated")
                 if cs['mode'] is not 'p':
                     cs['mode'] = 'p'
                     ser.write("j{mode:p}")
                     logMessage("Notification: Profile mode enabled")
-                    raise socket.timeout  # go to serial communication to update Arduino
-        elif messageType == "programArduino":
+                    raise socket.timeout  # go to serial communication to update controller
+        elif messageType == "programController" or messageType == "programArduino":
             ser.close()  # close serial port before programming
-            del ser  # Arduino won't reset when serial port is not completely removed
+            ser = None
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']
                 boardType = programParameters['boardType']
                 restoreSettings = programParameters['restoreSettings']
                 restoreDevices = programParameters['restoreDevices']
-                programmer.programArduino(config, boardType, hexFile,
+                programmer.programController(config, boardType, hexFile,
                                           {'settings': restoreSettings, 'devices': restoreDevices})
-                logMessage("New program uploaded to Arduino, script will restart")
+                logMessage("New program uploaded to controller, script will restart")
             except json.JSONDecodeError:
                 logMessage("Error: cannot decode programming parameters: " + value)
                 logMessage("Restarting script without programming.")
 
             # restart the script when done. This replaces this process with the new one
-            time.sleep(5)  # give the Arduino time to reboot
+            time.sleep(5)  # give the controller time to reboot
             python = sys.executable
             os.execl(python, python, *sys.argv)
         elif messageType == "refreshDeviceList":
@@ -675,10 +690,15 @@ while run:
             except json.JSONDecodeError:
                 logMessage("Error: invalid JSON parameter string received: " + value)
                 continue
-            ser.write("U" + value)
+            ser.write("U" + json.dumps(configStringJson))
             deviceList['listState'] = ""  # invalidate local copy
         elif messageType == "getVersion":
-            response = hwVersion.__dict__ if hwVersion else {}
+            if hwVersion:
+                response = hwVersion.__dict__
+                # replace LooseVersion with string, because it is not JSON serializable
+                response['version'] = hwVersion.toString()
+            else:
+                response = {}
             response_str = json.dumps(response)
             conn.send(response_str)
         else:
@@ -695,12 +715,18 @@ while run:
         prevTimeOut = time.time()
 
         if hwVersion is None:
-            continue  # do nothing with the serial port when the arduino has not been recognized
+            continue  # do nothing with the serial port when the controller has not been recognized
 
-        # request new LCD text
-        ser.write('l')
-        # request Settings from Arduino to stay up to date
-        ser.write('s')
+        if(time.time() - prevLcdUpdate) > 5:
+            # request new LCD text
+            prevLcdUpdate += 5 # give the controller some time to respond
+            ser.write('l')
+
+        if(time.time() - prevSettingsUpdate) > 60:
+            # Request Settings from controller to stay up to date
+            # Controller should send updates on changes, this is a periodical update to ensure it is up to date
+            prevSettingsUpdate += 5 # give the controller some time to respond
+            ser.write('s')
 
         # if no new data has been received for serialRequestInteval seconds
         if (time.time() - prevDataTime) >= float(config['interval']):
@@ -708,20 +734,19 @@ while run:
             prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
 
         elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
-            #something is wrong: arduino is not responding to data requests
-            logMessage("Error: Arduino is not responding to new data requests")
+            #something is wrong: controller is not responding to data requests
+            logMessage("Error: controller is not responding to new data requests")
 
 
         while True:
             line = lineFromSerial(ser)
             if line is None:
                 break
-
             try:
                 if line[0] == 'T':
                     # print it to stdout
                     if outputTemperature:
-                        print time.strftime("%b %d %Y %H:%M:%S  ") + line[2:]
+                        print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
 
                     # store time of last new data for interval check
                     prevDataTime = time.time()
@@ -755,7 +780,7 @@ while run:
                                        str(newRow['RoomTemp']) + '\n')
                         csvFile.write(lineToWrite)
                     except KeyError, e:
-                        logMessage("KeyError in line from Arduino: %s" % str(e))
+                        logMessage("KeyError in line from controller: %s" % str(e))
 
                     csvFile.close()
                     shutil.copyfile(localCsvFileName, wwwCsvFileName)
@@ -764,19 +789,20 @@ while run:
                     # debug message received
                     try:
                         expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-                        logMessage("Arduino debug message: " + expandedMessage)
+                        logMessage("controller debug message: " + expandedMessage)
                     except Exception, e:  # catch all exceptions, because out of date file could cause errors
                         logMessage("Error while expanding log message '" + line[2:] + "'" + str(e))
 
                 elif line[0] == 'L':
                     # lcd content received
-                    lcdTextReplaced = line[2:].replace('\xb0', '&deg')  # replace degree sign with &deg
-                    lcdText = json.loads(lcdTextReplaced)
+                    prevLcdUpdate = time.time()
+                    lcdText = json.loads(line[2:])
                 elif line[0] == 'C':
                     # Control constants received
                     cc = json.loads(line[2:])
                 elif line[0] == 'S':
                     # Control settings received
+                    prevSettingsUpdate = time.time()
                     cs = json.loads(line[2:])
                 # do not print this to the log file. This is requested continuously.
                 elif line[0] == 'V':
@@ -788,36 +814,34 @@ while run:
                     deviceList['available'] = json.loads(line[2:])
                     oldListState = deviceList['listState']
                     deviceList['listState'] = oldListState.strip('h') + "h"
-                    logMessage("Available devices received: " + str(deviceList['available']))
+                    logMessage("Available devices received: "+ json.dumps(deviceList['available']))
                 elif line[0] == 'd':
                     deviceList['installed'] = json.loads(line[2:])
                     oldListState = deviceList['listState']
                     deviceList['listState'] = oldListState.strip('d') + "d"
-                    logMessage("Installed devices received: " + str(deviceList['installed']))
+                    logMessage("Installed devices received: " + json.dumps(deviceList['installed']).encode('utf-8'))
                 elif line[0] == 'U':
                     logMessage("Device updated to: " + line[2:])
                 else:
-                    logMessage("Cannot process line from Arduino: " + line)
+                    logMessage("Cannot process line from controller: " + line)
                 # end or processing a line
             except json.decoder.JSONDecodeError, e:
                 logMessage("JSON decode error: %s" % str(e))
                 logMessage("Line received was: " + line)
-            except UnicodeDecodeError as e:
-                logMessage("Unicode decode error: %s" % str(e))
-                logMessage("Line received was: " + line)
 
         # Check for update from temperature profile
         if cs['mode'] == 'p':
-            newTemp = temperatureProfile.getNewTemp(config['scriptPath'])
+            newTemp = temperatureProfile.getNewTemp(util.scriptPath())
             if newTemp != cs['beerSet']:
                 cs['beerSet'] = newTemp
                 if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
-                    # if temperature has to be updated send settings to arduino
+                    # if temperature has to be updated send settings to controller
                     ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
                 elif newTemp is None:
                     # temperature control disabled by profile
                     logMessage("Temperature control disabled by empty cell in profile.")
-                    ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on Arduino
+                    ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on controller
+
 
     except socket.error as e:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))

@@ -18,7 +18,7 @@ import os
 import sys
 from configobj import ConfigObj
 
-import programArduino as programmer
+import programController as programmer
 import BrewPiUtil as util
 
 # Read in command line arguments
@@ -36,6 +36,6 @@ util.readCfgWithDefaults(configFile)
 hexFile = config['wwwPath'] + 'uploads/brewpi-uno-revC.hex'
 boardType = config['boardType']
 
-result = programmer.programArduino(config, boardType, hexFile, {'settings': True, 'devices': True})
+result = programmer.programController(config, boardType, hexFile, {'settings': True, 'devices': True})
 
 print result

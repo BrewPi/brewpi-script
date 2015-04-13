@@ -17,6 +17,7 @@
 import serial
 import msvcrt
 import sys
+sys.path.append("..") # append parent directory to be able to import files
 import os
 import simplejson as json
 import expandLogMessage
@@ -25,7 +26,7 @@ import BrewPiUtil as util
 # Read in command line arguments
 if len(sys.argv) < 2:
     print >> sys.stderr, 'Using default config path ./settings/config.cfg, to override use : %s <config file full path>' % sys.argv[0]
-    configFile = util.addSlash(sys.path[0]) + 'settings/config.cfg'
+    configFile = util.addSlash(sys.path[0]) + '../settings/config.cfg'
 else:
     configFile = sys.argv[1]
 
