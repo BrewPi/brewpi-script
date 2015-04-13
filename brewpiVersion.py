@@ -29,16 +29,18 @@ def getVersionFromSerial(ser):
     ser.write('n')  # request version info
     while True:
         retry = True
-        line = ser.readline()
-        if line:
-            line = asciiToUnicode(line)
-            if line[0] == 'N':
-                data = line.strip('\n')[2:]
-                version = AvrInfo(data)
-                retry = False
-            if time.time() - startTime >= ser.timeout:
-                # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
-                retry = False
+        while 1: # read all lines from serial
+            line = ser.readline()
+            if line:
+                line = asciiToUnicode(line)
+                if line[0] == 'N':
+                    data = line.strip('\n')[2:]
+                    version = AvrInfo(data)
+                    retry = False
+                    break
+                if time.time() - startTime >= ser.timeout:
+                    # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
+                    break
 
         if retry:
             ser.write('n')  # request version info
@@ -69,7 +71,7 @@ class AvrInfo:
     shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_revC}
 
     board_leonardo = "leonardo"
-    board_standard = "standard"
+    board_standard = "uno"
     board_mega = "mega"
     board_spark_core = "spark-core"
 

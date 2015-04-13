@@ -28,6 +28,7 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
     hwVersion = None
     shield = None
     board = None
+    boardName = None
     family = None
     ser = None
 
@@ -39,6 +40,7 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
         family = hwVersion.family
         shield = hwVersion.shield
         board = hwVersion.board
+        boardName = hwVersion.boardName()
     except:
         printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable")
         printStdErr("Please go to https://github.com/BrewPi/firmware/releases to download and upload via the BrewPi web interface")
@@ -83,9 +85,9 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
     printStdErr("Downloading latest firmware...")
     localFileName = None
     if family == "Arduino":
-        localFileName = releases.getBin(latest, [board, shield, ".hex"])
+        localFileName = releases.getBin(latest, [boardName, shield, ".hex"])
     elif family == "Spark":
-        localFileName = releases.getBin(latest, [board, ".bin"])
+        localFileName = releases.getBin(latest, [boardName, ".bin"])
 
     if localFileName:
         printStdErr("Latest firmware downloaded to " + localFileName)

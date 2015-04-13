@@ -108,17 +108,28 @@ def setupSerial(config):
     conn = None
     port = config['port']
     dumpSerial = config.get('dumpSerial', False)
+
+    error1 = None
+    error2 = None
     # open serial port
-    try:
-        ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-    except (OSError, serial.SerialException) as e:
-        logMessage("Error opening serial port. Trying alternative serial port {0}.\n({1})".format(config['altport'], str(e)))
+    tries = 0
+    while ser is None and tries < 10:
         try:
-            port = config['altport']
+            port = config['port']
             ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
         except (OSError, serial.SerialException) as e:
-            logMessage("Error opening alternative serial port. Script will exit. Is your controller connected via USB?\n({0})".format(str(e)))
-            exit(1)
+            error1 = '{0}.\n({1})'.format(port, str(e))
+            try:
+                port = config['altport']
+                ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
+
+            except (OSError, serial.SerialException) as e:
+                error2 = '{0}.\n({1})'.format(port, str(e))
+
+        tries += 1
+        if not ser:
+            time.sleep(1)
+
 
     # yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
     if dumpSerial:
@@ -135,6 +146,11 @@ def setupSerial(config):
             sys.stderr.write(data)
         ser.read = readAndDump
         ser.write = writeAndDump
+
+    if not ser:
+        logMessage("Error opening serial port {0}:".format(error1))
+        logMessage("Error opening alternative serial port {0}:".format(error2))
+
     return ser, conn
 
 # remove extended ascii characters from string, because they can raise UnicodeDecodeError later

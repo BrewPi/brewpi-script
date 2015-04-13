@@ -43,7 +43,7 @@ class gitHubReleases:
         AllUrls = (asset["browser_download_url"] for asset in match["assets"])
 
         for url in  AllUrls:
-            if all(x in url for x in wordsInFileName):
+            if all(word.lower() in url.lower() for word in wordsInFileName):
                 downloadUrl = url
 
         if not downloadUrl:

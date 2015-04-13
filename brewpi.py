@@ -335,6 +335,9 @@ def resumeLogging():
 port = config['port']
 ser, conn = util.setupSerial(config)
 
+if not ser:
+    exit(1)
+
 # bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
 serialBuffer = ''
 ser.setTimeout(0) # non blocking mode
