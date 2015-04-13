@@ -30,7 +30,10 @@ def getVersionFromSerial(ser):
         retry = True
         while 1: # read all lines from serial
             startTime = time.time()
-            line = ser.readline()
+            try:
+                line = ser.readline()
+            except ser.SerialException as e:
+                pass
             if line:
                 line = asciiToUnicode(line)
                 if line[0] == 'N':
