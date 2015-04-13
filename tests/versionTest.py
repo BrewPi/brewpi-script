@@ -40,6 +40,10 @@ class VersionTestCase(unittest.TestCase):
         v.parse('{"v":"0.1.0"}')
         self.assertVersionEqual(v, "0.1.0")
 
+    def test_doesNotCrashOnInvalidJsonVersion(self):
+        v = self.newVersion()
+        v.parse('{"v":"0.2.8","n":""0.2.8"","s":2,"y":0,"b":"l","l":"1"}')
+
     def test_canParseJsonSimulatorEnabled(self):
         v = self.newVersion()
         v.parse('{"y":1}')

@@ -89,7 +89,7 @@ class AvrInfo:
                 board_spark_core: "Core"}
 
     def __init__(self, s=None):
-        self.version = None
+        self.version = LooseVersion("0.0.0")
         self.build = 0
         self.commit = None
         self.simulator = False
@@ -118,9 +118,14 @@ class AvrInfo:
         except UnicodeDecodeError, e:
             print >> sys.stderr, "Unicode decode error: %s" % str(e)
             print >> sys.stderr, "Could not parse version number: " + s
+        except TypeError, e:
+            print >> sys.stderr, "TypeError: %s" % str(e)
+            print >> sys.stderr, "Could not parse version number: " + s
 
         self.family = None
         self.board_name = None
+        if not j:
+            return
         if AvrInfo.version in j:
             self.parseStringVersion(j[AvrInfo.version])
         if AvrInfo.simulator in j:
