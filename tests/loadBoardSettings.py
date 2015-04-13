@@ -2,11 +2,11 @@ import os.path
 # To change this template, choose Tools | Templates
 # and open the template in the editor.
 
-from programArduino import fetchBoardSettings
+from programController import fetchBoardSettings
 import os
 import sys
 import unittest
-import programArduino
+import programController
 from configobj import ConfigObj
 
 
@@ -21,7 +21,8 @@ class  LoadBoardSettingsTestCase(unittest.TestCase):
 
     def setUp(self):
         self.config = loadDefaultConfig()
-        self.boardsFile = programArduino.loadBoardsFile(self.config);
+        arduinohome = self.config.get('arduinoHome', '/usr/share/arduino/')  # location of Arduino sdk
+        self.boardsFile = programController.loadBoardsFile(arduinohome);
     #
     
     def test_loadBoardSettings_Leonardo(self):

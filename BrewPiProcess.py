@@ -72,6 +72,8 @@ class BrewPiProcess:
             else:
                 print "Could not connect to socket of BrewPi process, maybe it just started and is not listening yet."
                 print "Could not send quit message to BrewPi instance with pid %d!" % self.pid
+                print "Killing it instead!"
+                self.kill()
                 return False
 
     def kill(self):
