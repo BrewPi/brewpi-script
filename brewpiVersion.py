@@ -23,13 +23,13 @@ from BrewPiUtil import asciiToUnicode
 def getVersionFromSerial(ser):
     version = None
     retries = 0
-    startTime = time.time()
     oldTimeOut = ser.timeout
     ser.setTimeout(1)
     ser.write('n')  # request version info
-    while True:
+    while retries < 10:
         retry = True
         while 1: # read all lines from serial
+            startTime = time.time()
             line = ser.readline()
             if line:
                 line = asciiToUnicode(line)
@@ -38,16 +38,13 @@ def getVersionFromSerial(ser):
                     version = AvrInfo(data)
                     retry = False
                     break
-                if time.time() - startTime >= ser.timeout:
-                    # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
-                    break
-
+            if time.time() - startTime >= ser.timeout:
+                # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
+                break
         if retry:
             ser.write('n')  # request version info
             # time.sleep(1) delay not needed because of blocking (timeout) readline
             retries += 1
-            if retries > 10:
-                break
         else:
             break
     ser.setTimeout(oldTimeOut) # restore previous serial timeout value
