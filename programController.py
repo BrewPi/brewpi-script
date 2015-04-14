@@ -243,7 +243,7 @@ class SerialProgrammer:
 
         time.sleep(1)
         self.fetch_new_version()
-        self.reset_settings(self.ser)
+        self.reset_settings()
         if self.restoreSettings or self.restoreDevices:
             printStdErr("Now checking which settings and devices can be restored...")
         if self.avrVersionNew is None:
@@ -377,20 +377,18 @@ class SerialProgrammer:
     def flash_file(self, hexFile):
         raise Exception("not implemented")
 
-    def reset_settings(self, ser):
+    def reset_settings(self):
         printStdErr("Resetting EEPROM to default settings")
-        ser.write('E')
+        self.ser.write('E')
         time.sleep(5)  # resetting EEPROM takes a while, wait 5 seconds
-        line = ser.readline()
-        if line:  # line available?
-            if line[0] == 'D':
-                # debug message received
-                try:
-                    expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-                    printStdErr(("%(a)s debug message: " % msg_map) + expandedMessage)
-                except Exception, e:  # catch all exceptions, because out of date file could cause errors
-                    printStdErr("Error while expanding log message: " + str(e))
-                    printStdErr(("%(a)s debug message was: " % msg_map) + line[2:])
+        # read log messages from arduino
+        while 1:  # read all lines on serial interface
+            line = self.ser.readline()
+            if line:  # line available?
+                if line[0] == 'D':
+                    self.print_debug_log(line)
+            else:
+                break
 
     def print_debug_log(self, line):
         try:  # debug message received

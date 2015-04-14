@@ -20,16 +20,16 @@ if sys.version_info < (2, 7):
     print "Sorry, requires Python 2.7."
     sys.exit(1)
 
-# standard libraries
 import time
-import socket
 import os
 import getopt
-from pprint import pprint
-import shutil
-import traceback
-import urllib
 import subprocess
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
+from gitHubReleases import gitHubReleases
+import BrewPiUtil as util
+from programController import SerialProgrammer
+
+releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
 
 # Read in command line arguments
 try:
@@ -48,7 +48,7 @@ for o, a in opts:
     if o in ('-h', '--help'):
         print "\n Available command line options: "
         print "--help: print this help message"
-        print "--file: path to .bin file to flash"
+        print "--file: path to .bin file to flash instead of the latest release on GitHub"
         print "--multi: keep the script alive to flash multiple devices"
         exit()
     # supply a config file
@@ -61,20 +61,43 @@ for o, a in opts:
         multi = True
         print "Started in multi flash mode"
 
+dfuPath = "dfu-util"
 # check whether dfu-util can be found
 if sys.platform.startswith('win'):
     p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    p.wait()
+    output, errors = p.communicate()
+    if not output:
+        print "dfu-util cannot be found, please add its location to your PATH variable"
+        exit(1)
 else:
-    p = subprocess.Popen("which dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-p.wait()
-output, errors = p.communicate()
-if not output:
-    print "dfu-util cannot be found, please add its location to your PATH variable"
-    exit(1)
+    downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
+    dfuPath = os.path.join(downloadDir, "dfu-util")
+    if not os.path.exists(dfuPath):
+        print "dfu-util not found, downloading dfu-util..."
+        dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
+        if not os.path.exists(downloadDir):
+            os.makedirs(downloadDir)
+        releases.download(dfuUrl, downloadDir)
+        os.chmod(dfuPath, 777) # make executable
 
+# download latest binary from GitHub if file not specified
+if not binFile:
+    print "Downloading latest firmware..."
+    latest = releases.getLatestTag()
+    print "Latest version on GitHub: " + latest
+
+    binFile = releases.getBin(latest, ["spark-core", ".bin"])
+    if binFile:
+        print "Latest firmware downloaded to " + binFile
+    else:
+        print "Downloading firmware failed"
+        exit(-1)
+
+firstLoop = True
 while(True):
     # list DFU devices to see whether a device is connected
-    p = subprocess.Popen("dfu-util -l", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    p = subprocess.Popen(dfuPath + " -l", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     p.wait()
     output, errors = p.communicate()
     if errors:
@@ -84,11 +107,36 @@ while(True):
         if binFile:
             print "found DFU device, now flashing %s \n\n" % binFile
 
-            p = subprocess.Popen("dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D %s" % binFile, shell=True)
+            p = subprocess.Popen(dfuPath + " dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D %s" % binFile, shell=True)
             p.wait()
+
+            # reset EEPROM to defaults
+            configFile = util.scriptPath() + '/settings/config.cfg'
+            config = util.readCfgWithDefaults(configFile)
+            programmer = SerialProgrammer.create(config, "spark-core")
+
+            # open serial port
+            retries = 30
+            while retries > 0:
+                time.sleep(1)
+                if programmer.open_serial(config, 57600, 0.2):
+                    break
+                retries -= 1
+            if retries > 0:
+                programmer.fetch_version("Success! ")
+                programmer.reset_settings()
+                print "Programming done!"
+            else:
+                print "Could not open serial port after programming"
         else:
             print "found DFU device, but no binary specified for flashing"
         if not multi:
             break
+    else:
+        if firstLoop:
+            print "Did not find any DFU devices."
+            print "Is your Spark Core running in DFU mode (blinking yellow)?"
+            print "Waiting until a DFU device is connected..."
+        firstLoop = False
 
     time.sleep(1)
