@@ -149,7 +149,13 @@ def fetchBoardSettings(boardsFile, boardType):
 
 
 def loadBoardsFile(arduinohome):
-    return open(arduinohome + 'hardware/arduino/boards.txt', 'rb').readlines()
+    boardsFileContent = None
+    try:
+        boardsFileContent = open(arduinohome + 'hardware/arduino/boards.txt', 'rb').readlines()
+    except IOError:
+        printStdErr("Could not read boards.txt from Arduino, probably because Arduino has not been installed")
+        printStdErr("Please install it with: sudo apt-get install arduino-core")
+    return boardsFileContent
 
 
 def openSerial(port, altport, baud, timeoutVal):
@@ -527,6 +533,8 @@ class ArduinoProgrammer(SerialProgrammer):
         avrconf = config.get('avrConf', avrdudehome + 'avrdude.conf')  # location of global avr conf
 
         boardsFile = loadBoardsFile(arduinohome)
+        if not boardsFile:
+            return False
         boardSettings = fetchBoardSettings(boardsFile, boardType)
 
         # parse the Arduino board file to get the right program settings
