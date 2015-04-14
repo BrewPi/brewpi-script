@@ -17,7 +17,7 @@
 import serial
 import msvcrt
 import sys
-sys.path.append("..") # append parent directory to be able to import files
+sys.path.append(os.path.dirname(__file__) + "/..") # append parent directory to be able to import files
 import os
 import simplejson as json
 import expandLogMessage

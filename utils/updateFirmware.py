@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
-sys.path.append("..") # append parent directory to be able to import files
+import os
+sys.path.append(os.path.dirname(__file__) + "/..") # append parent directory to be able to import files
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
 def printStdErr(*objs):
