@@ -331,14 +331,13 @@ def resumeLogging():
     else:
         return {'status': 1, 'statusMessage': "Logging was not paused."}
 
-ser = util.setupSerial(config)
+# bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
+ser = util.setupSerial(config, time_out=0)
 
 if not ser:
     exit(1)
 
-# bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
 serialBuffer = ''
-ser.setTimeout(0) # non blocking mode
 
 def lineFromSerial(serial):
     global serialBuffer
@@ -346,23 +345,23 @@ def lineFromSerial(serial):
     newData = None
     try:
         inWaiting = serial.inWaiting()
-        if inWaiting:
+        if inWaiting > 0:
             newData = serial.read(inWaiting)
     except (IOError, OSError, serial.SerialException) as e:
         logMessage('Serial Error: {0})'.format(str(e)))
         return
     if newData:
         serialBuffer = serialBuffer + newData
-        if '\n' in serialBuffer:
-            lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
-            if(lines[1] == ''):
-                # '\n' not found, first element is incomplete line
-                serialBuffer = lines[0]
-                return None
-            else:
-                # complete line received, [0] is complete line [1] is separator [2] is the rest
-                serialBuffer = lines[2]
-                return util.asciiToUnicode(lines[0])
+    if '\n' in serialBuffer:
+        lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
+        if(lines[1] == ''):
+            # '\n' not found, first element is incomplete line
+            serialBuffer = lines[0]
+            return None
+        else:
+            # complete line received, [0] is complete line [1] is separator [2] is the rest
+            serialBuffer = lines[2]
+            return util.asciiToUnicode(lines[0])
 
 
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
