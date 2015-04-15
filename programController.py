@@ -187,8 +187,8 @@ class SerialProgrammer:
         self.restoreSettings = False
         self.restoreDevices = False
         self.ser = None
-        self.avrVersionNew = None
-        self.avrVersionOld = None
+        self.versionNew = None
+        self.versionOld = None
         self.oldSettings = {}
 
     def program(self, hexFile, restoreWhat):
@@ -228,26 +228,26 @@ class SerialProgrammer:
         self.reset_settings()
         if self.restoreSettings or self.restoreDevices:
             printStdErr("Now checking which settings and devices can be restored...")
-        if self.avrVersionNew is None:
+        if self.versionNew is None:
             printStdErr(("Warning: Cannot receive version number from controller after programming. "
                          "\nSomething must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
 
-        if(self.avrVersionOld.isNewer("0.1")):
+        if(self.versionOld.isNewer("0.1")):
             printStdErr("Could not receive valid version number from old board, " +
                         "No settings/devices are restored.")
             return 0
 
         if self.restoreSettings:
             printStdErr("Trying to restore compatible settings from " +
-                        self.avrVersionOld.toString() + " to " + self.avrVersionNew.toString())
+                        self.versionOld.toString() + " to " + self.versionNew.toString())
 
-            if(self.avrVersionNew.isNewer("0.2")):
+            if(self.versionNew.isNewer("0.2")):
                 printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
                 self.restoreSettings = False
 
         if self.restoreDevices:
-            if(self.avrVersionNew.isNewer("0.2")):
+            if(self.versionNew.isNewer("0.2")):
                 printStdErr("Sorry, devices can only be restored when updating to BrewPi 0.2.0 or higher")
                 self.restoreSettings = False
 
@@ -303,19 +303,19 @@ class SerialProgrammer:
         return version
 
     def fetch_current_version(self):
-        self.avrVersionOld = self.fetch_version("Checking current version: ")
-        return self.avrVersionOld
+        self.versionOld = self.fetch_version("Checking current version: ")
+        return self.versionOld
 
     def fetch_new_version(self):
-        self.avrVersionNew = self.fetch_version("Checking new version: ")
-        return self.avrVersionNew
+        self.versionNew = self.fetch_version("Checking new version: ")
+        return self.versionNew
 
     def retrieve_settings_from_serial(self):
         ser = self.ser
         self.oldSettings.clear()
         printStdErr("Requesting old settings from %(a)s..." % msg_map)
         expected_responses = 2
-        if not self.avrVersionOld.isNewer("0.2.0"):  # versions older than 2.0.0 did not have a device manager
+        if not self.versionOld.isNewer("0.2.0"):  # versions older than 2.0.0 did not have a device manager
             expected_responses += 1
             ser.write("d{}")  # installed devices
             time.sleep(1)
@@ -386,8 +386,8 @@ class SerialProgrammer:
         oldSettingsDict = self.get_combined_settings_dict(self.oldSettings)
         ms = MigrateSettings()
         restored, omitted = ms.getKeyValuePairs(oldSettingsDict,
-                                                self.avrVersionOld.toString(),
-                                                self.avrVersionNew.toString())
+                                                self.versionOld.toString(),
+                                                self.versionNew.toString())
 
         printStdErr("Migrating these settings: " + json.dumps(restored.items()))
         printStdErr("Omitting these settings: " + json.dumps(omitted.items()))
@@ -452,8 +452,7 @@ class SerialProgrammer:
 
             ser.write("U" + json.dumps(device))
 
-            time.sleep(3)  # give the Arduino time to respond
-
+            requestTime = time.time()
             # read log messages from arduino
             while 1:  # read all lines on serial interface
                 line = ser.readline()
@@ -462,7 +461,8 @@ class SerialProgrammer:
                         self.print_debug_log(line)
                     elif line[0] == 'U':
                         printStdErr(("%(a)s reports: device updated to: " % msg_map) + line[2:])
-                else:
+                        break
+                if time.time() > requestTime + 5:  # wait max 5 seconds for an answer
                     break
         printStdErr("Restoring installed devices done!")
 
