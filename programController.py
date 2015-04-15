@@ -482,7 +482,8 @@ class SparkProgrammer(SerialProgrammer):
         result = LightYModem().transfer(file, self.ser, stderr)
         file.close()
         success = result==LightYModem.eot
-        printStdErr("File flashed successfully" if success else "Problem flashing file: "+str(result))
+        printStdErr("File flashed successfully" if success else "Problem flashing file: " + str(result) +
+                                                                "\nPlease try again.")
         return success
 
 
