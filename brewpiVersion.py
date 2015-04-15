@@ -24,12 +24,13 @@ def getVersionFromSerial(ser):
     version = None
     retries = 0
     oldTimeOut = ser.timeout
+    startTime = time.time()
     ser.setTimeout(1)
     ser.write('n')  # request version info
     while retries < 10:
         retry = True
         while 1: # read all lines from serial
-            startTime = time.time()
+            loopTime = time.time()
             try:
                 line = ser.readline()
             except ser.SerialException as e:
@@ -41,9 +42,13 @@ def getVersionFromSerial(ser):
                     version = AvrInfo(data)
                     retry = False
                     break
-            if time.time() - startTime >= ser.timeout:
+            if time.time() - loopTime >= ser.timeout:
                 # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
                 break
+            if time.time() - startTime >= 10:
+                # try max 10 seconds
+                return None
+
         if retry:
             ser.write('n')  # request version info
             # time.sleep(1) delay not needed because of blocking (timeout) readline
