@@ -127,7 +127,8 @@ class BrewPiProcesses():
 
         for p in matching:
             bp = self.parseProcess(p)
-            bpList.append(bp)
+            if bp:
+                bpList.append(bp)
         self.list = bpList
         return self.list
 
@@ -138,9 +139,12 @@ class BrewPiProcesses():
         Returns: BrewPiProcess object
         """
         bp = BrewPiProcess()
-        bp.pid = process._pid
-
-        cfg = [s for s in process.cmdline() if '.cfg' in s]  # get config file argument
+        try:
+            bp.pid = process._pid
+            cfg = [s for s in process.cmdline() if '.cfg' in s]  # get config file argument
+        except psutil.NoSuchProcess:
+            # process no longer exists
+            return None
         if cfg:
             cfg = cfg[0]  # add full path to config file
         else:
