@@ -47,7 +47,8 @@ def getVersionFromSerial(ser):
                 break
             if time.time() - startTime >= 10:
                 # try max 10 seconds
-                return None
+                retry = False
+                break
 
         if retry:
             ser.write('n')  # request version info
