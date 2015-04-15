@@ -342,15 +342,14 @@ class SerialProgrammer:
         oldSettingsFileName = 'settings-' + time.strftime("%b-%d-%Y-%H-%M-%S") + '.json'
         settingsBackupDir = util.scriptPath() + '/settings/controller-backup/'
         if not os.path.exists(settingsBackupDir):
-            os.makedirs(settingsBackupDir)
-            os.chmod(settingsBackupDir) # make sure file can be accessed by all in case the script ran as root
+            os.makedirs(settingsBackupDir, 0777)
 
         oldSettingsFilePath = os.path.join(settingsBackupDir, oldSettingsFileName)
         oldSettingsFile = open(oldSettingsFilePath, 'wb')
         oldSettingsFile.write(json.dumps(self.oldSettings))
         oldSettingsFile.truncate()
         oldSettingsFile.close()
-        os.chmod(oldSettingsFilePath, 777) # make sure file can be accessed by all in case the script ran as root
+        os.chmod(oldSettingsFilePath, 0777) # make sure file can be accessed by all in case the script ran as root
         printStdErr("Saved old settings to file " + oldSettingsFileName)
 
     def delay(self, countDown):

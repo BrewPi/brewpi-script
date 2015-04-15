@@ -18,7 +18,7 @@ class gitHubReleases:
             fileName = os.path.join(path, os.path.basename(url))
             with open(fileName, "wb") as localFile:
                 localFile.write(f.read())
-            os.chmod(fileName, 777) # make sure file can be overwritten by a normal user if this ran as root
+            os.chmod(fileName, 0777) # make sure file can be overwritten by a normal user if this ran as root
             return os.path.abspath(fileName)
 
         #handle errors
@@ -56,8 +56,7 @@ class gitHubReleases:
             
         downloadDir = os.path.join(os.path.abspath(path), tag)
         if not os.path.exists(downloadDir):
-            os.makedirs(downloadDir)
-            os.chmod(downloadDir, 777) # make sure file can be accessed by all in case the script ran as root
+            os.makedirs(downloadDir, 0777) # make sure files can be accessed by all in case the script ran as root
 
         fileName = self.download(downloadUrl, downloadDir)
         return fileName

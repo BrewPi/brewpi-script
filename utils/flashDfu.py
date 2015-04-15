@@ -77,9 +77,9 @@ else:
         print "dfu-util not found, downloading dfu-util..."
         dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
         if not os.path.exists(downloadDir):
-            os.makedirs(downloadDir)
+            os.makedirs(downloadDir, 0777)
         releases.download(dfuUrl, downloadDir)
-        os.chmod(dfuPath, 777) # make executable
+        os.chmod(dfuPath, 0777) # make executable
 
 # download latest binary from GitHub if file not specified
 if not binFile:
