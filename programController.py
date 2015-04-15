@@ -157,23 +157,6 @@ def loadBoardsFile(arduinohome):
         printStdErr("Please install it with: sudo apt-get install arduino-core")
     return boardsFileContent
 
-
-def openSerial(port, altport, baud, timeoutVal):
-    # open serial port
-    try:
-        ser = serial.Serial(port, baud, timeout=timeoutVal)
-        return [ser, port]
-    except (OSError, serial.SerialException) as e:
-        if altport:
-            try:
-                ser = serial.Serial(altport, baud, timeout=timeoutVal)
-                return [ser, altport]
-            except (OSError, serial.SerialException) as e:
-                pass
-        return [None, None]
-
-
-
 def programController(config, boardType, hexFile, restoreWhat):
     programmer = SerialProgrammer.create(config, boardType)
     return programmer.program(hexFile, restoreWhat)
@@ -204,7 +187,6 @@ class SerialProgrammer:
         self.restoreSettings = False
         self.restoreDevices = False
         self.ser = None
-        self.port = None
         self.avrVersionNew = None
         self.avrVersionOld = None
         self.oldSettings = {}
@@ -301,7 +283,7 @@ class SerialProgrammer:
 
     def open_serial(self, config, baud, timeout):
         self.ser = None
-        self.ser, self.port = openSerial(config['port'], config.get('altport'), baud, timeout)
+        self.ser = util.setupSerial(config, baud, timeout)
         if self.ser is None:
             return False
         return True
@@ -317,7 +299,7 @@ class SerialProgrammer:
                          "%(a)s will be reset to defaults."))
         else:
             printStdErr(msg+"Found " + version.toExtendedString() +
-                        " on port " + self.port + "\n")
+                        " on port " + self.ser.name + "\n")
         return version
 
     def fetch_current_version(self):
@@ -577,7 +559,7 @@ class ArduinoProgrammer(SerialProgrammer):
                           ' -p ' + boardSettings['build.mcu'] +
                           ' -c ' + boardSettings['upload.protocol'] +
                           ' -b ' + boardSettings['upload.speed'] +
-                          ' -P ' + self.port +
+                          ' -P ' + self.ser.name +
                           ' -U ' + 'flash:w:' + "\"" + hexFileLocal + "\"" +
                           ' -C ' + avrconf)
 

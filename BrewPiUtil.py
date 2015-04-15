@@ -97,15 +97,14 @@ def scriptPath():
 def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
     if os.path.isfile(path):
         os.remove(path)
-        if not sys.platform.startswith('win'): # cron not available
+        if not sys.platform.startswith('win'):  # cron not available
             print "BrewPi script will restart automatically."
     else:
         print "File do_not_run_brewpi does not exist at " + path
 
 
-def setupSerial(config):
+def setupSerial(config, baud_rate=57600, time_out=0.1):
     ser = None
-    conn = None
     port = config['port']
     dumpSerial = config.get('dumpSerial', False)
 
@@ -116,20 +115,27 @@ def setupSerial(config):
     while ser is None and tries < 10:
         try:
             port = config['port']
-            ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
-        except (OSError, serial.SerialException) as e:
+            ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out)  # use non blocking serial.
+        except (IOError, OSError, serial.SerialException) as e:
             error1 = '{0}.\n({1})'.format(port, str(e))
             try:
                 port = config['altport']
-                ser = serial.Serial(port, 57600, timeout=0.1)  # use non blocking serial.
+                ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out)  # use non blocking serial.
 
-            except (OSError, serial.SerialException) as e:
+            except (IOError, OSError, serial.SerialException) as e:
                 error2 = '{0}.\n({1})'.format(port, str(e))
 
         tries += 1
         if not ser:
             time.sleep(1)
 
+    if not ser:
+        logMessage("Error opening serial port {0}:".format(error1))
+        logMessage("Error opening alternative serial port {0}:".format(error2))
+    else:
+        # discard everything in serial buffers
+        ser.flushInput()
+        ser.flushOutput()
 
     # yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
     if dumpSerial:
@@ -144,16 +150,14 @@ def setupSerial(config):
         def writeAndDump(data):
             ser.writeOriginal(data)
             sys.stderr.write(data)
+
         ser.read = readAndDump
         ser.write = writeAndDump
 
-    if not ser:
-        logMessage("Error opening serial port {0}:".format(error1))
-        logMessage("Error opening alternative serial port {0}:".format(error2))
+    return ser
 
-    return ser, conn
 
 # remove extended ascii characters from string, because they can raise UnicodeDecodeError later
 def asciiToUnicode(s):
-    s = s.replace(chr(0xB0),'&deg')
+    s = s.replace(chr(0xB0), '&deg')
     return unicode(s, 'ascii', 'ignore')

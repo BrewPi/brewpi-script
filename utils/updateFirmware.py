@@ -36,15 +36,15 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
     ### Get version number
     printStdErr("\nChecking current firmware version...")
     try:
-        ser, conn = util.setupSerial(config)
+        ser = util.setupSerial(config)
         hwVersion = brewpiVersion.getVersionFromSerial(ser)
         family = hwVersion.family
         shield = hwVersion.shield
         board = hwVersion.board
         boardName = hwVersion.boardName()
     except:
-        printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable")
-        printStdErr("Please go to https://github.com/BrewPi/firmware/releases to download and upload via the BrewPi web interface")
+        printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable.")
+        return -1
 
     if ser:
         ser.close()  # close serial port
@@ -52,7 +52,13 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
 
     if not hwVersion:
         printStdErr("Unable to retrieve firmware version from controller")
-        return -1
+        printStdErr("If your controller has not been programmed with an earlier version of BrewPi,"
+                    " follow these instructions:")
+        printStdErr("\n If you have an Arduino:")
+        printStdErr("Please go to https://github.com/BrewPi/firmware/releases to download"
+                    "the firmware and upload via the BrewPi web interface")
+        printStdErr("\n If you have a Spark Core:")
+        printStdErr("Put it in DFU mode and run: sudo /home/brewpi/utils/flashDfu.py")
     else:
         printStdErr("Current firmware version on controller: " + hwVersion.toString())
 

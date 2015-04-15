@@ -14,12 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
 
-import serial
 import msvcrt
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 import os
 import simplejson as json
+
+# append parent directory to be able to import files
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 import expandLogMessage
 import BrewPiUtil as util
 
@@ -41,14 +42,11 @@ print "It also echoes everything the Arduino returns."
 print "On known debug ID's in JSON format, it expands the messages to the full message"
 print "press 's' to send a string to the Arduino, press 'q' to quit"
 
-ser = 0
-
 # open serial port
-try:
-    ser = serial.Serial(config['port'], 57600, timeout=1)
-except (OSError, serial.SerialException) as e:
-    print e
-    exit()
+ser = util.setupSerial(config, timeOut=1)
+
+if not ser:
+    exit(1)
 
 while 1:
     if msvcrt.kbhit():

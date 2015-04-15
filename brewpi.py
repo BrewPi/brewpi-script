@@ -112,7 +112,6 @@ configFile = None
 checkDontRunFile = False
 checkStartupOnly = False
 logToFiles = False
-serialRestoreTimeOut = None  # used to temporarily increase the serial timeout
 
 for o, a in opts:
     # print help message for command line options
@@ -332,8 +331,7 @@ def resumeLogging():
     else:
         return {'status': 1, 'statusMessage': "Logging was not paused."}
 
-port = config['port']
-ser, conn = util.setupSerial(config)
+ser = util.setupSerial(config)
 
 if not ser:
     exit(1)
@@ -344,26 +342,33 @@ ser.setTimeout(0) # non blocking mode
 
 def lineFromSerial(serial):
     global serialBuffer
-    newData = serial.read(serial.inWaiting())
-    if len(newData) > 0:
+    inWaiting = None
+    newData = None
+    try:
+        inWaiting = serial.inWaiting()
+        if inWaiting:
+            newData = serial.read(inWaiting)
+    except (IOError, OSError, serial.SerialException) as e:
+        logMessage('Serial Error: {0})'.format(str(e)))
+        return
+    if newData:
         serialBuffer = serialBuffer + newData
-    if '\n' in serialBuffer:
-        lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
-        if(lines[1] == ''):
-            # '\n' not found, first element is incomplete line
-            serialBuffer = lines[0]
-            return None
-        else:
-            # complete line received, [0] is complete line [1] is separator [2] is the rest
-            serialBuffer = lines[2]
-            return util.asciiToUnicode(lines[0])
+        if '\n' in serialBuffer:
+            lines = serialBuffer.partition('\n') # returns 3-tuple with line, separator, rest
+            if(lines[1] == ''):
+                # '\n' not found, first element is incomplete line
+                serialBuffer = lines[0]
+                return None
+            else:
+                # complete line received, [0] is complete line [1] is separator [2] is the rest
+                serialBuffer = lines[2]
+                return util.asciiToUnicode(lines[0])
 
 
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
 # wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
 time.sleep(float(config.get('startupDelay', 10)))
 
-ser.flush()
 
 logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(ser)
