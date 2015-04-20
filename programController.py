@@ -361,9 +361,11 @@ class SerialProgrammer:
     def flash_file(self, hexFile):
         raise Exception("not implemented")
 
-    def reset_settings(self):
+    def reset_settings(self, setTestMode = False):
         printStdErr("Resetting EEPROM to default settings")
-        self.ser.write('E')
+        self.ser.write('E\n')
+        if setTestMode:
+            self.ser.write('j{mode:t}')
         time.sleep(5)  # resetting EEPROM takes a while, wait 5 seconds
         # read log messages from arduino
         while 1:  # read all lines on serial interface

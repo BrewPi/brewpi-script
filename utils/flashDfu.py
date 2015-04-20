@@ -33,15 +33,16 @@ releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
 
 # Read in command line arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:m",
-                               ['help', 'file=', 'multi'])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:mt",
+                               ['help', 'file=', 'multi', 'testmode'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --multi"
+    print "Unknown parameter, available Options: --file, --multi, --testmode"
 
     sys.exit()
 
 multi = False
 binFile = None
+testMode = False
 
 for o, a in opts:
     # print help message for command line options
@@ -50,6 +51,8 @@ for o, a in opts:
         print "--help: print this help message"
         print "--file: path to .bin file to flash instead of the latest release on GitHub"
         print "--multi: keep the script alive to flash multiple devices"
+        print "--testmode: set controller o test mode after flashing"
+
         exit()
     # supply a config file
     if o in ('-f', '--config'):
@@ -60,6 +63,9 @@ for o, a in opts:
     if o in ('-m', '--multi'):
         multi = True
         print "Started in multi flash mode"
+    if o in ('-t', '--testmode'):
+        testMode = True
+        print "Will set device to test mode after flashing"
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
@@ -124,7 +130,7 @@ while(True):
                 retries -= 1
             if retries > 0:
                 programmer.fetch_version("Success! ")
-                programmer.reset_settings()
+                programmer.reset_settings(testMode)
                 print "Programming done!"
             else:
                 print "Could not open serial port after programming"
