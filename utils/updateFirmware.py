@@ -1,3 +1,21 @@
+#!/usr/bin/python
+# Copyright 2015 BrewPi, Elco Jacobs
+# This file is part of BrewPi.
+
+# BrewPi is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# BrewPi is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with BrewPi. If not, see <http://www.gnu.org/licenses/>.
+
+
 from __future__ import print_function
 import sys
 import os
@@ -108,5 +126,20 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
     return result
 
 if __name__ == '__main__':
-    result = updateFromGitHub(True)
+    import getopt
+    # Read in command line arguments
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "s", ['silent'])
+    except getopt.GetoptError:
+        print ("Unknown parameter, available options: \n" +
+              "  updaterFirmware.py --silent\t\t not use default options, do not ask for user input")
+        sys.exit()
+
+    userInput = True
+    for o, a in opts:
+        # print help message for command line options
+        if o in ('-s', '--silent'):
+            userInput = False
+
+    result = updateFromGitHub(userInput)
     exit(result)
