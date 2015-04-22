@@ -403,9 +403,7 @@ class SerialProgrammer:
     def send_restored_settings(self, restoredSettings):
         for key in restoredSettings:
             setting =  restoredSettings[key]
-            if not setting:
-                continue # skip None values until fixed in firmware
-            command = "j{" + str(key) + ":" + str(setting) + "}\n"
+            command = "j{" + json.dumps(key) + ":" + json.dumps(setting) + "}\n"
             self.ser.write(command)
             # make readline blocking for max 5 seconds to give the controller time to respond after every setting
             oldTimeout = self.ser.timeout

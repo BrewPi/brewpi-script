@@ -488,9 +488,9 @@ while run:
         elif messageType == "getMode":  # echo cs['mode'] setting
             conn.send(cs['mode'])
         elif messageType == "getFridge":  # echo fridge temperature setting
-            conn.send(str(cs['fridgeSet']))
+            conn.send(json.dumps(cs['fridgeSet']))
         elif messageType == "getBeer":  # echo fridge temperature setting
-            conn.send(str(cs['beerSet']))
+            conn.send(json.dumps(cs['beerSet']))
         elif messageType == "getControlConstants":
             conn.send(json.dumps(cc))
         elif messageType == "getControlSettings":
@@ -527,7 +527,7 @@ while run:
                 cs['mode'] = 'b'
                 # round to 2 dec, python will otherwise produce 6.999999999
                 cs['beerSet'] = round(newTemp, 2)
-                ser.write("j{mode:b, beerSet:" + str(cs['beerSet']) + "}")
+                ser.write("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
                 logMessage("Notification: Beer temperature set to " +
                            str(cs['beerSet']) +
                            " degrees in web interface")
@@ -547,7 +547,7 @@ while run:
             if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
                 cs['mode'] = 'f'
                 cs['fridgeSet'] = round(newTemp, 2)
-                ser.write("j{mode:f, fridgeSet:" + str(cs['fridgeSet']) + "}")
+                ser.write("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
                 logMessage("Notification: Fridge temperature set to " +
                            str(cs['fridgeSet']) +
                            " degrees in web interface")
@@ -775,14 +775,14 @@ while run:
                     csvFile = open(localCsvFileName, "a")
                     try:
                         lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-                                       str(newRow['BeerTemp']) + ';' +
-                                       str(newRow['BeerSet']) + ';' +
-                                       str(newRow['BeerAnn']) + ';' +
-                                       str(newRow['FridgeTemp']) + ';' +
-                                       str(newRow['FridgeSet']) + ';' +
-                                       str(newRow['FridgeAnn']) + ';' +
-                                       str(newRow['State']) + ';' +
-                                       str(newRow['RoomTemp']) + '\n')
+                                       json.dumps(newRow['BeerTemp']) + ';' +
+                                       json.dumps(newRow['BeerSet']) + ';' +
+                                       json.dumps(newRow['BeerAnn']) + ';' +
+                                       json.dumps(newRow['FridgeTemp']) + ';' +
+                                       json.dumps(newRow['FridgeSet']) + ';' +
+                                       json.dumps(newRow['FridgeAnn']) + ';' +
+                                       json.dumps(newRow['State']) + ';' +
+                                       json.dumps(newRow['RoomTemp']) + '\n')
                         csvFile.write(lineToWrite)
                     except KeyError, e:
                         logMessage("KeyError in line from controller: %s" % str(e))
@@ -839,14 +839,8 @@ while run:
             newTemp = temperatureProfile.getNewTemp(util.scriptPath())
             if newTemp != cs['beerSet']:
                 cs['beerSet'] = newTemp
-                if cc['tempSetMin'] < newTemp < cc['tempSetMax']:
-                    # if temperature has to be updated send settings to controller
-                    ser.write("j{beerSet:" + str(cs['beerSet']) + "}")
-                elif newTemp is None:
-                    # temperature control disabled by profile
-                    logMessage("Temperature control disabled by empty cell in profile.")
-                    ser.write("j{beerSet:-99999}")  # send as high negative value that will result in INT_MIN on controller
-
+                # if temperature has to be updated send settings to controller
+                ser.write("j{beerSet:" + json.dumps(cs['beerSet']) + "}")
 
     except socket.error as e:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
