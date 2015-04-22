@@ -16,13 +16,11 @@
 
 from __future__ import print_function
 import subprocess as sub
-import serial
 import time
 import simplejson as json
 import os
 import brewpiVersion
 import expandLogMessage
-from distutils.version import LooseVersion
 from MigrateSettings import MigrateSettings
 from sys import stderr
 import BrewPiUtil as util
@@ -233,7 +231,7 @@ class SerialProgrammer:
                          "\nSomething must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
 
-        if(self.versionOld.isNewer("0.1")):
+        if not self.versionOld:
             printStdErr("Could not receive valid version number from old board, " +
                         "No settings/devices are restored.")
             return 0
@@ -294,9 +292,9 @@ class SerialProgrammer:
     def fetch_version(self, msg):
         version = brewpiVersion.getVersionFromSerial(self.ser)
         if version is None:
-            printStdErr(("Warning: Cannot receive version number from %(a)s. " % msg_map +
-                         "Your %(a)s is either not programmed yet or running a very old version of BrewPi. "
-                         "%(a)s will be reset to defaults."))
+            printStdErr("Warning: Cannot receive version number from controller. " +
+                        "Your controller is either not programmed yet or running a very old version of BrewPi. " +
+                        "It will be reset to defaults.")
         else:
             printStdErr(msg+"Found " + version.toExtendedString() +
                         " on port " + self.ser.name + "\n")
@@ -558,13 +556,21 @@ class ArduinoProgrammer(SerialProgrammer):
             if not self.reset_leonardo():
                 return False
 
+        time.sleep(1)
+        # Get serial port while in bootloader
+        if self.open_serial(config, boardSettings['upload.speed'], 0.1):
+            bootLoaderPort = self.ser.name
+            self.ser.close()
+        else:
+            printStdErr("ERROR: could not open serial port in bootloader")
+
         programCommand = (avrdudehome + 'avrdude' +
                           ' -F ' +  # override device signature check
                           ' -e ' +  # erase flash and eeprom before programming. This prevents issues with corrupted EEPROM
                           ' -p ' + boardSettings['build.mcu'] +
                           ' -c ' + boardSettings['upload.protocol'] +
                           ' -b ' + boardSettings['upload.speed'] +
-                          ' -P ' + self.ser.name +
+                          ' -P ' + bootLoaderPort +
                           ' -U ' + 'flash:w:' + "\"" + hexFileLocal + "\"" +
                           ' -C ' + avrconf)
 

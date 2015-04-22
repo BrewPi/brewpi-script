@@ -36,6 +36,7 @@ import shutil
 import traceback
 import urllib
 from distutils.version import LooseVersion
+from serial import SerialException
 
 # load non standard packages, exit when they are not installed
 try:
@@ -339,15 +340,15 @@ if not ser:
 
 serialBuffer = ''
 
-def lineFromSerial(serial):
+def lineFromSerial(ser):
     global serialBuffer
     inWaiting = None
     newData = None
     try:
-        inWaiting = serial.inWaiting()
+        inWaiting = ser.inWaiting()
         if inWaiting > 0:
-            newData = serial.read(inWaiting)
-    except (IOError, OSError, serial.SerialException) as e:
+            newData = ser.read(inWaiting)
+    except (IOError, OSError, SerialException) as e:
         logMessage('Serial Error: {0})'.format(str(e)))
         return
     if newData:

@@ -19,6 +19,7 @@ import sys
 import time
 from distutils.version import LooseVersion
 from BrewPiUtil import asciiToUnicode
+from serial import SerialException
 
 def getVersionFromSerial(ser):
     version = None
@@ -33,7 +34,7 @@ def getVersionFromSerial(ser):
             loopTime = time.time()
             try:
                 line = ser.readline()
-            except ser.SerialException as e:
+            except SerialException as e:
                 pass
             if line:
                 line = asciiToUnicode(line)
