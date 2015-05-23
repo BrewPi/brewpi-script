@@ -179,7 +179,7 @@ if not configFile:
 
 config = util.readCfgWithDefaults(configFile)
 
-dontRunFilePath = config['wwwPath'] + 'do_not_run_brewpi'
+dontRunFilePath = os.path.join(config['wwwPath'], 'do_not_run_brewpi')
 # check dont run file when it exists and exit it it does
 if checkDontRunFile:
     if os.path.exists(dontRunFilePath):
