@@ -22,6 +22,7 @@ if sys.version_info < (2, 7):
 
 import time
 import os
+import platform
 import getopt
 import subprocess
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
@@ -69,14 +70,14 @@ for o, a in opts:
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
-if sys.platform.startswith('win'):
+if platform.system() == "Windows":
     p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     p.wait()
     output, errors = p.communicate()
     if not output:
         print "dfu-util cannot be found, please add its location to your PATH variable"
         exit(1)
-else:
+elif platform.system() == "Linux":
     downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
     dfuPath = os.path.join(downloadDir, "dfu-util")
     if not os.path.exists(dfuPath):
@@ -86,6 +87,11 @@ else:
             os.makedirs(downloadDir, 0777)
         releases.download(dfuUrl, downloadDir)
         os.chmod(dfuPath, 0777) # make executable
+else:
+    print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
+    exit(1)
+
+util.setupSerial()
 
 # download latest binary from GitHub if file not specified
 if not binFile:
