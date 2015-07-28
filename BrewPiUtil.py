@@ -18,6 +18,7 @@ import time
 import sys
 import os
 import serial
+import autoSerial
 
 try:
     import configobj
@@ -105,37 +106,43 @@ def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
 
 def setupSerial(config, baud_rate=57600, time_out=0.1):
     ser = None
-    port = config['port']
     dumpSerial = config.get('dumpSerial', False)
 
     error1 = None
     error2 = None
     # open serial port
     tries = 0
-    while ser is None and tries < 10:
-        try:
-            port = config['port']
-            ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out)  # use non blocking serial.
-        except (IOError, OSError, serial.SerialException) as e:
-            error1 = '{0}.\n({1})'.format(port, str(e))
+    logMessage("Opening serial port")
+    while tries < 10:
+        error = ""
+        for portSetting in [config['port'], config['altport']]:
+            if portSetting == None or portSetting == 'None' or portSetting == "none":
+                continue  # skip None setting
+            if portSetting == "auto":
+                port, devicetype = autoSerial.detect_port()
+                if not port:
+                    error = "Could not find compatible serial devices \n"
+                    continue # continue with altport
+            else:
+                port = portSetting
             try:
-                port = config['altport']
-                ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out)  # use non blocking serial.
-
+                ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out)
+                if ser:
+                    break
             except (IOError, OSError, serial.SerialException) as e:
-                error2 = '{0}.\n({1})'.format(port, str(e))
-
+                # error += '0}.\n({1})'.format(portSetting, str(e))
+                error += str(e) + '\n'
+        if ser:
+            break
         tries += 1
-        if not ser:
-            time.sleep(1)
+        time.sleep(1)
 
-    if not ser:
-        logMessage("Error opening serial port {0}:".format(error1))
-        logMessage("Error opening alternative serial port {0}:".format(error2))
-    else:
+    if ser:
         # discard everything in serial buffers
         ser.flushInput()
         ser.flushOutput()
+    else:
+         logMessage("Errors while opening serial port: \n" + error)
 
     # yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
     if dumpSerial:
