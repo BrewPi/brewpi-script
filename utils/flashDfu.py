@@ -25,12 +25,13 @@ import os
 import platform
 import getopt
 import subprocess
+import re
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 from gitHubReleases import gitHubReleases
 import BrewPiUtil as util
 from programController import SerialProgrammer
 
-releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
+releases = gitHubReleases("https://api.github.com/repos/elcojacobs/firmware")
 
 # Read in command line arguments
 try:
@@ -91,22 +92,8 @@ else:
     print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
     exit(1)
 
-util.setupSerial()
-
-# download latest binary from GitHub if file not specified
-if not binFile:
-    print "Downloading latest firmware..."
-    latest = releases.getLatestTag()
-    print "Latest version on GitHub: " + latest
-
-    binFile = releases.getBin(latest, ["spark-core", ".bin"])
-    if binFile:
-        print "Latest firmware downloaded to " + binFile
-    else:
-        print "Downloading firmware failed"
-        exit(-1)
-
 firstLoop = True
+print "Detecting DFU devices"
 while(True):
     # list DFU devices to see whether a device is connected
     p = subprocess.Popen(dfuPath + " -l", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -114,20 +101,77 @@ while(True):
     output, errors = p.communicate()
     if errors:
         print errors
-    if "Found" in output:
-        # found a DFU device, flash the binary file to it
+
+    DFUs = re.findall(r'\[([0-9a-f]{4}:[0-9a-f]{4})\].*alt=0', output) # find hex format [0123:abcd]
+    if len(DFUs) > 0:
+        print "Found {0} devices: ".format(len(DFUs)), DFUs
+    if len(DFUs) > 1:
+        print "Please only connect one device at a time and try again."
+        exit(1)
+    elif len(DFUs) == 1:
+
+        if DFUs[0] == '1d50:607f':
+            type = 'core'
+            print "Device identified as Spark Core"
+        elif DFUs[0] == '2b04:d006':
+            type = 'photon'
+            print "Device identified as Particle Photon"
+        else:
+            print "Could not identify device as Photon or Spark Core. Exiting"
+            exit(1)
+
+        # binaries for system update
+        system1 = None
+        system2 = None
+
+        # download latest binary from GitHub if file not specified
+        if not binFile:
+            print "Downloading latest firmware..."
+            latest = releases.getLatestTag()
+            print "Latest version on GitHub: " + latest
+
+            binFile = releases.getBin(latest, [type, 'brewpi', '.bin'])
+            if binFile:
+                print "Latest firmware downloaded to " + binFile
+            else:
+                print "Could not find download in release {0} with these words in the file name: {1}".format(latest, type)
+                exit(1)
+
+            if type == 'photon':
+                system1 = releases.getBin(latest, ['photon', 'system-part1', '.bin'])
+                system2 = releases.getBin(latest, ['photon', 'system-part2', '.bin'])
+
+                if system1:
+                    print "Release contains updated system firmware for the photon"
+                    if not system2:
+                        print "Error: system firmware part2 not found in release"
+                        exit()
+
         if binFile:
-            print "found DFU device, now flashing %s \n\n" % binFile
+            if type == 'core':
+                print "Now writing BrewPi firmware {0}".format(binFile)
+                p = subprocess.Popen(dfuPath + " -d 1d50:607f -a 0 -s 0x08005000:leave -D {0}".format(binFile), shell=True)
+                p.wait()
+            elif type == 'photon':
+                if system1:
+                    print "First updating system firmware for the Photon"
+                    p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8020000 -D {0}".format(system1), shell=True)
+                    p.wait()
+                    p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8060000 -D {0}".format(system2), shell=True)
+                    p.wait()
 
-            p = subprocess.Popen(dfuPath + " dfu-util -d 1d50:607f -a 0 -s 0x08005000:leave -D %s" % binFile, shell=True)
-            p.wait()
+                print "Now writing BrewPi firmware {0}".format(binFile)
+                p = subprocess.Popen(dfuPath + " -d 0x2B04:0xD006 -a 0 -s 0x80A0000:leave -D {0}".format(binFile), shell=True)
+                p.wait()
 
+            print "Programming done, now resetting EEPROM to defaults"
             # reset EEPROM to defaults
             configFile = util.scriptPath() + '/settings/config.cfg'
             config = util.readCfgWithDefaults(configFile)
-            programmer = SerialProgrammer.create(config, "spark-core")
+            programmer = SerialProgrammer.create(config, "core")
 
             # open serial port
+            print "Opening serial port"
             retries = 30
             while retries > 0:
                 time.sleep(1)
@@ -137,7 +181,7 @@ while(True):
             if retries > 0:
                 programmer.fetch_version("Success! ")
                 programmer.reset_settings(testMode)
-                print "Programming done!"
+
             else:
                 print "Could not open serial port after programming"
         else:
@@ -147,7 +191,7 @@ while(True):
     else:
         if firstLoop:
             print "Did not find any DFU devices."
-            print "Is your Spark Core running in DFU mode (blinking yellow)?"
+            print "Is your Photon or Spark Core running in DFU mode (blinking yellow)?"
             print "Waiting until a DFU device is connected..."
         firstLoop = False
 

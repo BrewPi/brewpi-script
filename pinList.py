@@ -123,7 +123,7 @@ def getPinList(boardType, shieldType):
                    {'val': 20, 'text': 'A2', 'type': 'free'},
                    {'val': 21, 'text': 'A3', 'type': 'free'},
                    {'val': 22, 'text': 'A4', 'type': 'free'}]
-    elif (boardType == "spark-core" or boardType =="photon") \
+    elif (boardType == "core" or boardType =="photon") \
         and (shieldType == "V1" or shieldType == "V2"):
         pinList = [{'val': 17, 'text': 'Output 0 (A7)', 'type': 'act'},
                    {'val': 16, 'text': 'Output 1 (A6)', 'type': 'act'},
@@ -149,8 +149,8 @@ def pinListTest():
     print getPinListJson("uno", "revC")
     print getPinListJson("leonardo", "revA")
     print getPinListJson("uno", "revA")
-    print getPinListJson("spark-core", "V1")
-    print getPinListJson("spark-core", "V2")
+    print getPinListJson("core", "V1")
+    print getPinListJson("core", "V2")
     print getPinListJson("photon", "V1")
     print getPinListJson("photon", "V2")
 

@@ -44,11 +44,11 @@ class gitHubReleases:
         AllUrls = (asset["browser_download_url"] for asset in match["assets"])
 
         for url in  AllUrls:
-            if all(word.lower() in url.lower() for word in wordsInFileName):
+            urlFileName = url.rpartition('/')[2] # isolate filename, which is after the last /
+            if all(word.lower() in urlFileName.lower() for word in wordsInFileName):
                 downloadUrl = url
 
         if not downloadUrl:
-            print "Could not find download in release {0} with these words in the file name: {1}".format(tag, str(wordsInFileName))
             return None
 
         if path == None:
@@ -62,6 +62,7 @@ class gitHubReleases:
         return fileName
 
     def getLatestTag(self):
+        print self.releases
         return self.releases[0]["tag_name"]
 
     def getTags(self):
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     latest = releases.getLatestTag()
     print "Latest tag: " + latest
     print "Downloading binary for latest tag"
-    localFileName = releases.getBin(latest, ["spark-core", "bin"])
+    localFileName = releases.getBin(latest, ["core", "bin"])
     if localFileName:
         print "Latest binary downloaded to " + localFileName
 

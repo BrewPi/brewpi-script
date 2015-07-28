@@ -172,8 +172,11 @@ msg_map = { "a" : "Arduino" }
 class SerialProgrammer:
     @staticmethod
     def create(config, boardType):
-        if boardType=='spark-core':
+        if boardType=='core':
             msg_map["a"] = "Spark Core"
+            programmer = SparkProgrammer(config, boardType)
+        elif boardType == 'photon':
+            msg_map["a"] = "Photon"
             programmer = SparkProgrammer(config, boardType)
         else:
             msg_map["a"] = "Arduino"
@@ -594,7 +597,7 @@ class ArduinoProgrammer(SerialProgrammer):
 def test_program_spark_core():
     file = "R:\\dev\\brewpi\\firmware\\platform\\spark\\target\\brewpi.bin"
     config = { "port" : "COM22" }
-    result = programController(config, "spark-core", file, { "settings":True, "devices":True})
+    result = programController(config, "core", file, { "settings":True, "devices":True})
     printStdErr("Result is "+str(result))
 
 if __name__ == '__main__':

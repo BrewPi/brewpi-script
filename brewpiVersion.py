@@ -81,7 +81,7 @@ class AvrInfo:
     board_leonardo = "leonardo"
     board_standard = "uno"
     board_mega = "mega"
-    board_spark_core = "spark-core"
+    board_spark_core = "core"
     board_photon = "photon"
 
     boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core, 'y': board_photon}
