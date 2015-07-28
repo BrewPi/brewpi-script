@@ -123,8 +123,10 @@ def getPinList(boardType, shieldType):
                    {'val': 20, 'text': 'A2', 'type': 'free'},
                    {'val': 21, 'text': 'A3', 'type': 'free'},
                    {'val': 22, 'text': 'A4', 'type': 'free'}]
-    elif boardType == "spark-core" and shieldType == "Rev-C":
-        pinList = [{'val': 16, 'text': 'Output 1 (A6)', 'type': 'act'},
+    elif (boardType == "spark-core" or boardType =="photon") \
+        and (shieldType == "V1" or shieldType == "V2"):
+        pinList = [{'val': 17, 'text': 'Output 0 (A7)', 'type': 'act'},
+                   {'val': 16, 'text': 'Output 1 (A6)', 'type': 'act'},
                    {'val': 11, 'text': 'Output 2 (A1)', 'type': 'act'},
                    {'val': 10, 'text': 'Output 3 (A0)', 'type': 'act'},
                    {'val': 0, 'text': 'OneWire', 'type': 'onewire'}]
@@ -147,8 +149,10 @@ def pinListTest():
     print getPinListJson("uno", "revC")
     print getPinListJson("leonardo", "revA")
     print getPinListJson("uno", "revA")
-    print getPinListJson("spark-core", "Rev-C")
-
+    print getPinListJson("spark-core", "V1")
+    print getPinListJson("spark-core", "V2")
+    print getPinListJson("photon", "V1")
+    print getPinListJson("photon", "V2")
 
 if __name__ == "__main__":
     pinListTest()

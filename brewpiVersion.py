@@ -73,29 +73,33 @@ class AvrInfo:
 
     shield_revA = "revA"
     shield_revC = "revC"
-    spark_shield_revC = "Rev-C"
+    spark_shield_v1 = "V1"
+    spark_shield_v2 = "V2"
 
-    shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_revC}
+    shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_v1, 4: spark_shield_v2}
 
     board_leonardo = "leonardo"
     board_standard = "uno"
     board_mega = "mega"
     board_spark_core = "spark-core"
+    board_photon = "photon"
 
-    boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core}
+    boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core, 'y': board_photon}
 
     family_arduino = "Arduino"
-    family_spark = "Spark"
+    family_spark = "Particle"
 
     families = { board_leonardo: family_arduino,
                 board_standard: family_arduino,
                 board_mega: family_arduino,
-                board_spark_core: family_spark}
+                board_spark_core: family_spark,
+                board_photon: family_spark}
 
     board_names = { board_leonardo: "Leonardo",
                 board_standard: "Uno",
                 board_mega: "Mega",
-                board_spark_core: "Core"}
+                board_spark_core: "Core",
+                board_photon: "Photon"}
 
     def __init__(self, s=None):
         self.version = LooseVersion("0.0.0")
@@ -162,6 +166,8 @@ class AvrInfo:
             return "0.0.0"
 
     def article(self, word):
+        if not word:
+            return "a" # in case word is not valid
         firstLetter = word[0]
         if firstLetter.lower() in 'aeiou':
             return "an"
