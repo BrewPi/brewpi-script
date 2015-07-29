@@ -172,16 +172,15 @@ while(True):
 
             # open serial port
             print "Opening serial port"
-            retries = 30
+            retries = 10
             while retries > 0:
-                time.sleep(1)
                 if programmer.open_serial(config, 57600, 0.2):
                     break
                 retries -= 1
+                time.sleep(1)
             if retries > 0:
                 programmer.fetch_version("Success! ")
                 programmer.reset_settings(testMode)
-
             else:
                 print "Could not open serial port after programming"
         else:
