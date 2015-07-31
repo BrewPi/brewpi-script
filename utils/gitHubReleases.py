@@ -62,7 +62,6 @@ class gitHubReleases:
         return fileName
 
     def getLatestTag(self):
-        print self.releases
         return self.releases[0]["tag_name"]
 
     def getTags(self):

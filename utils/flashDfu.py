@@ -29,22 +29,32 @@ import re
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 from gitHubReleases import gitHubReleases
 import BrewPiUtil as util
+import autoSerial
+import serial
 from programController import SerialProgrammer
 
 releases = gitHubReleases("https://api.github.com/repos/elcojacobs/firmware")
 
+serialPorts = []
+
 # Read in command line arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:mt",
-                               ['help', 'file=', 'multi', 'testmode'])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:mta",
+                               ['help', 'file=', 'multi', 'testmode', 'autodfu'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --multi, --testmode"
+    print "Unknown parameter, available Options: --file, --multi, --testmode --autodfu"
 
     sys.exit()
 
 multi = False
-binFile = None
 testMode = False
+autoDfu = False
+# binaries for system update
+system1 = None
+system2 = None
+# binary to flash
+binFile = None
+
 
 for o, a in opts:
     # print help message for command line options
@@ -54,6 +64,7 @@ for o, a in opts:
         print "--file: path to .bin file to flash instead of the latest release on GitHub"
         print "--multi: keep the script alive to flash multiple devices"
         print "--testmode: set controller o test mode after flashing"
+        print "--autodfu: automatically reboot photon in DFU mode by opening serial port at 14400 baud"
 
         exit()
     # supply a config file
@@ -68,6 +79,9 @@ for o, a in opts:
     if o in ('-t', '--testmode'):
         testMode = True
         print "Will set device to test mode after flashing"
+    if o in ('-a', '--autodfu'):
+        autoDfu = True
+        print "Will automatically reboot newly detected photons into DFU mode"
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
@@ -105,6 +119,7 @@ while(True):
     DFUs = re.findall(r'\[([0-9a-f]{4}:[0-9a-f]{4})\].*alt=0', output) # find hex format [0123:abcd]
     if len(DFUs) > 0:
         print "Found {0} devices: ".format(len(DFUs)), DFUs
+
     if len(DFUs) > 1:
         print "Please only connect one device at a time and try again."
         exit(1)
@@ -119,10 +134,6 @@ while(True):
         else:
             print "Could not identify device as Photon or Spark Core. Exiting"
             exit(1)
-
-        # binaries for system update
-        system1 = None
-        system2 = None
 
         # download latest binary from GitHub if file not specified
         if not binFile:
@@ -181,6 +192,7 @@ while(True):
             if retries > 0:
                 programmer.fetch_version("Success! ")
                 programmer.reset_settings(testMode)
+                serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
             else:
                 print "Could not open serial port after programming"
         else:
@@ -193,5 +205,21 @@ while(True):
             print "Is your Photon or Spark Core running in DFU mode (blinking yellow)?"
             print "Waiting until a DFU device is connected..."
         firstLoop = False
+        if autoDfu:
+            previousSerialPorts = serialPorts
+            serialPorts = autoSerial.detect_all_ports()
+            newPorts = list(set(serialPorts) - set(previousSerialPorts))
+            if len(newPorts):
+                print "Found new serial port connected: {0}".format(newPorts[0])
+                port = newPorts[0][0]
+                name = newPorts[0][1]
+                if name == "Particle Photon":
+                    print "Putting Photon in DFU mode"
+                    ser = serial.Serial(port)
+                    try:
+                        ser.setBaudrate(14400) # this triggers a reboot in DFU mode
+                    except ValueError:
+                        pass # because device reboots while reconfiguring an exception is thrown, ignore
+                    ser.close()
 
     time.sleep(1)
