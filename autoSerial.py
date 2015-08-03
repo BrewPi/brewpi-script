@@ -30,7 +30,7 @@ def matches(text, regex):
 def is_recognised_device(p):
     port, name, desc = p
     for d in known_devices.keys():
-        if matches(desc, d): # match on VID
+        if matches(desc.lower(), d.lower()): # match on VID
             return known_devices[d] # return name
     return None
 
