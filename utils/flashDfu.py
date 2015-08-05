@@ -33,22 +33,23 @@ import autoSerial
 import serial
 from programController import SerialProgrammer
 
-releases = gitHubReleases("https://api.github.com/repos/elcojacobs/firmware")
+releases = gitHubReleases("https://api.github.com/repos/brewpi/firmware")
 
 serialPorts = []
 
 # Read in command line arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "hf:mta",
-                               ['help', 'file=', 'multi', 'testmode', 'autodfu'])
+    opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
+                               ['help', 'file=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --multi, --testmode --autodfu"
+    print "Unknown parameter, available Options: --file, --multi, --tag --autodfu --testmode"
 
     sys.exit()
 
 multi = False
 testMode = False
 autoDfu = False
+tag = None
 # binaries for system update
 system1 = None
 system2 = None
@@ -62,9 +63,10 @@ for o, a in opts:
         print "\n Available command line options: "
         print "--help: print this help message"
         print "--file: path to .bin file to flash instead of the latest release on GitHub"
+        print "--tag: specify which tag to download from github"
         print "--multi: keep the script alive to flash multiple devices"
-        print "--testmode: set controller o test mode after flashing"
         print "--autodfu: automatically reboot photon in DFU mode by opening serial port at 14400 baud"
+        print "--testmode: set controller o test mode after flashing"
 
         exit()
     # supply a config file
@@ -76,7 +78,10 @@ for o, a in opts:
     if o in ('-m', '--multi'):
         multi = True
         print "Started in multi flash mode"
-    if o in ('-t', '--testmode'):
+    if o in ('-t', '--tag'):
+        tag = a
+        print "Will try to download release '{0}'".format(tag)
+    if o in ('--testmode'):
         testMode = True
         print "Will set device to test mode after flashing"
     if o in ('-a', '--autodfu'):
@@ -138,19 +143,20 @@ while(True):
         # download latest binary from GitHub if file not specified
         if not binFile:
             print "Downloading latest firmware..."
-            latest = releases.getLatestTag()
-            print "Latest version on GitHub: " + latest
+            if tag is None:
+                tag = releases.getLatestTag()
+                print "Latest stable version on GitHub: " + tag
 
-            binFile = releases.getBin(latest, [type, 'brewpi', '.bin'])
+            binFile = releases.getBin(tag, [type, 'brewpi', '.bin'])
             if binFile:
-                print "Latest firmware downloaded to " + binFile
+                print "Firmware downloaded to " + binFile
             else:
-                print "Could not find download in release {0} with these words in the file name: {1}".format(latest, type)
+                print "Could not find download in release {0} with these words in the file name: {1}".format(tag, type)
                 exit(1)
 
             if type == 'photon':
-                system1 = releases.getBin(latest, ['photon', 'system-part1', '.bin'])
-                system2 = releases.getBin(latest, ['photon', 'system-part2', '.bin'])
+                system1 = releases.getBin(tag, ['photon', 'system-part1', '.bin'])
+                system2 = releases.getBin(tag, ['photon', 'system-part2', '.bin'])
 
                 if system1:
                     print "Release contains updated system firmware for the photon"
