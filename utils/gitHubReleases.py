@@ -62,7 +62,11 @@ class gitHubReleases:
         return fileName
 
     def getLatestTag(self):
-        return self.releases[0]["tag_name"]
+        for release in self.releases:
+            # search for stable release
+            if release["prerelease"] == False:
+                break
+        return release["tag_name"]
 
     def getTags(self):
         return self.releases[0]["tag_name"]
