@@ -32,6 +32,7 @@ def getVersionFromSerial(ser):
         retry = True
         while 1: # read all lines from serial
             loopTime = time.time()
+            line = None
             try:
                 line = ser.readline()
             except SerialException as e:
