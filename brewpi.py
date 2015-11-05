@@ -519,20 +519,16 @@ while run:
             except ValueError:
                 logMessage("Cannot convert temperature '" + value + "' to float")
                 continue
-            if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
-                cs['mode'] = 'b'
-                # round to 2 dec, python will otherwise produce 6.999999999
-                cs['beerSet'] = round(newTemp, 2)
-                ser.write("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
-                logMessage("Notification: Beer temperature set to " +
-                           str(cs['beerSet']) +
-                           " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update controller
-            else:
-                logMessage("Beer temperature setting " + str(newTemp) +
-                           " is outside of allowed range " +
-                           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
-                           ". These limits can be changed in advanced settings.")
+
+            cs['mode'] = 'b'
+            # round to 2 dec, python will otherwise produce 6.999999999
+            cs['beerSet'] = round(newTemp, 2)
+            ser.write("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
+            logMessage("Notification: Beer temperature set to " +
+                       str(cs['beerSet']) +
+                       " degrees in web interface")
+            raise socket.timeout  # go to serial communication to update controller
+
         elif messageType == "setFridge":  # new constant fridge temperature received
             try:
                 newTemp = float(value)
@@ -540,19 +536,14 @@ while run:
                 logMessage("Cannot convert temperature '" + value + "' to float")
                 continue
 
-            if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
-                cs['mode'] = 'f'
-                cs['fridgeSet'] = round(newTemp, 2)
-                ser.write("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
-                logMessage("Notification: Fridge temperature set to " +
-                           str(cs['fridgeSet']) +
-                           " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update controller
-            else:
-                logMessage("Fridge temperature setting " + str(newTemp) +
-                           " is outside of allowed range " +
-                           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
-                           ". These limits can be changed in advanced settings.")
+            cs['mode'] = 'f'
+            cs['fridgeSet'] = round(newTemp, 2)
+            ser.write("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
+            logMessage("Notification: Fridge temperature set to " +
+                       str(cs['fridgeSet']) +
+                       " degrees in web interface")
+            raise socket.timeout  # go to serial communication to update controller
+
         elif messageType == "setOff":  # cs['mode'] set to OFF
             cs['mode'] = 'o'
             ser.write("j{mode:o}")
