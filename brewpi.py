@@ -684,6 +684,13 @@ while run:
                 continue
             ser.write("U" + json.dumps(configStringJson))
             deviceList['listState'] = ""  # invalidate local copy
+        elif messageType == "writeDevice":
+            try:
+                configStringJson = json.loads(value)  # load as JSON to check syntax
+            except json.JSONDecodeError:
+                logMessage("Error: invalid JSON parameter string received: " + value)
+                continue
+            ser.write("d" + json.dumps(configStringJson))
         elif messageType == "getVersion":
             if hwVersion:
                 response = hwVersion.__dict__
