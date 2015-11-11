@@ -43,7 +43,7 @@ print "On known debug ID's in JSON format, it expands the messages to the full m
 print "press 's' to send a string to the Arduino, press 'q' to quit"
 
 # open serial port
-ser = util.setupSerial(config, timeOut=1)
+ser = util.setupSerial(config)
 
 if not ser:
     exit(1)
