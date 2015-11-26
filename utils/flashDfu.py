@@ -70,10 +70,19 @@ for o, a in opts:
 
         exit()
     # supply a config file
-    if o in ('-f', '--config'):
-        binFile = os.path.abspath(a)
+    if o in ('-f', '--file'):
+        print("Using local files instead of downloading a release. \n")
+        if os.path.isdir(a):
+            binFile = os.path.join(os.path.abspath(a), "brewpi.bin")
+            system1 = os.path.join(os.path.abspath(a), "system-part1.bin")
+            system2 = os.path.join(os.path.abspath(a), "system-part2.bin")
+        else:
+            binFile = os.path.abspath(a)
         if not os.path.exists(binFile):
-            sys.exit('ERROR: Binary file "%s" was not found!' % binFile)
+            print('ERROR: Binary file(s) "%s" was not found!' % binFile)
+            exit(1)
+        if os.path.exists(system1) and os.path.exists(system2):
+            print('System update files found, will update system part before flashing user binary. \n')
     # send quit instruction to all running instances of BrewPi
     if o in ('-m', '--multi'):
         multi = True
