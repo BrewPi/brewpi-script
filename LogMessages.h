@@ -23,13 +23,13 @@
 	A copy of this file is included with the python script, so it can parse it to extract the log strings.
 	The python script receives the messages as a few IDs and values in a JSON string.
 	It uses this file to expand that to the full message.
-	Not storing the full strings, but only the ID on the controller saves a lot of PROGMEM space.
+	Not storing the full strings, but only the ID on the Arduino saves a lot of PROGMEM space.
 	At startup the python script extracts the version number from this file and compares it to its own local copy.
 	It will give a warning when the two strings do not match.
 */
 
 /* bump this version number when changing this file and copy the new version to the brewpi-script repository. */
-#define BREWPI_LOG_MESSAGES_VERSION 1
+#define BREWPI_LOG_MESSAGES_VERSION 2
 
 #define MSG(errorID, errorString, ...) errorID
 
@@ -52,12 +52,16 @@ enum errorMessages{
 // PiLink.cpp
 	MSG(ERROR_EXPECTED_BRACKET, "Expected { got %c", character),
 	
+	MSG(ERROR_ONEWIRE_INIT_FAILED, "OneWire initialization failed"),
+	MSG(ERROR_DEVICE_ALREADY_INSTALLED, "This hardware device is already installed at slot %d. Uninstall it first.", slot),
+	MSG(ERROR_FUNCTION_ALREADY_INSTALLED, "This device function is already installed at slot %d. Uninstall it first.", slot)
+
 }; // END enum errorMessages
 
 enum warningMessages{
 // PiLink.cpp
 	MSG(WARNING_COULD_NOT_PROCESS_SETTING, "Could not process setting"),
-	MSG(WARNING_INVALID_COMMAND, "Invalid command received by controller: %c", character),
+	MSG(WARNING_INVALID_COMMAND, "Invalid command received by Arduino: %c", character),
 
 // OneWireTempSensor.cpp	
 	MSG(WARNING_TEMP_SENSOR_DISCONNECTED, "Temperature sensor disconnected pin %d, address %s", pinNr, addressString),
@@ -82,7 +86,7 @@ enum infoMessages{
 	MSG(INFO_INSTALL_SWITCH_SENSOR, "installing switch sensor with function %d", config.deviceFunction),
 	MSG(INFO_INSTALL_DEVICE, "Installing device f=%d", config.deviceFunction),
 	MSG(INFO_MATCHING_DEVICE, "Matching device at slot %d", out.slot),
-	MSG(INFO_SETTING_ACTIVATOR_STATE, "Setting activator state %d", state),
+	MSG(INFO_SETTING_ACTUATOR_VALUE, "Setting actuator value %d", val),
 			
 // PiLink.cpp
 	MSG(INFO_RECEIVED_SETTING, "Received new setting: %s = %s", key, val),
