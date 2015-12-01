@@ -287,11 +287,6 @@ class SerialProgrammer:
                 printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
                 self.restoreSettings = False
 
-        if self.restoreDevices:
-            if(self.versionNew.isNewer("0.2")):
-                printStdErr("Sorry, devices can only be restored when updating to BrewPi 0.2.0 or higher")
-                self.restoreSettings = False
-
         if self.restoreSettings:
             self.restore_settings()
 
