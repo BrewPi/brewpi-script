@@ -73,9 +73,13 @@ for o, a in opts:
     if o in ('-f', '--file'):
         print("Using local files instead of downloading a release. \n")
         if os.path.isdir(a):
-            binFile = os.path.join(os.path.abspath(a), "brewpi.bin")
-            system1 = os.path.join(os.path.abspath(a), "system-part1.bin")
-            system2 = os.path.join(os.path.abspath(a), "system-part2.bin")
+            for file in os.listdir(a):
+                if all(x in file for x in ['brewpi', '.bin']):
+                    binFile = os.path.join(os.path.abspath(a), file)
+                if all(x in file for x in ['system', 'part1', '.bin']):
+                    system1 = os.path.join(os.path.abspath(a), file)
+                if all(x in file for x in ['system', 'part2', '.bin']):
+                    system2 = os.path.join(os.path.abspath(a), file)
         else:
             binFile = os.path.abspath(a)
         if not os.path.exists(binFile):
