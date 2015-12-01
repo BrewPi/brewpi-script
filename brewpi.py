@@ -706,6 +706,9 @@ while run:
                 response = {}
             response_str = json.dumps(response)
             conn.send(response_str)
+        elif messageType == "resetController":
+            logMessage("Resetting controller to factory defaults")
+            ser.write("E")
         else:
             logMessage("Error: Received invalid message on socket: " + message)
 
