@@ -211,9 +211,10 @@ class SerialProgrammer:
             self.save_settings_to_file()
 
 
-        if self.versionOld.isNewer("0.4.0") and self.boardType == "photon":
-            printStdErr("\nYour current version is older than 0.4.0. For the Photon, updating over Serial is not supported in this case.")
-            printStdErr("\nFalling back to DFU and trying to automatically reboot into DFU mode and update your firmware")
+        if self.boardType == "photon":
+            printStdErr("\nFor the Photon, updating over Serial is not supported.")
+            printStdErr("\nFalling back to DFU and trying to automatically reboot into DFU mode and update your firmware.")
+            printStdErr("\nIf the Photon does not reboot into DFU mode automatically, please put it in DFU mode manually.")
 
             self.ser.close()
 
