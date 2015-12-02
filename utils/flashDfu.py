@@ -20,6 +20,7 @@ if sys.version_info < (2, 7):
     print "Sorry, requires Python 2.7."
     sys.exit(1)
 
+import distutils.spawn
 import time
 import os
 import platform
@@ -103,26 +104,29 @@ for o, a in opts:
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
-if platform.system() == "Windows":
-    p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    p.wait()
-    output, errors = p.communicate()
-    if not output:
-        print "dfu-util cannot be found, please add its location to your PATH variable"
+if distutils.spawn.find_executable('dfu-util') is None:
+    if platform.system() == "Windows":
+        p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        p.wait()
+        output, errors = p.communicate()
+        if not output:
+            print "dfu-util cannot be found, please add its location to your PATH variable"
+            exit(1)
+    elif platform.system() == "Linux":
+        # TODO: change this block to be platform / architecture agnositc
+        # as it currently expects you to be running from a Pi
+        downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
+        dfuPath = os.path.join(downloadDir, "dfu-util")
+        if not os.path.exists(dfuPath):
+            print "dfu-util not found, downloading dfu-util..."
+            dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
+            if not os.path.exists(downloadDir):
+                os.makedirs(downloadDir, 0777)
+            releases.download(dfuUrl, downloadDir)
+            os.chmod(dfuPath, 0777) # make executable
+    else:
+        print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
         exit(1)
-elif platform.system() == "Linux":
-    downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
-    dfuPath = os.path.join(downloadDir, "dfu-util")
-    if not os.path.exists(dfuPath):
-        print "dfu-util not found, downloading dfu-util..."
-        dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
-        if not os.path.exists(downloadDir):
-            os.makedirs(downloadDir, 0777)
-        releases.download(dfuUrl, downloadDir)
-        os.chmod(dfuPath, 0777) # make executable
-else:
-    print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
-    exit(1)
 
 firstLoop = True
 print "Detecting DFU devices"
