@@ -82,7 +82,8 @@ MigrateSettingsDefaultRestoreValidity = [
     SettingMigrate('minCoolIdleTime', '0.4.0', '1000', []),
     SettingMigrate('heater1PwmPeriod', '0.4.0', '1000', []),
     SettingMigrate('heater2PwmPeriod', '0.4.0', '1000', []),
-    SettingMigrate('coolerPwmPeriod', '0.4.0', '1000', [])
+    SettingMigrate('coolerPwmPeriod', '0.4.0', '1000', []),
+    SettingMigrate('deadTime', '0.4.0', '1000', [])
 ]
 
 class MigrateSettings:
