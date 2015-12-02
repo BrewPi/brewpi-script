@@ -27,6 +27,7 @@ import platform
 import getopt
 import subprocess
 import re
+from distutils.version import LooseVersion
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 from gitHubReleases import gitHubReleases
 import BrewPiUtil as util
@@ -124,8 +125,27 @@ if distutils.spawn.find_executable('dfu-util') is None:
                 os.makedirs(downloadDir, 0777)
             releases.download(dfuUrl, downloadDir)
             os.chmod(dfuPath, 0777) # make executable
+        else:
+            print "Using dfu-util binary at " + dfuPath
     else:
         print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
+        exit(1)
+else:
+    p = subprocess.Popen("dfu-util -V", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    p.wait()
+    output, errors = p.communicate()
+    dfuUtilVersion =  re.search('(?<=dfu-util\\s)\\S*', output).group()
+    if not dfuUtilVersion:
+        print "Cannot determine installed version of dfu-util. Exiting"
+        exit(1)
+    else:
+        print "dfu-util version {0} found installed on system.".format(dfuUtilVersion)
+
+    if LooseVersion(dfuUtilVersion) < LooseVersion('0.7'):
+        print "Your installed version of dfu-util ({0}) is too old.\n".format(dfuUtilVersion)
+        print "A minimum of version 0.7 is required. If you are on a Raspberry Pi, we can download the correct version automatically.\n"
+        print "Just uninstall your system version with: sudo apt-get remove dfu-util\n"
+        print "Then try again."
         exit(1)
 
 firstLoop = True
@@ -227,7 +247,6 @@ while(True):
             print "Did not find any DFU devices."
             print "Is your Photon or Spark Core running in DFU mode (blinking yellow)?"
             print "Waiting until a DFU device is connected..."
-            serialPorts = autoSerial.detect_all_ports()
         firstLoop = False
         if autoDfu:
             previousSerialPorts = serialPorts
