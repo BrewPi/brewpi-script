@@ -223,6 +223,7 @@ while(True):
             print "Did not find any DFU devices."
             print "Is your Photon or Spark Core running in DFU mode (blinking yellow)?"
             print "Waiting until a DFU device is connected..."
+            serialPorts = autoSerial.detect_all_ports()
         firstLoop = False
         if autoDfu:
             previousSerialPorts = serialPorts

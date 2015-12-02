@@ -25,6 +25,8 @@ from MigrateSettings import MigrateSettings
 from sys import stderr
 import BrewPiUtil as util
 import subprocess
+import platform
+import sys
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
 def printStdErr(*objs):
@@ -217,8 +219,14 @@ class SerialProgrammer:
 
             myDir = os.path.dirname(os.path.abspath(__file__))
             flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
-            command = "python " + flashDfuPath + " --autodfu --file={0}".format(os.path.dirname(hexFile))
-            subprocess.call(command)
+            command = sys.executable + ' ' + flashDfuPath + " --autodfu --file={0}".format(os.path.dirname(hexFile))
+            if platform.system() == "Linux":
+                command =  'sudo ' + command
+
+            printStdErr("Running command: " + command)
+            process = subprocess.Popen(command, shell=True)
+            process.wait()
+
             printStdErr("\nUpdating firmware over DFU finished\n")
 
         else:
