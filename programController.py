@@ -236,7 +236,7 @@ class SerialProgrammer:
                     return 0
 
                 printStdErr("Waiting for device to reset.")
-                time.sleep(5) # give time to reboot and process binary
+                time.sleep(15) # give time to reboot and process binary
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 1. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -248,7 +248,7 @@ class SerialProgrammer:
                     return 0
 
                 printStdErr("Waiting for device to reset.")
-                time.sleep(5) # give time to reboot and process binary
+                time.sleep(15) # give time to reboot and process binary
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 2. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -259,7 +259,7 @@ class SerialProgrammer:
                     return 0
 
                 printStdErr("Waiting for device to reset.")
-                time.sleep(5) # give time to reboot and process binary
+                time.sleep(15) # give time to reboot and process binary
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing user part. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
