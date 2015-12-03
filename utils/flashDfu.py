@@ -20,12 +20,14 @@ if sys.version_info < (2, 7):
     print "Sorry, requires Python 2.7."
     sys.exit(1)
 
+import distutils.spawn
 import time
 import os
 import platform
 import getopt
 import subprocess
 import re
+from distutils.version import LooseVersion
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 from gitHubReleases import gitHubReleases
 import BrewPiUtil as util
@@ -70,10 +72,23 @@ for o, a in opts:
 
         exit()
     # supply a config file
-    if o in ('-f', '--config'):
-        binFile = os.path.abspath(a)
+    if o in ('-f', '--file'):
+        print("Using local files instead of downloading a release. \n")
+        if os.path.isdir(a):
+            for file in os.listdir(a):
+                if all(x in file for x in ['brewpi', '.bin']):
+                    binFile = os.path.join(os.path.abspath(a), file)
+                if all(x in file for x in ['system', 'part1', '.bin']):
+                    system1 = os.path.join(os.path.abspath(a), file)
+                if all(x in file for x in ['system', 'part2', '.bin']):
+                    system2 = os.path.join(os.path.abspath(a), file)
+        else:
+            binFile = os.path.abspath(a)
         if not os.path.exists(binFile):
-            sys.exit('ERROR: Binary file "%s" was not found!' % binFile)
+            print('ERROR: Binary file(s) "%s" was not found!' % binFile)
+            exit(1)
+        if os.path.exists(system1) and os.path.exists(system2):
+            print('System update files found, will update system part before flashing user binary. \n')
     # send quit instruction to all running instances of BrewPi
     if o in ('-m', '--multi'):
         multi = True
@@ -90,26 +105,48 @@ for o, a in opts:
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
-if platform.system() == "Windows":
-    p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+if distutils.spawn.find_executable('dfu-util') is None:
+    if platform.system() == "Windows":
+        p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        p.wait()
+        output, errors = p.communicate()
+        if not output:
+            print "dfu-util cannot be found, please add its location to your PATH variable"
+            exit(1)
+    elif platform.system() == "Linux":
+        # TODO: change this block to be platform / architecture agnositc
+        # as it currently expects you to be running from a Pi
+        downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
+        dfuPath = os.path.join(downloadDir, "dfu-util")
+        if not os.path.exists(dfuPath):
+            print "dfu-util not found, downloading dfu-util..."
+            dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
+            if not os.path.exists(downloadDir):
+                os.makedirs(downloadDir, 0777)
+            releases.download(dfuUrl, downloadDir)
+            os.chmod(dfuPath, 0777) # make executable
+        else:
+            print "Using dfu-util binary at " + dfuPath
+    else:
+        print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
+        exit(1)
+else:
+    p = subprocess.Popen("dfu-util -V", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     p.wait()
     output, errors = p.communicate()
-    if not output:
-        print "dfu-util cannot be found, please add its location to your PATH variable"
+    dfuUtilVersion =  re.search('(?<=dfu-util\\s)\\S*', output).group()
+    if not dfuUtilVersion:
+        print "Cannot determine installed version of dfu-util. Exiting"
         exit(1)
-elif platform.system() == "Linux":
-    downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
-    dfuPath = os.path.join(downloadDir, "dfu-util")
-    if not os.path.exists(dfuPath):
-        print "dfu-util not found, downloading dfu-util..."
-        dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
-        if not os.path.exists(downloadDir):
-            os.makedirs(downloadDir, 0777)
-        releases.download(dfuUrl, downloadDir)
-        os.chmod(dfuPath, 0777) # make executable
-else:
-    print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
-    exit(1)
+    else:
+        print "dfu-util version {0} found installed on system.".format(dfuUtilVersion)
+
+    if LooseVersion(dfuUtilVersion) < LooseVersion('0.7'):
+        print "Your installed version of dfu-util ({0}) is too old.\n".format(dfuUtilVersion)
+        print "A minimum of version 0.7 is required. If you are on a Raspberry Pi, we can download the correct version automatically.\n"
+        print "Just uninstall your system version with: sudo apt-get remove dfu-util\n"
+        print "Then try again."
+        exit(1)
 
 firstLoop = True
 print "Detecting DFU devices"

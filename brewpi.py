@@ -80,17 +80,13 @@ import BrewPiProcess
 compatibleHwVersion = "0.2.4"
 
 # Control Settings
-cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0, heatEstimator=0.2, coolEstimator=5)
+cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0)
 
 # Control Constants
-cc = dict(tempFormat="C", tempSetMin=1.0, tempSetMax=30.0, pidMax=10.0, Kp=20.000, Ki=0.600, Kd=-3.000, iMaxErr=0.500,
-          idleRangeH=1.000, idleRangeL=-1.000, heatTargetH=0.301, heatTargetL=-0.199, coolTargetH=0.199,
-          coolTargetL=-0.301, maxHeatTimeForEst="600", maxCoolTimeForEst="1200", fridgeFastFilt="1", fridgeSlowFilt="4",
-          fridgeSlopeFilt="3", beerFastFilt="3", beerSlowFilt="5", beerSlopeFilt="4", lah=0, hs=0)
+cc = dict()
 
-# Control variables
-cv = dict(beerDiff=0.000, diffIntegral=0.000, beerSlope=0.000, p=0.000, i=0.000, d=0.000, estPeak=0.000,
-          negPeakEst=0.000, posPeakEst=0.000, negPeak=0.000, posPeak=0.000)
+# Control variables (json string, sent directly to browser without decoding)
+cv = ""
 
 # listState = "", "d", "h", "dh" to reflect whether the list is up to date for installed (d) and available (h)
 deviceList = dict(listState="", installed=[], available=[])
@@ -501,7 +497,7 @@ while run:
             cs['dataLogging'] = config['dataLogging']
             conn.send(json.dumps(cs))
         elif messageType == "getControlVariables":
-            conn.send(json.dumps(cv))
+            conn.send(cv)
         elif messageType == "refreshControlConstants":
             ser.write("c")
             raise socket.timeout
@@ -523,20 +519,16 @@ while run:
             except ValueError:
                 logMessage("Cannot convert temperature '" + value + "' to float")
                 continue
-            if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
-                cs['mode'] = 'b'
-                # round to 2 dec, python will otherwise produce 6.999999999
-                cs['beerSet'] = round(newTemp, 2)
-                ser.write("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
-                logMessage("Notification: Beer temperature set to " +
-                           str(cs['beerSet']) +
-                           " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update controller
-            else:
-                logMessage("Beer temperature setting " + str(newTemp) +
-                           " is outside of allowed range " +
-                           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
-                           ". These limits can be changed in advanced settings.")
+
+            cs['mode'] = 'b'
+            # round to 2 dec, python will otherwise produce 6.999999999
+            cs['beerSet'] = round(newTemp, 2)
+            ser.write("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
+            logMessage("Notification: Beer temperature set to " +
+                       str(cs['beerSet']) +
+                       " degrees in web interface")
+            raise socket.timeout  # go to serial communication to update controller
+
         elif messageType == "setFridge":  # new constant fridge temperature received
             try:
                 newTemp = float(value)
@@ -544,19 +536,14 @@ while run:
                 logMessage("Cannot convert temperature '" + value + "' to float")
                 continue
 
-            if cc['tempSetMin'] <= newTemp <= cc['tempSetMax']:
-                cs['mode'] = 'f'
-                cs['fridgeSet'] = round(newTemp, 2)
-                ser.write("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
-                logMessage("Notification: Fridge temperature set to " +
-                           str(cs['fridgeSet']) +
-                           " degrees in web interface")
-                raise socket.timeout  # go to serial communication to update controller
-            else:
-                logMessage("Fridge temperature setting " + str(newTemp) +
-                           " is outside of allowed range " +
-                           str(cc['tempSetMin']) + " - " + str(cc['tempSetMax']) +
-                           ". These limits can be changed in advanced settings.")
+            cs['mode'] = 'f'
+            cs['fridgeSet'] = round(newTemp, 2)
+            ser.write("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
+            logMessage("Notification: Fridge temperature set to " +
+                       str(cs['fridgeSet']) +
+                       " degrees in web interface")
+            raise socket.timeout  # go to serial communication to update controller
+
         elif messageType == "setOff":  # cs['mode'] set to OFF
             cs['mode'] = 'o'
             ser.write("j{mode:o}")
@@ -697,6 +684,13 @@ while run:
                 continue
             ser.write("U" + json.dumps(configStringJson))
             deviceList['listState'] = ""  # invalidate local copy
+        elif messageType == "writeDevice":
+            try:
+                configStringJson = json.loads(value)  # load as JSON to check syntax
+            except json.JSONDecodeError:
+                logMessage("Error: invalid JSON parameter string received: " + value)
+                continue
+            ser.write("d" + json.dumps(configStringJson))
         elif messageType == "getVersion":
             if hwVersion:
                 response = hwVersion.__dict__
@@ -706,6 +700,9 @@ while run:
                 response = {}
             response_str = json.dumps(response)
             conn.send(response_str)
+        elif messageType == "resetController":
+            logMessage("Resetting controller to factory defaults")
+            ser.write("E")
         else:
             logMessage("Error: Received invalid message on socket: " + message)
 
@@ -812,7 +809,7 @@ while run:
                 # do not print this to the log file. This is requested continuously.
                 elif line[0] == 'V':
                     # Control settings received
-                    cv = json.loads(line[2:])
+                    cv = line[2:] # keep as string, do not decode
                 elif line[0] == 'N':
                     pass  # version number received. Do nothing, just ignore
                 elif line[0] == 'h':
