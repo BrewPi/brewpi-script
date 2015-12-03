@@ -87,7 +87,7 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
 
     printStdErr("\nChecking GitHub for latest release...")
     releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
-    tag = "0.4.0" # releases.getLatestTag()
+    tag = releases.getLatestTag()
     printStdErr("Latest version on GitHub: " + tag)
 
 
