@@ -31,9 +31,8 @@ class gitHubReleases:
     def update(self):
         self.releases = json.load(urllib2.urlopen(self.url + "/releases"))
 
-    # writes .bin in release tagged with tag to directory
-    # defaults to ./downloads/tag_name/ as download location
-    def getBin(self, tag, wordsInFileName, path = None):
+    # Finds a binary for a certain tag on GitHub
+    def getBinUrl(self, tag, wordsInFileName):
         try:
             match = (release for release in self.releases if release["tag_name"] == tag).next()
         except StopIteration:
@@ -48,6 +47,12 @@ class gitHubReleases:
             if all(word.lower() in urlFileName.lower() for word in wordsInFileName):
                 downloadUrl = url
 
+        return downloadUrl
+
+    # writes .bin in release tagged with tag to directory
+    # defaults to ./downloads/tag_name/ as download location
+    def getBin(self, tag, wordsInFileName, path=None):
+        downloadUrl = self.getBinUrl(tag, wordsInFileName)
         if not downloadUrl:
             return None
 
@@ -67,6 +72,16 @@ class gitHubReleases:
             if release["prerelease"] == False:
                 break
         return release["tag_name"]
+
+    def getLatestTagForSystem(self):
+        for release in self.releases:
+            # search for stable release
+            tag = release["tag_name"]
+            if release["prerelease"] == True:
+                continue
+            if self.getBinUrl(tag, ['photon', 'system-part1', '.bin']):
+                return tag
+        return None
 
     def getTags(self):
         return self.releases[0]["tag_name"]
