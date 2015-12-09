@@ -268,12 +268,13 @@ class SerialProgrammer:
 
             printStdErr("Waiting for device to reset.")
 
+        time.sleep(10) # give time to reboot
+
         if not self.open_serial_with_retry(self.config, 57600, 0.2):
             printStdErr("Error opening serial port after programming. Program script will exit. Settings are not restored.")
             printStdErr("If your device stopped working, use flashDfu.py to restore it.")
             return False
 
-        time.sleep(1)
         self.fetch_new_version()
         self.reset_settings()
         if self.restoreSettings or self.restoreDevices:
