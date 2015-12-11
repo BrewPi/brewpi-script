@@ -220,7 +220,7 @@ class SerialProgrammer:
 
             myDir = os.path.dirname(os.path.abspath(__file__))
             flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
-            command = sys.executable + ' ' + flashDfuPath + " --autodfu --file={0}".format(os.path.dirname(hexFile))
+            command = sys.executable + ' ' + flashDfuPath + " --autodfu --noreset --file={0}".format(os.path.dirname(hexFile))
             if platform.system() == "Linux":
                 command =  'sudo ' + command
 

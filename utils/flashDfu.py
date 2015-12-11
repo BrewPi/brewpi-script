@@ -42,15 +42,16 @@ serialPorts = []
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
-                               ['help', 'file=', 'system=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode'])
+                               ['help', 'file=', 'system=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --system, --multi, --tag --autodfu --testmode"
+    print "Unknown parameter, available Options: --file, --system, --multi, --tag --autodfu --testmode --noreset"
 
     sys.exit()
 
 multi = False
 testMode = False
 autoDfu = False
+noReset = False
 tag = None
 # binaries for system update
 system1 = None
@@ -71,6 +72,7 @@ for o, a in opts:
         print "--multi: keep the script alive to flash multiple devices"
         print "--autodfu: automatically reboot photon in DFU mode by opening serial port at 14400 baud"
         print "--testmode: set controller o test mode after flashing"
+        print "--noreset: do not reset EEPROM after flashing"
 
         exit()
     # supply a binary file
@@ -116,6 +118,8 @@ for o, a in opts:
     if o in ('-a', '--autodfu'):
         autoDfu = True
         print "Will automatically reboot newly detected photons into DFU mode"
+    if o in ('--noreset'):
+        noReset = True
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
@@ -242,26 +246,29 @@ while(True):
                 p = subprocess.Popen(dfuPath + " -d 0x2B04:0xD006 -a 0 -s 0x80A0000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
 
-            print "Programming done, now resetting EEPROM to defaults"
-            # reset EEPROM to defaults
-            configFile = util.scriptPath() + '/settings/config.cfg'
-            config = util.readCfgWithDefaults(configFile)
-            programmer = SerialProgrammer.create(config, "core")
+            print "Programming done"
 
-            # open serial port
-            print "Opening serial port"
-            retries = 10
-            while retries > 0:
-                if programmer.open_serial(config, 57600, 0.2):
-                    break
-                retries -= 1
-                time.sleep(1)
-            if retries > 0:
-                programmer.fetch_version("Success! ")
-                programmer.reset_settings(testMode)
-                serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
-            else:
-                print "Could not open serial port after programming"
+            if not noReset:
+                print "Now resetting EEPROM to defaults"
+                # reset EEPROM to defaults
+                configFile = util.scriptPath() + '/settings/config.cfg'
+                config = util.readCfgWithDefaults(configFile)
+                programmer = SerialProgrammer.create(config, type)
+
+                # open serial port
+                print "Opening serial port"
+                retries = 10
+                while retries > 0:
+                    if programmer.open_serial(config, 57600, 0.2):
+                        break
+                    retries -= 1
+                    time.sleep(1)
+                if retries > 0:
+                    programmer.fetch_version("Success! ")
+                    programmer.reset_settings(testMode)
+                    serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
+                else:
+                    print "Could not open serial port after programming"
         else:
             print "found DFU device, but no binary specified for flashing"
         if not multi:
