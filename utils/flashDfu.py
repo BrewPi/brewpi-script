@@ -292,8 +292,13 @@ while(True):
                     ser = serial.Serial(port)
                     try:
                         ser.setBaudrate(14400) # this triggers a reboot in DFU mode
+                        time.sleep(1)
+                        ser.close()
                     except ValueError:
                         pass # because device reboots while reconfiguring an exception is thrown, ignore
-                    ser.close()
+                    if ser.isOpen():
+                        ser.close()
+                    ser.setBaudrate(57600) # don't leave serial port at 14400, or a reboot will be triggered later
+
 
     time.sleep(1)
