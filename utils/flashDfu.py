@@ -42,15 +42,16 @@ serialPorts = []
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
-                               ['help', 'file=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode'])
+                               ['help', 'file=', 'system=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --multi, --tag --autodfu --testmode"
+    print "Unknown parameter, available Options: --file, --system, --multi, --tag --autodfu --testmode --noreset"
 
     sys.exit()
 
 multi = False
 testMode = False
 autoDfu = False
+noReset = False
 tag = None
 # binaries for system update
 system1 = None
@@ -64,31 +65,46 @@ for o, a in opts:
     if o in ('-h', '--help'):
         print "\n Available command line options: "
         print "--help: print this help message"
-        print "--file: path to .bin file to flash instead of the latest release on GitHub"
         print "--tag: specify which tag to download from github"
+        print "--file: path to .bin file to flash instead of the latest release on GitHub.\n" \
+              "If this is a directory, search for binary and system update files."
+        print "--system: path to system binaries to update the system firmware on the photon."
         print "--multi: keep the script alive to flash multiple devices"
         print "--autodfu: automatically reboot photon in DFU mode by opening serial port at 14400 baud"
         print "--testmode: set controller o test mode after flashing"
+        print "--noreset: do not reset EEPROM after flashing"
 
         exit()
-    # supply a config file
+    # supply a binary file
     if o in ('-f', '--file'):
         print("Using local files instead of downloading a release. \n")
         if os.path.isdir(a):
             for file in os.listdir(a):
                 if all(x in file for x in ['brewpi', '.bin']):
                     binFile = os.path.join(os.path.abspath(a), file)
+        else:
+            binFile = os.path.abspath(a)
+        if not os.path.exists(binFile):
+            print('ERROR: Binary file "%s" was not found!' % binFile)
+            exit(1)
+    # supply a system update directory
+    if o in ('-s', '--system'):
+        print("Using local files for system update instead of downloading from GitHub.\n")
+        if os.path.isdir(a):
+            for file in os.listdir(a):
                 if all(x in file for x in ['system', 'part1', '.bin']):
                     system1 = os.path.join(os.path.abspath(a), file)
                 if all(x in file for x in ['system', 'part2', '.bin']):
                     system2 = os.path.join(os.path.abspath(a), file)
         else:
-            binFile = os.path.abspath(a)
-        if not os.path.exists(binFile):
-            print('ERROR: Binary file(s) "%s" was not found!' % binFile)
+            print('ERROR: System binaries location {0} is not a directory!' % a)
+        if not os.path.exists(system1):
+            print('ERROR: System binary 1 "%s" was not found!' % binFile)
             exit(1)
-        if os.path.exists(system1) and os.path.exists(system2):
-            print('System update files found, will update system part before flashing user binary. \n')
+        if not os.path.exists(system2):
+            print('ERROR: System binary 2 "%s" was not found!' % binFile)
+            exit(1)
+
     # send quit instruction to all running instances of BrewPi
     if o in ('-m', '--multi'):
         multi = True
@@ -102,6 +118,8 @@ for o, a in opts:
     if o in ('-a', '--autodfu'):
         autoDfu = True
         print "Will automatically reboot newly detected photons into DFU mode"
+    if o in ('--noreset'):
+        noReset = True
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
@@ -179,10 +197,12 @@ while(True):
 
         # download latest binary from GitHub if file not specified
         if not binFile:
-            print "Downloading latest firmware..."
             if tag is None:
+                print "Downloading latest firmware..."
                 tag = releases.getLatestTag()
                 print "Latest stable version on GitHub: " + tag
+            else:
+                print "Downloading release " + tag
 
             binFile = releases.getBin(tag, [type, 'brewpi', '.bin'])
             if binFile:
@@ -192,14 +212,22 @@ while(True):
                 exit(1)
 
             if type == 'photon':
-                system1 = releases.getBin(tag, ['photon', 'system-part1', '.bin'])
-                system2 = releases.getBin(tag, ['photon', 'system-part2', '.bin'])
-
+                if LooseVersion(tag) > LooseVersion('0.2.11'): # 0.2.11 was compiled against non-forward compatible system
+                    latestSystemTag = releases.getLatestTagForSystem()
+                else:
+                    latestSystemTag = tag
+                print ("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
+                system1 = releases.getBin(latestSystemTag, ['photon', 'system-part1', '.bin'])
+                system2 = releases.getBin(latestSystemTag, ['photon', 'system-part2', '.bin'])
                 if system1:
-                    print "Release contains updated system firmware for the photon"
+                    print "Downloaded new system firmware to:\n"
+                    print "{0} and\n".format(system1)
                     if not system2:
                         print "Error: system firmware part2 not found in release"
-                        exit()
+                        exit(1)
+                else:
+                    print "{0} and\n".format(system2)
+
 
         if binFile:
             if type == 'core':
@@ -218,26 +246,29 @@ while(True):
                 p = subprocess.Popen(dfuPath + " -d 0x2B04:0xD006 -a 0 -s 0x80A0000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
 
-            print "Programming done, now resetting EEPROM to defaults"
-            # reset EEPROM to defaults
-            configFile = util.scriptPath() + '/settings/config.cfg'
-            config = util.readCfgWithDefaults(configFile)
-            programmer = SerialProgrammer.create(config, "core")
+            print "Programming done"
 
-            # open serial port
-            print "Opening serial port"
-            retries = 10
-            while retries > 0:
-                if programmer.open_serial(config, 57600, 0.2):
-                    break
-                retries -= 1
-                time.sleep(1)
-            if retries > 0:
-                programmer.fetch_version("Success! ")
-                programmer.reset_settings(testMode)
-                serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
-            else:
-                print "Could not open serial port after programming"
+            if not noReset:
+                print "Now resetting EEPROM to defaults"
+                # reset EEPROM to defaults
+                configFile = util.scriptPath() + '/settings/config.cfg'
+                config = util.readCfgWithDefaults(configFile)
+                programmer = SerialProgrammer.create(config, type)
+
+                # open serial port
+                print "Opening serial port"
+                retries = 10
+                while retries > 0:
+                    if programmer.open_serial(config, 57600, 0.2):
+                        break
+                    retries -= 1
+                    time.sleep(1)
+                if retries > 0:
+                    programmer.fetch_version("Success! ")
+                    programmer.reset_settings(testMode)
+                    serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
+                else:
+                    print "Could not open serial port after programming"
         else:
             print "found DFU device, but no binary specified for flashing"
         if not multi:
@@ -261,8 +292,13 @@ while(True):
                     ser = serial.Serial(port)
                     try:
                         ser.setBaudrate(14400) # this triggers a reboot in DFU mode
+                        time.sleep(1)
+                        ser.close()
                     except ValueError:
                         pass # because device reboots while reconfiguring an exception is thrown, ignore
-                    ser.close()
+                    if ser.isOpen():
+                        ser.close()
+                    ser.setBaudrate(57600) # don't leave serial port at 14400, or a reboot will be triggered later
+
 
     time.sleep(1)

@@ -220,7 +220,7 @@ class SerialProgrammer:
 
             myDir = os.path.dirname(os.path.abspath(__file__))
             flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
-            command = sys.executable + ' ' + flashDfuPath + " --autodfu --file={0}".format(os.path.dirname(hexFile))
+            command = sys.executable + ' ' + flashDfuPath + " --autodfu --noreset --file={0}".format(os.path.dirname(hexFile))
             if platform.system() == "Linux":
                 command =  'sudo ' + command
 
@@ -268,12 +268,13 @@ class SerialProgrammer:
 
             printStdErr("Waiting for device to reset.")
 
+        time.sleep(10) # give time to reboot
+
         if not self.open_serial_with_retry(self.config, 57600, 0.2):
             printStdErr("Error opening serial port after programming. Program script will exit. Settings are not restored.")
             printStdErr("If your device stopped working, use flashDfu.py to restore it.")
             return False
 
-        time.sleep(1)
         self.fetch_new_version()
         self.reset_settings()
         if self.restoreSettings or self.restoreDevices:

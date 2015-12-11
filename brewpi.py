@@ -77,7 +77,7 @@ import BrewPiProcess
 # Settings will be read from controller, initialize with same defaults as controller
 # This is mainly to show what's expected. Will all be overwritten on the first update from the controller
 
-compatibleHwVersion = "0.2.4"
+compatibleHwVersion = "0.4.0"
 
 # Control Settings
 cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0)
