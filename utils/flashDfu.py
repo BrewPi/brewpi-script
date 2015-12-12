@@ -104,8 +104,6 @@ for o, a in opts:
         if not os.path.exists(system2):
             print('ERROR: System binary 2 "%s" was not found!' % binFile)
             exit(1)
-
-    # send quit instruction to all running instances of BrewPi
     if o in ('-m', '--multi'):
         multi = True
         print "Started in multi flash mode"
@@ -292,7 +290,7 @@ while(True):
                     ser = serial.Serial(port)
                     try:
                         ser.setBaudrate(14400) # this triggers a reboot in DFU mode
-                        time.sleep(1)
+                        ser.setBaudrate(57600) # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
                         ser.close()
                     except ValueError:
                         pass # because device reboots while reconfiguring an exception is thrown, ignore
