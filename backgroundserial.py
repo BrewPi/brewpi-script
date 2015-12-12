@@ -3,6 +3,7 @@ from __future__ import print_function
 import threading
 import Queue
 import sys
+import time
 from BrewPiUtil import printStdErr
 from BrewPiUtil import logMessage
 from serial import SerialException
@@ -64,7 +65,12 @@ class BackGroundSerial():
             else:
                 # complete line received, [0] is complete line [1] is separator [2] is the rest
                 self.buffer = lines[2]
-                return util.asciiToUnicode(lines[0])
+                return self.__asciiToUnicode(lines[0])
+
+    # remove extended ascii characters from string, because they can raise UnicodeDecodeError later
+    def __asciiToUnicode(self, s):
+        s = s.replace(chr(0xB0), '&deg')
+        return unicode(s, 'ascii', 'ignore')
 
 if __name__ == '__main__':
     # some test code that requests data from serial and processes the response json
