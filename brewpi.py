@@ -18,8 +18,8 @@
 from __future__ import print_function
 import sys
 
-def printStdErr(*objs):
-    print("", *objs, file=sys.stderr)
+from BrewPiUtil import printStdErr
+from BrewPiUtil import logMessage
 
 # Check needed software dependencies to nudge users to fix their setup
 if sys.version_info < (2, 7):
@@ -96,9 +96,6 @@ cv = dict(beerDiff=0.000, diffIntegral=0.000, beerSlope=0.000, p=0.000, i=0.000,
 deviceList = dict(listState="", installed=[], available=[])
 
 lcdText = ['Script starting up', ' ', ' ', ' ']
-
-def logMessage(message):
-    printStdErr(time.strftime("%b %d %Y %H:%M:%S   ") + message)
 
 # Read in command line arguments
 try:
