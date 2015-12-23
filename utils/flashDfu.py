@@ -255,18 +255,14 @@ while(True):
 
                 # open serial port
                 print "Opening serial port"
-                retries = 10
-                while retries > 0:
-                    if programmer.open_serial(config, 57600, 0.2):
-                        break
-                    retries -= 1
-                    time.sleep(1)
-                if retries > 0:
+                if not programmer.open_serial_with_retry(config, 57600, 1):
+                    print "Could not open serial port after programming"
+                else:
                     programmer.fetch_version("Success! ")
+                    time.sleep(5)
                     programmer.reset_settings(testMode)
                     serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
-                else:
-                    print "Could not open serial port after programming"
+
         else:
             print "found DFU device, but no binary specified for flashing"
         if not multi:

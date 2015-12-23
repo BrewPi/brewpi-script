@@ -172,6 +172,7 @@ class BrewPiProcesses():
     def findConflicts(self, process):
         """
         Finds out if the process given as argument will conflict with other running instances of BrewPi
+        Always returns a conflict if a firmware update is running
 
         Params:
         process: a BrewPiProcess object that will be compared with other running instances
@@ -179,6 +180,25 @@ class BrewPiProcesses():
         Returns:
         bool: True means there are conflicts, False means no conflict
         """
+
+                # some OS's (OS X) do not allow processes to read info from other processes.
+        matching = []
+        try:
+            matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'flashDfu.py'in s for s in p.cmdline())]
+        except psutil.AccessDenied:
+            pass
+
+        if len(matching) > 0:
+            return 1
+
+        try:
+            matching = [p for p in psutil.process_iter() if any('python' in p.name() and 'updateFirmware.py'in s for s in p.cmdline())]
+        except psutil.AccessDenied:
+            pass
+
+        if len(matching) > 0:
+            return 1
+
         for p in self.list:
             if process.pid == p.pid:  # skip the process itself
                 continue
@@ -216,6 +236,7 @@ class BrewPiProcesses():
                 continue
             else:
                 p.quit()
+
     def stopAll(self, dontRunFilePath):
         """
         Ask all running Brewpi processes to exit, and prevent restarting by writing
