@@ -87,7 +87,7 @@ cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0)
 cc = dict()
 
 # Control variables (json string, sent directly to browser without decoding)
-cv = ""
+cv = "{}"
 
 # listState = "", "d", "h", "dh" to reflect whether the list is up to date for installed (d) and available (h)
 deviceList = dict(listState="", installed=[], available=[])
@@ -369,6 +369,7 @@ if hwVersion is not None:
     # request settings from controller, processed later when reply is received
     bg_ser.write('s')  # request control settings cs
     bg_ser.write('c')  # request control constants cc
+    bg_ser.write('v')  # request control variables cv
     # answer from controller is received asynchronously later.
 
 # create a listening socket to communicate with PHP
