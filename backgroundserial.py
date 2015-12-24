@@ -15,6 +15,7 @@ class BackGroundSerial():
         self.queue = Queue.Queue()
         self.thread = None
         self.enabled = False
+        self.fatal_error = None
 
     # public interface only has 4 functions: start/stop/read_line/write
     def start(self):
@@ -28,15 +29,25 @@ class BackGroundSerial():
         self.enabled = False
 
     def read_line(self):
+        self.exit_on_fatal_error()
         try:
             return self.queue.get_nowait()
         except Queue.Empty:
             return None
 
     def write(self, data):
+        self.exit_on_fatal_error()
         self.ser.write(data)
 
+    def exit_on_fatal_error(self):
+        if self.fatal_error is not None:
+            logMessage(self.fatal_error)
+            if self.ser:
+                self.ser.close()
+            sys.exit("Fatal serial error") # exit thread of caller (usually main thread)
+
     def __listenThread(self):
+        lastReceive = time.time()
         while True:
             in_waiting = None
             new_data = None
@@ -44,6 +55,7 @@ class BackGroundSerial():
                 in_waiting = self.ser.inWaiting()
                 if in_waiting > 0:
                     new_data = self.ser.read(in_waiting)
+                    lastReceive = time.time()
             except (IOError, OSError, SerialException) as e:
                 logMessage('Serial Error: {0})'.format(str(e)))
 
@@ -52,6 +64,21 @@ class BackGroundSerial():
                 line = self.__get_line_from_buffer()
                 if line:
                     self.queue.put(line)
+
+            if time.time() - lastReceive > 10:
+                # have not received anything for 20 seconds
+                if self.ser.outWaiting():
+                    self.ser.flushOutput() #flush output buffer, aborting current output and discard all that is in buffer
+
+                self.ser.close() # do not except this, otherwise file handle for serial port can be left open on windows
+
+                try:
+                    self.ser.open()
+                except (ValueError, SerialException) as e:
+                    self.fatal_error = 'Lost serial connection. Error: {0})'.format(str(e))
+                    self.stop()
+                    exit(1)
+
             # max 10 ms delay. At baud 57600, max 576 characters are received while waiting
             time.sleep(0.01)
 
