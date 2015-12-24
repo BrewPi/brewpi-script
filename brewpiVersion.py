@@ -26,6 +26,9 @@ def getVersionFromSerial(ser):
     retries = 0
     oldTimeOut = ser.timeout
     startTime = time.time()
+    if not ser.isOpen():
+        print "Cannot get version from serial port that is not open."
+
     ser.setTimeout(1)
     ser.write('n')  # request version info
     while retries < 10:
