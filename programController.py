@@ -410,7 +410,7 @@ class SerialProgrammer:
             self.ser.write(command)
             # make readline blocking for max 5 seconds to give the controller time to respond after every setting
             oldTimeout = self.ser.timeout
-            self.ser.setTimeout(5)
+            self.ser.timeout = 5
             # read all replies
             while 1:
                 line = self.ser.readline()
@@ -419,7 +419,7 @@ class SerialProgrammer:
                         self.print_debug_log(line)
                 if self.ser.inWaiting() == 0:
                     break
-            self.ser.setTimeout(oldTimeout)
+            self.ser.timeout = 5
 
     def restore_devices(self):
         ser = self.ser
