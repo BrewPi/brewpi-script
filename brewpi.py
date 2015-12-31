@@ -830,6 +830,8 @@ while run:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
         traceback.print_exc()
 
+bg_ser.stop()
+
 if ser:
     if ser.isOpen():
         ser.close()  # close port
