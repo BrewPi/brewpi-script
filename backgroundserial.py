@@ -20,7 +20,9 @@ class BackGroundSerial():
 
     # public interface only has 4 functions: start/stop/read_line/write
     def start(self):
-        self.ser.writeTimeout = 1 # makes sure an exception is raised when serial is lost
+        # write timeout will occur when there are problems with the serial port.
+        # without the timeout loosing the serial port goes undetected.
+        self.ser.write_timeout = 2
         self.run = True
         if not self.thread:
             self.thread = threading.Thread(target=self.__listenThread)

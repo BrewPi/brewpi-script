@@ -41,15 +41,18 @@ from serial import SerialException
 # load non standard packages, exit when they are not installed
 try:
     import serial
-    if LooseVersion(serial.VERSION) < LooseVersion("2.7"):
-        printStdErr("BrewPi requires pyserial 2.7, you have version {0} installed.\n".format(serial.VERSION) +
+    if LooseVersion(serial.VERSION) < LooseVersion("3.0"):
+        printStdErr("BrewPi requires pyserial 3.0, you have version {0} installed.\n".format(serial.VERSION) +
                              "Please upgrade pyserial via pip, by running:\n" +
                              "  sudo pip install pyserial --upgrade\n" +
                              "If you do not have pip installed, install it with:\n" +
                              "  sudo apt-get install build-essential python-dev python-pip\n")
         sys.exit(1)
 except ImportError:
-    printStdErr("BrewPi requires PySerial to run, please install it with 'sudo apt-get install python-serial")
+    printStdErr("BrewPi requires PySerial to run, please install it via pip, by running:\n" +
+                             "  sudo pip install pyserial --upgrade\n" +
+                             "If you do not have pip installed, install it with:\n" +
+                             "  sudo apt-get install build-essential python-dev python-pip\n")
     sys.exit(1)
 try:
     import simplejson as json
