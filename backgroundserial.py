@@ -31,8 +31,9 @@ class BackGroundSerial():
 
     def stop(self):
         self.run = False
-        self.thread.join() # wait for background thread to terminate
-        self.thread = None
+        if self.thread:
+            self.thread.join() # wait for background thread to terminate
+            self.thread = None
 
     def read_line(self):
         self.exit_on_fatal_error()
