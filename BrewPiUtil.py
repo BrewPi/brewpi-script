@@ -129,7 +129,7 @@ def setupSerial(config, baud_rate=57600, time_out=0.1):
             else:
                 port = portSetting
             try:
-                ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out)
+                ser = serial.Serial(port, baudrate=baud_rate, timeout=time_out, write_timeout=0)
                 if ser:
                     break
             except (IOError, OSError, serial.SerialException) as e:
