@@ -289,14 +289,14 @@ while(True):
                     print "Putting Photon in DFU mode"
                     ser = serial.Serial(port)
                     try:
-                        ser.setBaudrate(14400) # this triggers a reboot in DFU mode
-                        ser.setBaudrate(57600) # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
+                        ser.baudrate = 14400 # this triggers a reboot in DFU mode
+                        ser.baudrate = 57600 # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
                         ser.close()
                     except ValueError:
                         pass # because device reboots while reconfiguring an exception is thrown, ignore
                     if ser.isOpen():
                         ser.close()
-                    ser.setBaudrate(57600) # don't leave serial port at 14400, or a reboot will be triggered later
+                    ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
 
 
     time.sleep(1)
