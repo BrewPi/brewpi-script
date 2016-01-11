@@ -210,10 +210,15 @@ class SerialProgrammer:
             self.retrieve_settings_from_serial()
             self.save_settings_to_file()
 
+        running_as_root = False
+        try:
+            running_as_root = os.getuid() == 0
+        except AttributeError:
+            pass # not running on Linux, use serial
 
-        if self.boardType == "photon":
-            printStdErr("\nFor the Photon, updating over Serial is not supported.")
-            printStdErr("\nFalling back to DFU and trying to automatically reboot into DFU mode and update your firmware.")
+        if self.boardType == "photon" and running_as_root:
+            printStdErr("\nFound a Photon and running as root/sudo, using DFU mode to flash firmware.")
+            printStdErr("\nTrying to automatically reboot into DFU mode and update your firmware.")
             printStdErr("\nIf the Photon does not reboot into DFU mode automatically, please put it in DFU mode manually.")
 
             self.ser.close()
@@ -266,8 +271,7 @@ class SerialProgrammer:
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
                     return False
 
-            printStdErr("Waiting for device to reset.")
-
+        printStdErr("Waiting for device to reset.")
         time.sleep(10) # give time to reboot
 
         if not self.open_serial_with_retry(self.config, 57600, 0.2):
