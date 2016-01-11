@@ -20,12 +20,14 @@ if sys.version_info < (2, 7):
     print "Sorry, requires Python 2.7."
     sys.exit(1)
 
+import distutils.spawn
 import time
 import os
 import platform
 import getopt
 import subprocess
 import re
+from distutils.version import LooseVersion
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 from gitHubReleases import gitHubReleases
 import BrewPiUtil as util
@@ -40,15 +42,16 @@ serialPorts = []
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
-                               ['help', 'file=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode'])
+                               ['help', 'file=', 'system=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --multi, --tag --autodfu --testmode"
+    print "Unknown parameter, available Options: --file, --system, --multi, --tag --autodfu --testmode --noreset"
 
     sys.exit()
 
 multi = False
 testMode = False
 autoDfu = False
+noReset = False
 tag = None
 # binaries for system update
 system1 = None
@@ -62,19 +65,45 @@ for o, a in opts:
     if o in ('-h', '--help'):
         print "\n Available command line options: "
         print "--help: print this help message"
-        print "--file: path to .bin file to flash instead of the latest release on GitHub"
         print "--tag: specify which tag to download from github"
+        print "--file: path to .bin file to flash instead of the latest release on GitHub.\n" \
+              "If this is a directory, search for binary and system update files."
+        print "--system: path to system binaries to update the system firmware on the photon."
         print "--multi: keep the script alive to flash multiple devices"
         print "--autodfu: automatically reboot photon in DFU mode by opening serial port at 14400 baud"
         print "--testmode: set controller o test mode after flashing"
+        print "--noreset: do not reset EEPROM after flashing"
 
         exit()
-    # supply a config file
-    if o in ('-f', '--config'):
-        binFile = os.path.abspath(a)
+    # supply a binary file
+    if o in ('-f', '--file'):
+        print("Using local files instead of downloading a release. \n")
+        if os.path.isdir(a):
+            for file in os.listdir(a):
+                if all(x in file for x in ['brewpi', '.bin']):
+                    binFile = os.path.join(os.path.abspath(a), file)
+        else:
+            binFile = os.path.abspath(a)
         if not os.path.exists(binFile):
-            sys.exit('ERROR: Binary file "%s" was not found!' % binFile)
-    # send quit instruction to all running instances of BrewPi
+            print('ERROR: Binary file "%s" was not found!' % binFile)
+            exit(1)
+    # supply a system update directory
+    if o in ('-s', '--system'):
+        print("Using local files for system update instead of downloading from GitHub.\n")
+        if os.path.isdir(a):
+            for file in os.listdir(a):
+                if all(x in file for x in ['system', 'part1', '.bin']):
+                    system1 = os.path.join(os.path.abspath(a), file)
+                if all(x in file for x in ['system', 'part2', '.bin']):
+                    system2 = os.path.join(os.path.abspath(a), file)
+        else:
+            print('ERROR: System binaries location {0} is not a directory!' % a)
+        if not os.path.exists(system1):
+            print('ERROR: System binary 1 "%s" was not found!' % binFile)
+            exit(1)
+        if not os.path.exists(system2):
+            print('ERROR: System binary 2 "%s" was not found!' % binFile)
+            exit(1)
     if o in ('-m', '--multi'):
         multi = True
         print "Started in multi flash mode"
@@ -87,29 +116,53 @@ for o, a in opts:
     if o in ('-a', '--autodfu'):
         autoDfu = True
         print "Will automatically reboot newly detected photons into DFU mode"
+    if o in ('--noreset'):
+        noReset = True
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
-if platform.system() == "Windows":
-    p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+if distutils.spawn.find_executable('dfu-util') is None:
+    if platform.system() == "Windows":
+        p = subprocess.Popen("where dfu-util", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        p.wait()
+        output, errors = p.communicate()
+        if not output:
+            print "dfu-util cannot be found, please add its location to your PATH variable"
+            exit(1)
+    elif platform.system() == "Linux":
+        # TODO: change this block to be platform / architecture agnositc
+        # as it currently expects you to be running from a Pi
+        downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
+        dfuPath = os.path.join(downloadDir, "dfu-util")
+        if not os.path.exists(dfuPath):
+            print "dfu-util not found, downloading dfu-util..."
+            dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
+            if not os.path.exists(downloadDir):
+                os.makedirs(downloadDir, 0777)
+            releases.download(dfuUrl, downloadDir)
+            os.chmod(dfuPath, 0777) # make executable
+        else:
+            print "Using dfu-util binary at " + dfuPath
+    else:
+        print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
+        exit(1)
+else:
+    p = subprocess.Popen("dfu-util -V", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     p.wait()
     output, errors = p.communicate()
-    if not output:
-        print "dfu-util cannot be found, please add its location to your PATH variable"
+    dfuUtilVersion =  re.search('(?<=dfu-util\\s)\\S*', output).group()
+    if not dfuUtilVersion:
+        print "Cannot determine installed version of dfu-util. Exiting"
         exit(1)
-elif platform.system() == "Linux":
-    downloadDir = os.path.join(os.path.dirname(__file__), "downloads/")
-    dfuPath = os.path.join(downloadDir, "dfu-util")
-    if not os.path.exists(dfuPath):
-        print "dfu-util not found, downloading dfu-util..."
-        dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
-        if not os.path.exists(downloadDir):
-            os.makedirs(downloadDir, 0777)
-        releases.download(dfuUrl, downloadDir)
-        os.chmod(dfuPath, 0777) # make executable
-else:
-    print "This script is written for Linux or Windows only. We'll gladly take pull requests for other platforms."
-    exit(1)
+    else:
+        print "dfu-util version {0} found installed on system.".format(dfuUtilVersion)
+
+    if LooseVersion(dfuUtilVersion) < LooseVersion('0.7'):
+        print "Your installed version of dfu-util ({0}) is too old.\n".format(dfuUtilVersion)
+        print "A minimum of version 0.7 is required. If you are on a Raspberry Pi, we can download the correct version automatically.\n"
+        print "Just uninstall your system version with: sudo apt-get remove dfu-util\n"
+        print "Then try again."
+        exit(1)
 
 firstLoop = True
 print "Detecting DFU devices"
@@ -142,10 +195,12 @@ while(True):
 
         # download latest binary from GitHub if file not specified
         if not binFile:
-            print "Downloading latest firmware..."
             if tag is None:
+                print "Downloading latest firmware..."
                 tag = releases.getLatestTag()
                 print "Latest stable version on GitHub: " + tag
+            else:
+                print "Downloading release " + tag
 
             binFile = releases.getBin(tag, [type, 'brewpi', '.bin'])
             if binFile:
@@ -155,14 +210,22 @@ while(True):
                 exit(1)
 
             if type == 'photon':
-                system1 = releases.getBin(tag, ['photon', 'system-part1', '.bin'])
-                system2 = releases.getBin(tag, ['photon', 'system-part2', '.bin'])
-
+                if LooseVersion(tag) > LooseVersion('0.2.11'): # 0.2.11 was compiled against non-forward compatible system
+                    latestSystemTag = releases.getLatestTagForSystem()
+                else:
+                    latestSystemTag = tag
+                print ("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
+                system1 = releases.getBin(latestSystemTag, ['photon', 'system-part1', '.bin'])
+                system2 = releases.getBin(latestSystemTag, ['photon', 'system-part2', '.bin'])
                 if system1:
-                    print "Release contains updated system firmware for the photon"
+                    print "Downloaded new system firmware to:\n"
+                    print "{0} and\n".format(system1)
                     if not system2:
                         print "Error: system firmware part2 not found in release"
-                        exit()
+                        exit(1)
+                else:
+                    print "{0} and\n".format(system2)
+
 
         if binFile:
             if type == 'core':
@@ -181,26 +244,25 @@ while(True):
                 p = subprocess.Popen(dfuPath + " -d 0x2B04:0xD006 -a 0 -s 0x80A0000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
 
-            print "Programming done, now resetting EEPROM to defaults"
-            # reset EEPROM to defaults
-            configFile = util.scriptPath() + '/settings/config.cfg'
-            config = util.readCfgWithDefaults(configFile)
-            programmer = SerialProgrammer.create(config, "core")
+            print "Programming done"
 
-            # open serial port
-            print "Opening serial port"
-            retries = 10
-            while retries > 0:
-                if programmer.open_serial(config, 57600, 0.2):
-                    break
-                retries -= 1
-                time.sleep(1)
-            if retries > 0:
-                programmer.fetch_version("Success! ")
-                programmer.reset_settings(testMode)
-                serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
-            else:
-                print "Could not open serial port after programming"
+            if not noReset:
+                print "Now resetting EEPROM to defaults"
+                # reset EEPROM to defaults
+                configFile = util.scriptPath() + '/settings/config.cfg'
+                config = util.readCfgWithDefaults(configFile)
+                programmer = SerialProgrammer.create(config, type)
+
+                # open serial port
+                print "Opening serial port"
+                if not programmer.open_serial_with_retry(config, 57600, 1):
+                    print "Could not open serial port after programming"
+                else:
+                    programmer.fetch_version("Success! ")
+                    time.sleep(5)
+                    programmer.reset_settings(testMode)
+                    serialPorts = list(autoSerial.find_compatible_serial_ports()) # update serial ports here so device will not be seen as new
+
         else:
             print "found DFU device, but no binary specified for flashing"
         if not multi:
@@ -213,7 +275,7 @@ while(True):
         firstLoop = False
         if autoDfu:
             previousSerialPorts = serialPorts
-            serialPorts = autoSerial.detect_all_ports()
+            serialPorts = list(autoSerial.find_compatible_serial_ports())
             newPorts = list(set(serialPorts) - set(previousSerialPorts))
             if len(newPorts):
                 print "Found new serial port connected: {0}".format(newPorts[0])
@@ -223,9 +285,17 @@ while(True):
                     print "Putting Photon in DFU mode"
                     ser = serial.Serial(port)
                     try:
-                        ser.setBaudrate(14400) # this triggers a reboot in DFU mode
-                    except ValueError:
+                        ser.baudrate = 14400 # this triggers a reboot in DFU mode
+                        ser.baudrate = 57600 # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
+                        ser.close()
+                    except serial.serialutil.SerialException, ValueError:
                         pass # because device reboots while reconfiguring an exception is thrown, ignore
-                    ser.close()
+                    if ser.isOpen():
+                        ser.close()
+                    ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
+                else:
+                    print "Automatically rebooting in DFU mode is not supported for {0}".format(name)
+
+
 
     time.sleep(1)

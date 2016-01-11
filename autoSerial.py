@@ -3,51 +3,38 @@ Automatically finds a compatible device (Photon, Core, Arduino), modified from M
 """
 
 from __future__ import absolute_import
-import re
 from serial.tools import list_ports
 
+known_devices = [
+    {'vid': 0x2341, 'pid': 0x0010, 'name': "Arduino Mega2560"},
+    {'vid': 0x2341, 'pid': 0x8036, 'name': "Arduino Leonardo"},
+    {'vid': 0x2341, 'pid': 0x0043, 'name': "Arduino Uno"},
+    {'vid': 0x2341, 'pid': 0x0001, 'name': "Arduino Uno"},
+    {'vid': 0x1D50, 'pid': 0x607D, 'name': "Spark Core"},
+    {'vid': 0x2B04, 'pid': 0xC006, 'name': "Particle Photon"}
+]
 
-def serial_ports():
-    """
-    Returns a generator for all available serial ports
-    """
-    for port in serial_port_info():
-        yield port[0]
-
-known_devices = {
-    (r"USB VID\:PID=2341\:0010.*"): "Arduino Mega2560",
-    (r"USB VID\:PID=2341\:8036.*"): "Arduino Leonardo",
-    (r'USB VID:PID=2341:0043.*'): "Arduino Uno",
-    (r'USB VID:PID=2341:0001.*'): "Arduino Uno",
-    (r"USB VID\:PID=1D50\:607D.*"): "Spark Core",
-    (r"USB VID\:PID=2B04\:C006.*"): "Particle Photon",
-}
-
-
-def matches(text, regex):
-    return re.match(regex, text)
-
-
-def is_recognised_device(p):
-    port, name, desc = p
-    for d in known_devices.keys():
-        if matches(desc.lower(), d.lower()): # match on VID
-            return known_devices[d] # return name
+def recognised_device_name(device):
+    for known in known_devices:
+        if device.vid == known['vid'] and device.pid == known['pid']: # match on VID, PID
+            return known['name']
     return None
 
-def find_arduino_ports(ports):
+def find_compatible_serial_ports():
+    ports = find_all_serial_ports()
     for p in ports:
-        name = is_recognised_device(p)
-        if name:
+        name = recognised_device_name(p)
+        if name is not None:
             yield (p[0], name)
 
 
-def serial_port_info():
+def find_all_serial_ports():
     """
-    :return: a tuple of serial port info tuples,
+    :return: a list of serial port info tuples
     :rtype:
     """
-    return tuple(list_ports.comports())
+    all_ports = list_ports.comports()
+    return iter(all_ports)
 
 
 def detect_port():
@@ -55,22 +42,18 @@ def detect_port():
     :return: first detected serial port as tuple: (port, name)
     :rtype:
     """
-    ports = detect_all_ports()
-    if len(ports) > 1:
+    port = (None, None)
+    ports = find_compatible_serial_ports()
+    try:
+        port = ports.next()
+    except StopIteration:
+        return port
+    try:
+        another_port = ports.next()
         print "Warning: detected multiple compatible serial ports, using the first."
-    if ports:
-        return ports[0]
-    return (None, None)
-
-def detect_all_ports():
-    """
-    :return: all compatible ports as list of tuples: (port, name)
-    :rtype:
-    """
-    all_ports = serial_port_info()
-    ports = tuple(find_arduino_ports(all_ports))
-    return ports
-
+    except StopIteration:
+        pass
+    return port
 
 def configure_serial_for_device(s, d):
     """ configures the serial connection for the given device.
@@ -82,6 +65,14 @@ def configure_serial_for_device(s, d):
 
 
 if __name__ == '__main__':
-    print "All ports: ",  serial_port_info()
-    print "Compatible ports: ", detect_all_ports()
-    print "Selected port: ", detect_port()
+    print "All ports:"
+    for p in find_all_serial_ports():
+        try:
+            print "{0}, VID:{1:04x}, PID:{2:04x}".format(str(p), (p.vid), (p.pid))
+        except ValueError:
+            # could not convert pid and vid to hex
+            print "{0}, VID:{1}, PID:{2}".format(str(p), (p.vid), (p.pid))
+    print "Compatible ports: "
+    for p in find_compatible_serial_ports():
+        print p
+    print "Selected port: {0}".format(detect_port())
