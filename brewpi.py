@@ -630,7 +630,7 @@ while run:
                 boardType = programParameters['boardType']
                 restoreSettings = programParameters['restoreSettings']
                 restoreDevices = programParameters['restoreDevices']
-                programmer.programController(config, boardType, hexFile,
+                programmer.programController(config, boardType, hexFile, None, None,
                                           {'settings': restoreSettings, 'devices': restoreDevices})
                 logMessage("New program uploaded to controller, script will restart")
             except json.JSONDecodeError:
