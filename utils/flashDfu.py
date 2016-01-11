@@ -78,7 +78,7 @@ for o, a in opts:
     # supply a binary file
     if o in ('-f', '--file'):
         print("Using local files instead of downloading a release. \n")
-        if os.path.isdir(a):
+        if not os.path.isfile(a) and os.path.isdir(a):
             for file in os.listdir(a):
                 if all(x in file for x in ['brewpi', '.bin']):
                     binFile = os.path.join(os.path.abspath(a), file)
