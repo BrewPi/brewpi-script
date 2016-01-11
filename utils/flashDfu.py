@@ -261,7 +261,7 @@ while(True):
                     programmer.fetch_version("Success! ")
                     time.sleep(5)
                     programmer.reset_settings(testMode)
-                    serialPorts = autoSerial.detect_all_ports() # update serial ports here so device will not be seen as new
+                    serialPorts = list(autoSerial.find_compatible_serial_ports()) # update serial ports here so device will not be seen as new
 
         else:
             print "found DFU device, but no binary specified for flashing"
@@ -275,7 +275,7 @@ while(True):
         firstLoop = False
         if autoDfu:
             previousSerialPorts = serialPorts
-            serialPorts = autoSerial.detect_all_ports()
+            serialPorts = list(autoSerial.find_compatible_serial_ports())
             newPorts = list(set(serialPorts) - set(previousSerialPorts))
             if len(newPorts):
                 print "Found new serial port connected: {0}".format(newPorts[0])
@@ -288,11 +288,14 @@ while(True):
                         ser.baudrate = 14400 # this triggers a reboot in DFU mode
                         ser.baudrate = 57600 # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
                         ser.close()
-                    except ValueError:
+                    except serial.serialutil.SerialException, ValueError:
                         pass # because device reboots while reconfiguring an exception is thrown, ignore
                     if ser.isOpen():
                         ser.close()
                     ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
+                else:
+                    print "Automatically rebooting in DFU mode is not supported for {0}".format(name)
+
 
 
     time.sleep(1)
