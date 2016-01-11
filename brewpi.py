@@ -360,6 +360,11 @@ else:
                    "does not match log version number received from controller." +
                    "controller version = " + str(hwVersion.log) +
                    ", local copy version = " + str(expandLogMessage.getVersion()))
+    if hwVersion.family == 'Arduino':
+        exit("\n ERROR: the newest version of BrewPi is not compatible with Arduino. \n" +
+            "You can use our legacy branch with your Arduino, in which we only include the backwards compatible changes. \n" +
+            "To change to the legacy branch, run: sudo ~/brewpi-tools/updater.py --ask , and choose the legacy branch.")
+
 
 bg_ser = None
 
