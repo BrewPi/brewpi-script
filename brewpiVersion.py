@@ -45,8 +45,9 @@ def getVersionFromSerial(ser):
                 if line[0] == 'N':
                     data = line.strip('\n')[2:]
                     version = AvrInfo(data)
-                    retry = False
-                    break
+                    if version and version.version != "0.0.0":
+                        retry = False
+                        break
             if time.time() - loopTime >= ser.timeout:
                 # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
                 break
@@ -194,6 +195,9 @@ class AvrInfo:
 
     def isNewer(self, versionString):
         return self.version < LooseVersion(versionString)
+
+    def isEqual(self, versionString):
+        return self.version == LooseVersion(versionString)
 
     def familyName(self):
         family = AvrInfo.families.get(self.board)

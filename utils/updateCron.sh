@@ -219,8 +219,9 @@ if [ "$found" == false ] ; then
     else
         echo -e "\nIt looks like you're not running a wifi adapter on your Pi."
     fi
-    echo "We recently added a utility script that can attempt to restart the WiFi connection on your Pi"
-    read -p "if the connection were to drop. Would you like to enable the cron entry? [Y/n]: " yn
+    echo "We recently added a utility script that can attempt to restart the "
+    echo "WiFi connection on your Pi, if the connection were to drop."
+    read -p "Would you like to enable the cron entry? [Y/n]: " yn
     if [ -z "$yn" ]; then
         yn="y"
     fi
