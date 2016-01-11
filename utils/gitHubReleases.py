@@ -66,12 +66,14 @@ class gitHubReleases:
         fileName = self.download(downloadUrl, downloadDir)
         return fileName
 
-    def getLatestTag(self):
+    def getLatestTag(self, board):
         for release in self.releases:
             # search for stable release
-            if release["prerelease"] == False:
-                break
-        return release["tag_name"]
+            tag = release["tag_name"]
+            if self.getBinUrl(tag, [board]):
+                if release["prerelease"] == False:
+                    return tag
+        return None
 
     def getLatestTagForSystem(self):
         for release in self.releases:
@@ -89,7 +91,7 @@ class gitHubReleases:
 if __name__ == "__main__":
     # test code
     releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
-    latest = releases.getLatestTag()
+    latest = releases.getLatestTag('core')
     print "Latest tag: " + latest
     print "Downloading binary for latest tag"
     localFileName = releases.getBin(latest, ["core", "bin"])
