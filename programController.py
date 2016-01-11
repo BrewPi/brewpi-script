@@ -24,6 +24,9 @@ import expandLogMessage
 from MigrateSettings import MigrateSettings
 from sys import stderr
 import BrewPiUtil as util
+import subprocess
+import platform
+import sys
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
 def printStdErr(*objs):
@@ -155,9 +158,9 @@ def loadBoardsFile(arduinohome):
         printStdErr("Please install it with: sudo apt-get install arduino-core")
     return boardsFileContent
 
-def programController(config, boardType, hexFile, restoreWhat):
+def programController(config, boardType, hexFile, system1File, system2File, restoreWhat):
     programmer = SerialProgrammer.create(config, boardType)
-    return programmer.program(hexFile, restoreWhat)
+    return programmer.program(hexFile, system1File, system2File, restoreWhat)
 
 
 def json_decode_response(line):
@@ -192,7 +195,7 @@ class SerialProgrammer:
         self.versionOld = None
         self.oldSettings = {}
 
-    def program(self, hexFile, restoreWhat):
+    def program(self, hexFile, system1File, system2File, restoreWhat):
         printStdErr("****    %(a)s Program script started    ****" % msg_map)
 
         self.parse_restore_settings(restoreWhat)
@@ -207,24 +210,71 @@ class SerialProgrammer:
             self.retrieve_settings_from_serial()
             self.save_settings_to_file()
 
-        if not self.flash_file(hexFile):
-            return 0
 
-        printStdErr("Waiting for device to reset.")
+        if self.boardType == "photon":
+            printStdErr("\nFor the Photon, updating over Serial is not supported.")
+            printStdErr("\nFalling back to DFU and trying to automatically reboot into DFU mode and update your firmware.")
+            printStdErr("\nIf the Photon does not reboot into DFU mode automatically, please put it in DFU mode manually.")
 
-        # reopen serial port
-        retries = 30
-        self.ser = None
-        while retries and not self.ser:
-            time.sleep(1)
-            self.open_serial(self.config, 57600, 0.2)
-            retries -= 1
+            self.ser.close()
 
-        if not self.ser:
+            myDir = os.path.dirname(os.path.abspath(__file__))
+            flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
+            command = sys.executable + ' ' + flashDfuPath + " --autodfu --noreset --file={0}".format(os.path.dirname(hexFile))
+            if platform.system() == "Linux":
+                command =  'sudo ' + command
+
+            printStdErr("Running command: " + command)
+            process = subprocess.Popen(command, shell=True)
+            process.wait()
+
+            printStdErr("\nUpdating firmware over DFU finished\n")
+
+        else:
+            if system1File:
+                printStdErr("Flashing system part 1.")
+                if not self.flash_file(system1File):
+                    return 0
+
+                printStdErr("Waiting for device to reset.")
+                time.sleep(15) # give time to reboot and process binary
+                if not self.open_serial_with_retry(self.config, 57600, 0.2):
+                    printStdErr("Error opening serial port after flashing system part 1. Program script will exit.")
+                    printStdErr("If your device stopped working, use flashDfu.py to restore it.")
+                    return False
+
+            if system2File:
+                printStdErr("Flashing system part 2.")
+                if not self.flash_file(system2File):
+                    return 0
+
+                printStdErr("Waiting for device to reset.")
+                time.sleep(15) # give time to reboot and process binary
+                if not self.open_serial_with_retry(self.config, 57600, 0.2):
+                    printStdErr("Error opening serial port after flashing system part 2. Program script will exit.")
+                    printStdErr("If your device stopped working, use flashDfu.py to restore it.")
+                    return False
+
+            if(hexFile):
+                if not self.flash_file(hexFile):
+                    return 0
+
+                printStdErr("Waiting for device to reset.")
+                time.sleep(15) # give time to reboot and process binary
+                if not self.open_serial_with_retry(self.config, 57600, 0.2):
+                    printStdErr("Error opening serial port after flashing user part. Program script will exit.")
+                    printStdErr("If your device stopped working, use flashDfu.py to restore it.")
+                    return False
+
+            printStdErr("Waiting for device to reset.")
+
+        time.sleep(10) # give time to reboot
+
+        if not self.open_serial_with_retry(self.config, 57600, 0.2):
             printStdErr("Error opening serial port after programming. Program script will exit. Settings are not restored.")
+            printStdErr("If your device stopped working, use flashDfu.py to restore it.")
             return False
 
-        time.sleep(1)
         self.fetch_new_version()
         self.reset_settings()
         if self.restoreSettings or self.restoreDevices:
@@ -245,11 +295,6 @@ class SerialProgrammer:
 
             if(self.versionNew.isNewer("0.2")):
                 printStdErr("Sorry, settings can only be restored when updating to BrewPi 0.2.0 or higher")
-                self.restoreSettings = False
-
-        if self.restoreDevices:
-            if(self.versionNew.isNewer("0.2")):
-                printStdErr("Sorry, devices can only be restored when updating to BrewPi 0.2.0 or higher")
                 self.restoreSettings = False
 
         if self.restoreSettings:
@@ -288,6 +333,17 @@ class SerialProgrammer:
         if self.ser is None:
             return False
         return True
+
+    def open_serial_with_retry(self, config, baud, timeout):
+        # reopen serial port
+        retries = 30
+        self.ser = None
+        while retries:
+            time.sleep(1)
+            if self.open_serial(config, baud, timeout):
+                return True
+            retries -= 1
+        return False
 
     def delay_serial_open(self):
         pass
@@ -471,6 +527,7 @@ class SerialProgrammer:
 class SparkProgrammer(SerialProgrammer):
     def __init__(self, config, boardType):
         SerialProgrammer.__init__(self, config)
+        self.boardType = boardType
 
     def flash_file(self, hexFile):
         self.ser.write('F')
