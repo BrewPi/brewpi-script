@@ -654,7 +654,7 @@ class ArduinoProgrammer(SerialProgrammer):
 def test_program_spark_core():
     file = "R:\\dev\\brewpi\\firmware\\platform\\spark\\target\\brewpi.bin"
     config = { "port" : "COM22" }
-    result = programController(config, "core", file, { "settings":True, "devices":True})
+    result = programController(config, "core", file, None, None, { "settings":True, "devices":True})
     printStdErr("Result is "+str(result))
 
 if __name__ == '__main__':
