@@ -19,6 +19,8 @@
 from __future__ import print_function
 import sys
 import os
+import subprocess
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
@@ -60,6 +62,9 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
         shield = hwVersion.shield
         board = hwVersion.board
         boardName = hwVersion.boardName()
+
+        printStdErr("Found " + hwVersion.toExtendedString() + \
+               " on port " + ser.name + "\n")
     except:
         printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable.")
         return -1
@@ -82,12 +87,13 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
 
     printStdErr("\nChecking GitHub for latest release...")
     releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
-    latest = releases.getLatestTag()
-    printStdErr("Latest version on GitHub: " + latest)
-    if hwVersion.isNewer(latest):
+    tag = releases.getLatestTag(board)
+    printStdErr("Latest version on GitHub: " + tag)
+
+
+    if hwVersion.isNewer(tag):
         printStdErr("\nVersion on GitHub is newer than your current version, downloading new version...")
     else:
-
         printStdErr("\nYour current firmware version is up-to-date. There is no need to update.")
         if userInput:
             printStdErr("If you are encountering problems, you can reprogram anyway."
@@ -109,10 +115,30 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
 
     printStdErr("Downloading latest firmware...")
     localFileName = None
+    system1 = None
+    system2 = None
+
     if family == "Arduino":
-        localFileName = releases.getBin(latest, [boardName, shield, ".hex"])
-    elif family == "Spark":
-        localFileName = releases.getBin(latest, [boardName, ".bin"])
+        localFileName = releases.getBin(tag, [boardName, shield, ".hex"])
+    elif family == "Spark" or family == "Particle":
+        localFileName = releases.getBin(tag, [boardName, 'brewpi', '.bin'])
+    else:
+        printStdErr("Error: Device family {0} not recognized".format(family))
+        return -1
+
+    if boardName == "Photon":
+        latestSystemTag = releases.getLatestTagForSystem()
+        if hwVersion.isNewer(latestSystemTag):
+            printStdErr("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
+            system1 = releases.getBin(latestSystemTag, ['photon', 'system-part1', '.bin'])
+            system2 = releases.getBin(latestSystemTag, ['photon', 'system-part2', '.bin'])
+            if system1:
+                printStdErr("Downloaded new system firmware to:\n")
+                printStdErr("{0} and\n".format(system1))
+                if not system2:
+                    printStdErr("{0}\n".format(system2))
+                    printStdErr("Error: system firmware part2 not found in release")
+                    return -1
 
     if localFileName:
         printStdErr("Latest firmware downloaded to " + localFileName)
@@ -120,7 +146,8 @@ def updateFromGitHub(userInput = False, restoreSettings = True, restoreDevices =
         printStdErr("Downloading firmware failed")
         return -1
 
-    result = programmer.programController(config, board, localFileName,
+    printStdErr("\nUpdating firmware over Serial...\n")
+    result = programmer.programController(config, board, localFileName, system1, system2,
                                           {'settings': restoreSettings, 'devices': restoreDevices})
     util.removeDontRunFile(config['wwwPath'] + "/do_not_run_brewpi")
     return result

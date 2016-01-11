@@ -197,7 +197,7 @@ while(True):
         if not binFile:
             if tag is None:
                 print "Downloading latest firmware..."
-                tag = releases.getLatestTag()
+                tag = releases.getLatestTag(type)
                 print "Latest stable version on GitHub: " + tag
             else:
                 print "Downloading release " + tag
