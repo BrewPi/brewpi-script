@@ -210,7 +210,7 @@ while(True):
                 exit(1)
 
             if type == 'photon':
-                if LooseVersion(tag) > LooseVersion('0.2.11'): # 0.2.11 was compiled against non-forward compatible system
+                if not releases.containsSystemImage(tag):
                     latestSystemTag = releases.getLatestTagForSystem()
                 else:
                     latestSystemTag = tag
@@ -223,8 +223,8 @@ while(True):
                     if not system2:
                         print "Error: system firmware part2 not found in release"
                         exit(1)
-                else:
-                    print "{0} and\n".format(system2)
+                    else:
+                        print "{0}\n".format(system2)
 
 
         if binFile:
@@ -234,9 +234,10 @@ while(True):
                 p.wait()
             elif type == 'photon':
                 if system1:
-                    print "First updating system firmware for the Photon"
+                    print "First updating system firmware for the Photon, part 1: {0}".format(system1)
                     p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8020000 -D {0}".format(system1), shell=True)
                     p.wait()
+                    print "Continuing updating system firmware for the Photon, part 2: {0}".format(system2)
                     p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8060000 -D {0}".format(system2), shell=True)
                     p.wait()
 

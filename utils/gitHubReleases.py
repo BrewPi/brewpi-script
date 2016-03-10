@@ -75,13 +75,16 @@ class gitHubReleases:
                     return tag
         return None
 
+    def containsSystemImage(self, tag):
+        return self.getBinUrl(tag, ['photon', 'system-part1', '.bin']) is not None
+
     def getLatestTagForSystem(self):
         for release in self.releases:
             # search for stable release
             tag = release["tag_name"]
             if release["prerelease"] == True:
                 continue
-            if self.getBinUrl(tag, ['photon', 'system-part1', '.bin']):
+            if self.containsSystemImage(tag):
                 return tag
         return None
 
