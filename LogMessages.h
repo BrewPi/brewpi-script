@@ -29,7 +29,7 @@
 */
 
 /* bump this version number when changing this file and copy the new version to the brewpi-script repository. */
-#define BREWPI_LOG_MESSAGES_VERSION 2
+#define BREWPI_LOG_MESSAGES_VERSION 3
 
 #define MSG(errorID, errorString, ...) errorID
 
@@ -67,7 +67,13 @@ enum warningMessages{
 	MSG(WARNING_TEMP_SENSOR_DISCONNECTED, "Temperature sensor disconnected pin %d, address %s", pinNr, addressString),
 
 // SettingsManager.cpp	
-	MSG(WARNING_START_IN_SAFE_MODE, "EEPROM Settings not available. Starting in safe mode.")
+	MSG(WARNING_START_IN_SAFE_MODE, "EEPROM Settings not available. Starting in safe mode."),
+
+// TempSensorFallback.cpp
+	MSG(FALLING_BACK_ON_BACKUP_SENSOR, "Falling back on backup sensor."),
+
+	MSG(DS2413_DISCONNECTED, "OneWire actuator (DS2413) disconnected, address %s", addressString)
+
 }; // END enum warningMessages
 
 // Info messages
@@ -99,5 +105,11 @@ enum infoMessages{
 	MSG(INFO_POSITIVE_PEAK, "Positive peak detected: %s, estimated: %s. Previous heat estimator: %s, New heat estimator: %s.", temperature, temperature, estimator, estimator),
 	MSG(INFO_NEGATIVE_PEAK, "Negative peak detected: %s, estimated: %s. Previous cool estimator: %s, New cool estimator: %s.", temperature, temperature, estimator, estimator),
 	MSG(INFO_POSITIVE_DRIFT, "No peak detected. Drifting up after heating, current temp: %s, estimated peak: %s. Previous heat estimator: %s, New heat estimator: %s..", temperature, temperature, estimator, estimator),
-	MSG(INFO_NEGATIVE_DRIFT, "No peak detected. Drifting down after cooling, current temp: %s, estimated peak: %s. Previous cool estimator: %s, New cool estimator: %s..", temperature, temperature, estimator, estimator)	
+	MSG(INFO_NEGATIVE_DRIFT, "No peak detected. Drifting down after cooling, current temp: %s, estimated peak: %s. Previous cool estimator: %s, New cool estimator: %s..", temperature, temperature, estimator, estimator),
+
+	// TempSensorFallback.cpp
+    MSG(BACK_ON_MAIN_SENSOR, "Back on main sensor instead of backup sensor."),
+
+	// DS2413.cpp
+	MSG(DS2413_CONNECTED, "OneWire actuator (DS2413) connected, address %s", addressString)
 }; // END enum infoMessages
