@@ -158,9 +158,9 @@ def loadBoardsFile(arduinohome):
         printStdErr("Please install it with: sudo apt-get install arduino-core")
     return boardsFileContent
 
-def programController(config, boardType, hexFile, system1File, system2File, restoreWhat):
+def programController(config, boardType, hexFile, system1File, system2File, useDfu, restoreWhat):
     programmer = SerialProgrammer.create(config, boardType)
-    return programmer.program(hexFile, system1File, system2File, restoreWhat)
+    return programmer.program(hexFile, system1File, system2File, useDfu, restoreWhat)
 
 
 def json_decode_response(line):
@@ -195,33 +195,37 @@ class SerialProgrammer:
         self.versionOld = None
         self.oldSettings = {}
 
-    def program(self, hexFile, system1File, system2File, restoreWhat):
+    def program(self, hexFile, system1File, system2File, useDfu, restoreWhat):
         printStdErr("****    %(a)s Program script started    ****" % msg_map)
 
         self.parse_restore_settings(restoreWhat)
-        if not self.open_serial(self.config, 57600, 0.2):
-            return 0
 
-        self.delay_serial_open()
-
-        # request all settings from board before programming
-        printStdErr("Checking old version before programming.")
-        if self.fetch_current_version():
-            self.retrieve_settings_from_serial()
-            self.save_settings_to_file()
+        if self.restoreSettings or self.restoreDevices:
+            printStdErr("Checking old version before programming.")
+            if not self.open_serial(self.config, 57600, 0.2):
+                return 0
+            self.delay_serial_open()
+            # request all settings from board before programming
+            if self.fetch_current_version():
+                self.retrieve_settings_from_serial()
+                self.save_settings_to_file()
 
         running_as_root = False
         try:
             running_as_root = os.getuid() == 0
         except AttributeError:
             pass # not running on Linux, use serial
-
-        if self.boardType == "photon" and running_as_root:
+        if running_as_root and self.boardType == "photon":
+            # default to DFU mode when possible on the Photon. Serial is not always stable
             printStdErr("\nFound a Photon and running as root/sudo, using DFU mode to flash firmware.")
+            useDfu = True
+
+        if useDfu:
             printStdErr("\nTrying to automatically reboot into DFU mode and update your firmware.")
             printStdErr("\nIf the Photon does not reboot into DFU mode automatically, please put it in DFU mode manually.")
 
-            self.ser.close()
+            if self.ser:
+                self.ser.close()
 
             myDir = os.path.dirname(os.path.abspath(__file__))
             flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
@@ -236,6 +240,10 @@ class SerialProgrammer:
             printStdErr("\nUpdating firmware over DFU finished\n")
 
         else:
+            if not self.ser:
+                if not self.open_serial(self.config, 57600, 0.2):
+                    return 0
+            self.delay_serial_open()
             if system1File:
                 printStdErr("Flashing system part 1.")
                 if not self.flash_file(system1File):
@@ -288,7 +296,7 @@ class SerialProgrammer:
                          "\nSomething must have gone wrong. Restoring settings/devices settings failed.\n"))
             return 0
 
-        if not self.versionOld:
+        if not self.versionOld and (self.restoreSettings or self.restoreDevices):
             printStdErr("Could not receive valid version number from old board, " +
                         "No settings/devices are restored.")
             return 0
@@ -332,6 +340,8 @@ class SerialProgrammer:
         self.restoreDevices = restoreDevices
 
     def open_serial(self, config, baud, timeout):
+        if self.ser:
+            self.ser.close()
         self.ser = None
         self.ser = util.setupSerial(config, baud, timeout)
         if self.ser is None:
@@ -557,6 +567,8 @@ class ArduinoProgrammer(SerialProgrammer):
         time.sleep(5)  # give the arduino some time to reboot in case of an Arduino UNO
 
     def reset_leonardo(self):
+        if self.ser:
+            self.ser.close()
         del self.ser
         self.ser = None
         if self.open_serial(self.config, 1200, None):
@@ -654,13 +666,4 @@ class ArduinoProgrammer(SerialProgrammer):
         printStdErr("Giving the Arduino a few seconds to power up...")
         self.delay(6)
         return True
-
-def test_program_spark_core():
-    file = "R:\\dev\\brewpi\\firmware\\platform\\spark\\target\\brewpi.bin"
-    config = { "port" : "COM22" }
-    result = programController(config, "core", file, None, None, { "settings":True, "devices":True})
-    printStdErr("Result is "+str(result))
-
-if __name__ == '__main__':
-    test_program_spark_core()
 

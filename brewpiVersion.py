@@ -196,6 +196,9 @@ class AvrInfo:
     def isNewer(self, versionString):
         return self.version < LooseVersion(versionString)
 
+    def isEqual(self, versionString):
+        return self.version == LooseVersion(versionString)
+
     def familyName(self):
         family = AvrInfo.families.get(self.board)
         if family == None:

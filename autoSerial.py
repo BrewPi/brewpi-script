@@ -10,7 +10,7 @@ known_devices = [
     {'vid': 0x2341, 'pid': 0x8036, 'name': "Arduino Leonardo"},
     {'vid': 0x2341, 'pid': 0x0043, 'name': "Arduino Uno"},
     {'vid': 0x2341, 'pid': 0x0001, 'name': "Arduino Uno"},
-    {'vid': 0x1D50, 'pid': 0x607D, 'name': "Spark Core"},
+    {'vid': 0x1D50, 'pid': 0x607D, 'name': "Particle Core"},
     {'vid': 0x2B04, 'pid': 0xC006, 'name': "Particle Photon"}
 ]
 

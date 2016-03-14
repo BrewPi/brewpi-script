@@ -211,8 +211,11 @@ while(True):
 
             if type == 'photon':
                 if not releases.containsSystemImage(tag):
-                    latestSystemTag = releases.getLatestTagForSystem()
+                    # if the release is a pre-release, also include pre-releases when searching for latest system image
+                    prerelease = releases.findByTag(tag)['prerelease']
+                    latestSystemTag = releases.getLatestTagForSystem(prerelease)
                 else:
+
                     latestSystemTag = tag
                 print ("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
                 system1 = releases.getBin(latestSystemTag, ['photon', 'system-part1', '.bin'])
