@@ -564,7 +564,8 @@ class ArduinoProgrammer(SerialProgrammer):
         self.boardType = boardType
 
     def delay_serial_open(self):
-        time.sleep(5)  # give the arduino some time to reboot in case of an Arduino UNO
+        if self.boardType == "uno":
+            time.sleep(5)  # give the arduino some time to reboot in case of an Arduino UNO
 
     def reset_leonardo(self):
         if self.ser:
@@ -632,11 +633,9 @@ class ArduinoProgrammer(SerialProgrammer):
 
         time.sleep(1)
         # Get serial port while in bootloader
-        if self.open_serial(config, boardSettings['upload.speed'], 0.1):
-            bootLoaderPort = self.ser.name
-            self.ser.close()
-        else:
-            printStdErr("ERROR: could not open serial port in bootloader")
+        bootLoaderPort = util.findSerialPort(bootLoader=True)
+        if bootLoaderPort is None:
+            printStdErr("ERROR: could not find port in bootloader")
 
         programCommand = (avrdudehome + 'avrdude' +
                           ' -F ' +  # override device signature check
