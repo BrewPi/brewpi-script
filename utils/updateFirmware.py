@@ -114,6 +114,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
     releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
 
     availableTags = releases.getTags(beta)
+    stableTags = releases.getTags(False)
     compatibleTags = []
     for tag in availableTags:
         url = None
@@ -127,7 +128,10 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
     if len(compatibleTags) == 0:
         printStdErr("No compatible releases found for %s %s" % (family, board))
         return -1
-    tag = compatibleTags[0]
+
+    # default tag is latest stable tag, or latest unstable tag if no stable tag is found
+    default_choice = next((i for i, t in enumerate(compatibleTags) if t in stableTags), compatibleTags[0])
+    tag = compatibleTags[default_choice]
 
     if userInput:
         print("\nAvailable releases:\n")
@@ -137,8 +141,8 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         num_choices = len(compatibleTags)
         while 1:
             try:
-                choice = raw_input("Enter the number [0-%d] of the version you want to program [default = 0 (%s)]" %
-                                   (num_choices, tag))
+                choice = raw_input("Enter the number [0-%d] of the version you want to program [default = %d (%s)]" %
+                                   (num_choices, default_choice, tag))
                 if choice == "":
                     break
                 else:
