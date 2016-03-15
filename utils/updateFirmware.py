@@ -224,7 +224,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
             printStdErr("Photon system firmware is up to date.\n")
 
     if localFileName:
-        printStdErr("Latest firmware downloaded to " + localFileName)
+        printStdErr("Latest firmware downloaded to:\n" + localFileName)
     else:
         printStdErr("Downloading firmware failed")
         return -1

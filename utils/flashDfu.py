@@ -39,13 +39,30 @@ releases = gitHubReleases("https://api.github.com/repos/brewpi/firmware")
 
 serialPorts = []
 
+def printHelp():
+        print "\n Available command line options: "
+        print "--help\t\t print this help message"
+        print "--tag=\t\t specify which tag to download from github"
+        print "--file=\t\t path to .bin file to flash instead of the latest release on GitHub.\n" \
+              "\t\t If this is a directory, search for binary and system update files."
+        print "--system=\t path to directory containing system binaries to update the system firmware on the photon."
+        print "--system1=\t path to binary for system part 1."
+        print "--system2=\t path to binary for system part 2."
+        print "--multi\t\t keep the script alive to flash multiple devices"
+        print "--autodfu\t automatically reboot photon in DFU mode by opening serial port at 14400 baud"
+        print "--testmode\t set controller to test mode after flashing"
+        print "--noreset\t do not reset EEPROM after flashing"
+
+
+
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
-                               ['help', 'file=', 'system=', 'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
+                               ['help', 'file=', 'system=', 'system1=', 'system2=',
+                                'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
 except getopt.GetoptError:
-    print "Unknown parameter, available Options: --file, --system, --multi, --tag --autodfu --testmode --noreset"
-
+    print("Unknown parameter")
+    printHelp()
     sys.exit()
 
 multi = False
@@ -60,19 +77,12 @@ system2 = None
 binFile = None
 
 
+
+
 for o, a in opts:
     # print help message for command line options
     if o in ('-h', '--help'):
-        print "\n Available command line options: "
-        print "--help: print this help message"
-        print "--tag: specify which tag to download from github"
-        print "--file: path to .bin file to flash instead of the latest release on GitHub.\n" \
-              "If this is a directory, search for binary and system update files."
-        print "--system: path to system binaries to update the system firmware on the photon."
-        print "--multi: keep the script alive to flash multiple devices"
-        print "--autodfu: automatically reboot photon in DFU mode by opening serial port at 14400 baud"
-        print "--testmode: set controller o test mode after flashing"
-        print "--noreset: do not reset EEPROM after flashing"
+        printHelp()
 
         exit()
     # supply a binary file
@@ -99,10 +109,20 @@ for o, a in opts:
         else:
             print('ERROR: System binaries location {0} is not a directory!' % a)
         if not os.path.exists(system1):
-            print('ERROR: System binary 1 "%s" was not found!' % binFile)
+            print('ERROR: System binary 1 "%s" was not found!' % system1)
             exit(1)
         if not os.path.exists(system2):
-            print('ERROR: System binary 2 "%s" was not found!' % binFile)
+            print('ERROR: System binary 2 "%s" was not found!' % system2)
+            exit(1)
+    if o in ('--system1'):
+        system1 = a
+        if not os.path.exists(system1):
+            print('ERROR: System binary 1 "%s" was not found!' % a)
+            exit(1)
+    if o in ('--system2'):
+        system2 = a
+        if not os.path.exists(system2):
+            print('ERROR: System binary 2 "%s" was not found!' % a)
             exit(1)
     if o in ('-m', '--multi'):
         multi = True
@@ -197,7 +217,7 @@ while(True):
         if not binFile:
             if tag is None:
                 print "Downloading latest firmware..."
-                tag = releases.getLatestTag(type)
+                tag = releases.getLatestTag(type, False)
                 print "Latest stable version on GitHub: " + tag
             else:
                 print "Downloading release " + tag
@@ -236,7 +256,7 @@ while(True):
                 p = subprocess.Popen(dfuPath + " -d 1d50:607f -a 0 -s 0x08005000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
             elif type == 'photon':
-                if system1:
+                if system1 and system2:
                     print "First updating system firmware for the Photon, part 1: {0}".format(system1)
                     p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8020000 -D {0}".format(system1), shell=True)
                     p.wait()

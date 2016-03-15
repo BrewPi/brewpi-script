@@ -230,9 +230,11 @@ class SerialProgrammer:
             myDir = os.path.dirname(os.path.abspath(__file__))
             flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
             command = sys.executable + ' ' + flashDfuPath + " --autodfu --noreset --file={0}".format(os.path.dirname(hexFile))
+            if system1File is not None and system2File is not None:
+                systemParameters = " --system1={0} --system2={1}".format(system1File, system2File)
+                command = command + systemParameters
             if platform.system() == "Linux":
                 command =  'sudo ' + command
-
             printStdErr("Running command: " + command)
             process = subprocess.Popen(command, shell=True)
             process.wait()
