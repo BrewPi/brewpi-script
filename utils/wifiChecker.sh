@@ -26,7 +26,7 @@ if [ "$1" = "checkinterfaces" ]; then
 fi
 
 fails=0
-gateway=$(/sbin/ip route | awk '/default/ { print $3 }')
+gateway=$(/sbin/ip route | grep -m 1 default | awk '{ print $3 }')
 ### Sometimes network is so hosed, gateway IP is missing from ip route
 if [ -z "$gateway" ]; then
     echo "BrewPi: wifiChecker: Cannot find gateway IP. Restarting wlan0 interface... ($(date))" 1>&2
