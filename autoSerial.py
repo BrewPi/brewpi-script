@@ -8,9 +8,10 @@ from serial.tools import list_ports
 known_devices = [
     {'vid': 0x2341, 'pid': 0x0010, 'name': "Arduino Mega2560"},
     {'vid': 0x2341, 'pid': 0x8036, 'name': "Arduino Leonardo"},
+    {'vid': 0x2341, 'pid': 0x0036, 'name': "Arduino Leonardo Bootloader"},
     {'vid': 0x2341, 'pid': 0x0043, 'name': "Arduino Uno"},
     {'vid': 0x2341, 'pid': 0x0001, 'name': "Arduino Uno"},
-    {'vid': 0x1D50, 'pid': 0x607D, 'name': "Spark Core"},
+    {'vid': 0x1D50, 'pid': 0x607D, 'name': "Particle Core"},
     {'vid': 0x2B04, 'pid': 0xC006, 'name': "Particle Photon"}
 ]
 
@@ -20,11 +21,13 @@ def recognised_device_name(device):
             return known['name']
     return None
 
-def find_compatible_serial_ports():
+def find_compatible_serial_ports(bootLoader = False):
     ports = find_all_serial_ports()
     for p in ports:
         name = recognised_device_name(p)
         if name is not None:
+            if "Bootloader" in name and not bootLoader:
+                continue
             yield (p[0], name)
 
 
@@ -37,13 +40,13 @@ def find_all_serial_ports():
     return iter(all_ports)
 
 
-def detect_port():
+def detect_port(bootLoader = False):
     """
     :return: first detected serial port as tuple: (port, name)
     :rtype:
     """
     port = (None, None)
-    ports = find_compatible_serial_ports()
+    ports = find_compatible_serial_ports(bootLoader=bootLoader)
     try:
         port = ports.next()
     except StopIteration:

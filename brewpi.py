@@ -367,7 +367,7 @@ else:
 
 bg_ser = None
 
-if hwVersion is not None:
+if ser is not None:
     ser.flush()
 
     # set up background serial processing, which will continuously read data from serial and put whole lines in a queue
@@ -633,16 +633,19 @@ while run:
                     logMessage("Notification: Profile mode enabled")
                     raise socket.timeout  # go to serial communication to update controller
         elif messageType == "programController" or messageType == "programArduino":
-            bg_ser.stop()
-            ser.close()  # close serial port before programming
-            ser = None
+            if bg_ser is not None:
+                bg_ser.stop()
+            if ser is not None:
+                if ser.isOpen():
+                    ser.close()  # close serial port before programming
+                ser = None
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']
                 boardType = programParameters['boardType']
                 restoreSettings = programParameters['restoreSettings']
                 restoreDevices = programParameters['restoreDevices']
-                programmer.programController(config, boardType, hexFile, None, None,
+                programmer.programController(config, boardType, hexFile, None, None, False,
                                           {'settings': restoreSettings, 'devices': restoreDevices})
                 logMessage("New program uploaded to controller, script will restart")
             except json.JSONDecodeError:
@@ -729,94 +732,98 @@ while run:
 
         while True:
             line = bg_ser.read_line()
-            if line is None:
+            message = bg_ser.read_message()
+            if line is None and message is None:
                 break
-            try:
-                if line[0] == 'T':
-                    # print it to stdout
-                    if outputTemperature:
-                        print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
+            if line is not None:
+                try:
+                    if line[0] == 'T':
+                        # print it to stdout
+                        if outputTemperature:
+                            print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
 
-                    # store time of last new data for interval check
-                    prevDataTime = time.time()
+                        # store time of last new data for interval check
+                        prevDataTime = time.time()
 
-                    if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
-                        continue  # skip if logging is paused or stopped
+                        if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
+                            continue  # skip if logging is paused or stopped
 
-                    # process temperature line
-                    newData = json.loads(line[2:])
-                    # copy/rename keys
-                    for key in newData:
-                        prevTempJson[renameTempKey(key)] = newData[key]
+                        # process temperature line
+                        newData = json.loads(line[2:])
+                        # copy/rename keys
+                        for key in newData:
+                            prevTempJson[renameTempKey(key)] = newData[key]
 
-                    newRow = prevTempJson
-                    # add to JSON file
-                    brewpiJson.addRow(localJsonFileName, newRow)
-                    # copy to www dir.
-                    # Do not write directly to www dir to prevent blocking www file.
-                    shutil.copyfile(localJsonFileName, wwwJsonFileName)
-                    #write csv file too
-                    csvFile = open(localCsvFileName, "a")
-                    try:
-                        lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-                                       json.dumps(newRow['BeerTemp']) + ';' +
-                                       json.dumps(newRow['BeerSet']) + ';' +
-                                       json.dumps(newRow['BeerAnn']) + ';' +
-                                       json.dumps(newRow['FridgeTemp']) + ';' +
-                                       json.dumps(newRow['FridgeSet']) + ';' +
-                                       json.dumps(newRow['FridgeAnn']) + ';' +
-                                       json.dumps(newRow['State']) + ';' +
-                                       json.dumps(newRow['RoomTemp']) + '\n')
-                        csvFile.write(lineToWrite)
-                    except KeyError, e:
-                        logMessage("KeyError in line from controller: %s" % str(e))
+                        newRow = prevTempJson
+                        # add to JSON file
+                        brewpiJson.addRow(localJsonFileName, newRow)
+                        # copy to www dir.
+                        # Do not write directly to www dir to prevent blocking www file.
+                        shutil.copyfile(localJsonFileName, wwwJsonFileName)
+                        #write csv file too
+                        csvFile = open(localCsvFileName, "a")
+                        try:
+                            lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+                                           json.dumps(newRow['BeerTemp']) + ';' +
+                                           json.dumps(newRow['BeerSet']) + ';' +
+                                           json.dumps(newRow['BeerAnn']) + ';' +
+                                           json.dumps(newRow['FridgeTemp']) + ';' +
+                                           json.dumps(newRow['FridgeSet']) + ';' +
+                                           json.dumps(newRow['FridgeAnn']) + ';' +
+                                           json.dumps(newRow['State']) + ';' +
+                                           json.dumps(newRow['RoomTemp']) + '\n')
+                            csvFile.write(lineToWrite)
+                        except KeyError, e:
+                            logMessage("KeyError in line from controller: %s" % str(e))
 
-                    csvFile.close()
-                    shutil.copyfile(localCsvFileName, wwwCsvFileName)
+                        csvFile.close()
+                        shutil.copyfile(localCsvFileName, wwwCsvFileName)
+                    elif line[0] == 'D':
+                        # debug message received, should already been filtered out, but print anyway here.
+                        logMessage("Finding a log message here should not be possible, report to the devs!")
+                        logMessage("Line received was: {0}".format(line))
+                    elif line[0] == 'L':
+                        # lcd content received
+                        prevLcdUpdate = time.time()
+                        lcdText = json.loads(line[2:])
+                    elif line[0] == 'C':
+                        # Control constants received
+                        cc = json.loads(line[2:])
+                    elif line[0] == 'S':
+                        # Control settings received
+                        prevSettingsUpdate = time.time()
+                        cs = json.loads(line[2:])
+                    # do not print this to the log file. This is requested continuously.
+                    elif line[0] == 'V':
+                        # Control settings received
+                        cv = json.loads(line[2:])
+                    elif line[0] == 'N':
+                        pass  # version number received. Do nothing, just ignore
+                    elif line[0] == 'h':
+                        deviceList['available'] = json.loads(line[2:])
+                        oldListState = deviceList['listState']
+                        deviceList['listState'] = oldListState.strip('h') + "h"
+                        logMessage("Available devices received: "+ json.dumps(deviceList['available']))
+                    elif line[0] == 'd':
+                        deviceList['installed'] = json.loads(line[2:])
+                        oldListState = deviceList['listState']
+                        deviceList['listState'] = oldListState.strip('d') + "d"
+                        logMessage("Installed devices received: " + json.dumps(deviceList['installed']).encode('utf-8'))
+                    elif line[0] == 'U':
+                        logMessage("Device updated to: " + line[2:])
+                    else:
+                        logMessage("Cannot process line from controller: " + line)
+                    # end or processing a line
+                except json.decoder.JSONDecodeError, e:
+                    logMessage("JSON decode error: %s" % str(e))
+                    logMessage("Line received was: " + line)
 
-                elif line[0] == 'D':
-                    # debug message received
-                    try:
-                        expandedMessage = expandLogMessage.expandLogMessage(line[2:])
-                        logMessage("controller debug message: " + expandedMessage)
-                    except Exception, e:  # catch all exceptions, because out of date file could cause errors
-                        logMessage("Error while expanding log message '" + line[2:] + "'" + str(e))
-
-                elif line[0] == 'L':
-                    # lcd content received
-                    prevLcdUpdate = time.time()
-                    lcdText = json.loads(line[2:])
-                elif line[0] == 'C':
-                    # Control constants received
-                    cc = json.loads(line[2:])
-                elif line[0] == 'S':
-                    # Control settings received
-                    prevSettingsUpdate = time.time()
-                    cs = json.loads(line[2:])
-                # do not print this to the log file. This is requested continuously.
-                elif line[0] == 'V':
-                    # Control settings received
-                    cv = json.loads(line[2:])
-                elif line[0] == 'N':
-                    pass  # version number received. Do nothing, just ignore
-                elif line[0] == 'h':
-                    deviceList['available'] = json.loads(line[2:])
-                    oldListState = deviceList['listState']
-                    deviceList['listState'] = oldListState.strip('h') + "h"
-                    logMessage("Available devices received: "+ json.dumps(deviceList['available']))
-                elif line[0] == 'd':
-                    deviceList['installed'] = json.loads(line[2:])
-                    oldListState = deviceList['listState']
-                    deviceList['listState'] = oldListState.strip('d') + "d"
-                    logMessage("Installed devices received: " + json.dumps(deviceList['installed']).encode('utf-8'))
-                elif line[0] == 'U':
-                    logMessage("Device updated to: " + line[2:])
-                else:
-                    logMessage("Cannot process line from controller: " + line)
-                # end or processing a line
-            except json.decoder.JSONDecodeError, e:
-                logMessage("JSON decode error: %s" % str(e))
-                logMessage("Line received was: " + line)
+            if message is not None:
+                try:
+                    expandedMessage = expandLogMessage.expandLogMessage(message)
+                    logMessage("Controller debug message: " + expandedMessage)
+                except Exception, e:  # catch all exceptions, because out of date file could cause errors
+                    logMessage("Error while expanding log message '" + message + "'" + str(e))
 
         # Check for update from temperature profile
         if cs['mode'] == 'p':
@@ -830,7 +837,8 @@ while run:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))
         traceback.print_exc()
 
-bg_ser.stop()
+if bg_ser:
+    bg_ser.stop()
 
 if ser:
     if ser.isOpen():

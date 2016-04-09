@@ -9,11 +9,10 @@ MAX_FAILURES=3
 # Time to wait between failed attempts contacting the router
 INTERVAL=15
 ###  DO NOT EDIT BELOW HERE!  ###
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}")" && pwd )
 
 ### Check if we have root privs to run
 if [[ $EUID -ne 0 ]]; then
-   echo "This script must be run as root: sudo ./wifiChecker.sh) (`date`)" 1>&2
+   echo "This script must be run as root: sudo ./wifiChecker.sh) ($(date))" 1>&2
    exit 1
 fi
 
@@ -27,10 +26,10 @@ if [ "$1" = "checkinterfaces" ]; then
 fi
 
 fails=0
-gateway=$(/sbin/ip route | awk '/default/ { print $3 }')
+gateway=$(/sbin/ip route | grep -m 1 default | awk '{ print $3 }')
 ### Sometimes network is so hosed, gateway IP is missing from ip route
-if [ -z $gateway ]; then
-    echo "BrewPi: wifiChecker: Cannot find gateway IP. Restarting wlan0 interface... (`date`)" 1>&2
+if [ -z "$gateway" ]; then
+    echo "BrewPi: wifiChecker: Cannot find gateway IP. Restarting wlan0 interface... ($(date))" 1>&2
     /sbin/ifdown wlan0
     /sbin/ifup wlan0
     exit 0
@@ -38,24 +37,23 @@ fi
 
 while [ $fails -lt $MAX_FAILURES ]; do
 ### Try pinging, and if host is up, exit
-    ping -c 1 -I wlan0 $gateway > /dev/null
+    ping -c 1 -I wlan0 "$gateway" > /dev/null
     if [ $? -eq 0 ]; then
         fails=0
-        echo "BrewPi: wifiChecker: Successfully pinged $gateway (`date`)"
+        echo "BrewPi: wifiChecker: Successfully pinged $gateway ($(date))"
         break
     fi
 ### If that didn't work...
     let fails=fails+1
     if [ $fails -lt $MAX_FAILURES ]; then
-        echo "BrewPi: wifiChecker: Attempt $fails to reach $gateway failed (`date`)" 1>&2
+        echo "BrewPi: wifiChecker: Attempt $fails to reach $gateway failed ($(date))" 1>&2
         sleep $INTERVAL
     fi
 done
 
 ### Restart wlan0 interface
     if [ $fails -ge $MAX_FAILURES ]; then
-        echo "BrewPi: wifiChecker: Unable to reach router. Restarting wlan0 interface... (`date`)" 1>&2
+        echo "BrewPi: wifiChecker: Unable to reach router. Restarting wlan0 interface... ($(date))" 1>&2
         /sbin/ifdown wlan0
         /sbin/ifup wlan0
     fi
-

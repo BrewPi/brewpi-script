@@ -106,6 +106,9 @@ def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
     else:
         print("File do_not_run_brewpi does not exist at " + path)
 
+def findSerialPort(bootLoader):
+    (port, name) = autoSerial.detect_port(bootLoader)
+    return port
 
 def setupSerial(config, baud_rate=57600, time_out=0.1):
     ser = None
@@ -122,7 +125,7 @@ def setupSerial(config, baud_rate=57600, time_out=0.1):
             if portSetting == None or portSetting == 'None' or portSetting == "none":
                 continue  # skip None setting
             if portSetting == "auto":
-                port, devicetype = autoSerial.detect_port()
+                port = findSerialPort(bootLoader=False)
                 if not port:
                     error = "Could not find compatible serial devices \n"
                     continue # continue with altport

@@ -7,12 +7,14 @@ import time
 from BrewPiUtil import printStdErr
 from BrewPiUtil import logMessage
 from serial import SerialException
+from expandLogMessage import filterOutLogMessages
 
 class BackGroundSerial():
     def __init__(self, serial_port):
         self.buffer = ''
         self.ser = serial_port
         self.queue = Queue.Queue()
+        self.messages = Queue.Queue()
         self.thread = None
         self.error = False
         self.fatal_error = None
@@ -39,6 +41,13 @@ class BackGroundSerial():
         self.exit_on_fatal_error()
         try:
             return self.queue.get_nowait()
+        except Queue.Empty:
+            return None
+
+    def read_message(self):
+        self.exit_on_fatal_error()
+        try:
+            return self.messages.get_nowait()
         except Queue.Empty:
             return None
 
@@ -102,6 +111,12 @@ class BackGroundSerial():
 
     def __get_line_from_buffer(self):
         while '\n' in self.buffer:
+            stripped_buffer, messages = filterOutLogMessages(self.buffer)
+            if len(messages) > 0:
+                for message in messages:
+                    self.messages.put(message[2:]) # remove D: and add to queue
+                self.buffer = stripped_buffer
+                continue
             lines = self.buffer.partition('\n') # returns 3-tuple with line, separator, rest
             if(lines[1] == ''):
                 # '\n' not found, first element is incomplete line
