@@ -636,7 +636,7 @@ class ArduinoProgrammer(SerialProgrammer):
         time.sleep(1)
         # Get serial port while in bootloader
         bootLoaderPort = util.findSerialPort(bootLoader=True)
-        if bootLoaderPort is None:
+        if not bootLoaderPort:
             printStdErr("ERROR: could not find port in bootloader")
 
         programCommand = (avrdudehome + 'avrdude' +
