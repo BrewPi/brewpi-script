@@ -73,6 +73,9 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
                 printStdErr("Please make sure your controller is connected properly and try again.")
                 return 0
             port, name = autoSerial.detect_port()
+            if not port:
+                printStdErr("Could not find compatible device in available serial ports.")
+                return 0
             if "Particle" in name:
                 family = "Particle"
                 if "Photon" in name:
