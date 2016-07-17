@@ -55,7 +55,7 @@ while 1:
             print "type the string you want to send to the Arduino: "
             userInput = raw_input()
             print "sending: " + userInput
-            ser.write(userInput)
+            ser.writeln(userInput)
         elif received == 'q':
             ser.close()
             exit()

@@ -375,9 +375,9 @@ if ser is not None:
     bg_ser = BackGroundSerial(ser)
     bg_ser.start()
     # request settings from controller, processed later when reply is received
-    bg_ser.write('s')  # request control settings cs
-    bg_ser.write('c')  # request control constants cc
-    bg_ser.write('v')  # request control variables cv
+    bg_ser.writeln('s')  # request control settings cs
+    bg_ser.writeln('c')  # request control constants cc
+    bg_ser.writeln('v')  # request control variables cv
     # answer from controller is received asynchronously later.
 
 # create a listening socket to communicate with PHP
@@ -485,19 +485,19 @@ while run:
         elif messageType == "getControlVariables":
             conn.send(cv)
         elif messageType == "refreshControlConstants":
-            bg_ser.write("c")
+            bg_ser.writeln("c")
             raise socket.timeout
         elif messageType == "refreshControlSettings":
-            bg_ser.write("s")
+            bg_ser.writeln("s")
             raise socket.timeout
         elif messageType == "refreshControlVariables":
-            bg_ser.write("v")
+            bg_ser.writeln("v")
             raise socket.timeout
         elif messageType == "loadDefaultControlSettings":
-            bg_ser.write("S")
+            bg_ser.writeln("S")
             raise socket.timeout
         elif messageType == "loadDefaultControlConstants":
-            bg_ser.write("C")
+            bg_ser.writeln("C")
             raise socket.timeout
         elif messageType == "setBeer":  # new constant beer temperature received
             try:
@@ -509,7 +509,7 @@ while run:
             cs['mode'] = 'b'
             # round to 2 dec, python will otherwise produce 6.999999999
             cs['beerSet'] = round(newTemp, 2)
-            bg_ser.write("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
+            bg_ser.writeln("j{mode:b, beerSet:" + json.dumps(cs['beerSet']) + "}")
             logMessage("Notification: Beer temperature set to " +
                        str(cs['beerSet']) +
                        " degrees in web interface")
@@ -524,7 +524,7 @@ while run:
 
             cs['mode'] = 'f'
             cs['fridgeSet'] = round(newTemp, 2)
-            bg_ser.write("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
+            bg_ser.writeln("j{mode:f, fridgeSet:" + json.dumps(cs['fridgeSet']) + "}")
             logMessage("Notification: Fridge temperature set to " +
                        str(cs['fridgeSet']) +
                        " degrees in web interface")
@@ -532,14 +532,14 @@ while run:
 
         elif messageType == "setOff":  # cs['mode'] set to OFF
             cs['mode'] = 'o'
-            bg_ser.write("j{mode:o}")
+            bg_ser.writeln("j{mode:o}")
             logMessage("Notification: Temperature control disabled")
             raise socket.timeout
         elif messageType == "setParameters":
             # receive JSON key:value pairs to set parameters on the controller
             try:
                 decoded = json.loads(value)
-                bg_ser.write("j" + json.dumps(decoded))
+                bg_ser.writeln("j" + json.dumps(decoded))
                 if 'tempFormat' in decoded:
                     changeWwwSetting('tempFormat', decoded['tempFormat'])  # change in web interface settings too.
             except json.JSONDecodeError:
@@ -622,7 +622,7 @@ while run:
                 conn.send("Profile successfully updated")
                 if cs['mode'] is not 'p':
                     cs['mode'] = 'p'
-                    bg_ser.write("j{mode:p}")
+                    bg_ser.writeln("j{mode:p}")
                     logMessage("Notification: Profile mode enabled")
                     raise socket.timeout  # go to serial communication to update controller
         elif messageType == "programController" or messageType == "programArduino":
@@ -652,11 +652,11 @@ while run:
         elif messageType == "refreshDeviceList":
             deviceList['listState'] = ""  # invalidate local copy
             if value.find("readValues") != -1:
-                bg_ser.write("d{r:1}")  # request installed devices
-                bg_ser.write("h{u:-1,v:1}")  # request available, but not installed devices
+                bg_ser.writeln("d{r:1}")  # request installed devices
+                bg_ser.writeln("h{u:-1,v:1}")  # request available, but not installed devices
             else:
-                bg_ser.write("d{}")  # request installed devices
-                bg_ser.write("h{u:-1}")  # request available, but not installed devices
+                bg_ser.writeln("d{}")  # request installed devices
+                bg_ser.writeln("h{u:-1}")  # request available, but not installed devices
         elif messageType == "getDeviceList":
             if deviceList['listState'] in ["dh", "hd"]:
                 response = dict(board=hwVersion.board,
@@ -672,7 +672,7 @@ while run:
             except json.JSONDecodeError:
                 logMessage("Error: invalid JSON parameter string received: " + value)
                 continue
-            bg_ser.write("U" + json.dumps(configStringJson))
+            bg_ser.writeln("U" + json.dumps(configStringJson))
             deviceList['listState'] = ""  # invalidate local copy
         elif messageType == "writeDevice":
             try:
@@ -680,7 +680,7 @@ while run:
             except json.JSONDecodeError:
                 logMessage("Error: invalid JSON parameter string received: " + value)
                 continue
-            bg_ser.write("d" + json.dumps(configStringJson))
+            bg_ser.writeln("d" + json.dumps(configStringJson))
         elif messageType == "getVersion":
             if hwVersion:
                 response = hwVersion.__dict__
@@ -692,7 +692,7 @@ while run:
             conn.send(response_str)
         elif messageType == "resetController":
             logMessage("Resetting controller to factory defaults")
-            bg_ser.write("E")
+            bg_ser.writeln("E")
         else:
             logMessage("Error: Received invalid message on socket: " + message)
 
@@ -712,17 +712,17 @@ while run:
         if(time.time() - prevLcdUpdate) > 5:
             # request new LCD text
             prevLcdUpdate += 5 # give the controller some time to respond
-            bg_ser.write('l')
+            bg_ser.writeln('l')
 
         if(time.time() - prevSettingsUpdate) > 60:
             # Request Settings from controller to stay up to date
             # Controller should send updates on changes, this is a periodical update to ensure it is up to date
             prevSettingsUpdate += 5 # give the controller some time to respond
-            bg_ser.write('s')
+            bg_ser.writeln('s')
 
         # if no new data has been received for serialRequestInteval seconds
         if (time.time() - prevDataTime) >= float(config['interval']):
-            bg_ser.write("t")  # request new from controller
+            bg_ser.writeln("t")  # request new from controller
             prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
 
         elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
@@ -831,7 +831,7 @@ while run:
             if newTemp != cs['beerSet']:
                 cs['beerSet'] = newTemp
                 # if temperature has to be updated send settings to controller
-                bg_ser.write("j{beerSet:" + json.dumps(cs['beerSet']) + "}")
+                bg_ser.writeln("j{beerSet:" + json.dumps(cs['beerSet']) + "}")
 
     except socket.error as e:
         logMessage("Socket error(%d): %s" % (e.errno, e.strerror))

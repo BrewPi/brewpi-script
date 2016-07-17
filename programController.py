@@ -390,10 +390,10 @@ class SerialProgrammer:
         expected_responses = 2
         if not self.versionOld.isNewer("0.2.0"):  # versions older than 2.0.0 did not have a device manager
             expected_responses += 1
-            ser.write("d{}")  # installed devices
+            ser.write("d{}\n")  # installed devices
             time.sleep(1)
-        ser.write("c")  # control constants
-        ser.write("s")  # control settings
+        ser.write("c\n")  # control constants
+        ser.write("s\n")  # control settings
         time.sleep(2)
 
         while expected_responses:
@@ -438,7 +438,7 @@ class SerialProgrammer:
         printStdErr("Resetting EEPROM to default settings")
         self.ser.write('E\n')
         if setTestMode:
-            self.ser.write('j{mode:t}')
+            self.ser.write('j{mode:t}\n')
         time.sleep(5)  # resetting EEPROM takes a while, wait 5 seconds
         # read log messages from arduino
         while 1:  # read all lines on serial interface
@@ -512,7 +512,7 @@ class SerialProgrammer:
                                 "but this is no longer supported. " +
                                 "We'll attempt to automatically find the address and add the sensor based on its address")
                     if detectedDevices is None:
-                        ser.write("h{}")  # installed devices
+                        ser.write("h{}\n")  # installed devices
                         time.sleep(1)
                         # get list of detected devices
                         for line in ser:
@@ -523,7 +523,7 @@ class SerialProgrammer:
                         if device['p'] == detectedDevice['p']:
                             device['a'] = detectedDevice['a'] # get address from sensor that was first on bus
 
-            ser.write("U" + json.dumps(device))
+            ser.write("U" + json.dumps(device) + "\n")
 
             requestTime = time.time()
             # read log messages from arduino

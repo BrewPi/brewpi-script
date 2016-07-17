@@ -51,6 +51,9 @@ class BackGroundSerial():
         except Queue.Empty:
             return None
 
+    def writeln(self, data):
+        self.write(data + "\n")
+
     def write(self, data):
         self.exit_on_fatal_error()
         # prevent writing to a port in error state. This will leave unclosed handles to serial on the system
@@ -153,11 +156,11 @@ if __name__ == '__main__':
     for i in range(1, 5):
         # request control variables 4 times. This would overrun buffer if it was not read in a background thread
         # the json decode will then fail, because the message is clipped
-        bg_ser.write('v')
-        bg_ser.write('v')
-        bg_ser.write('v')
-        bg_ser.write('v')
-        bg_ser.write('v')
+        bg_ser.writeln('v')
+        bg_ser.writeln('v')
+        bg_ser.writeln('v')
+        bg_ser.writeln('v')
+        bg_ser.writeln('v')
         line = True
         while(line):
             line = bg_ser.read_line()
