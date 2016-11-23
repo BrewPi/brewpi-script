@@ -88,14 +88,20 @@ for o, a in opts:
     # supply a binary file
     if o in ('-f', '--file'):
         print("Using local files instead of downloading a release. \n")
-        if not os.path.isfile(a) and os.path.isdir(a):
+        if os.path.isdir(a):
+            print("Path is a directory. Searching for files in path.\n")
             for file in os.listdir(a):
                 if all(x in file for x in ['brewpi', '.bin']):
-                    binFile = os.path.join(os.path.abspath(a), file)
-        else:
+                    if binFile is None:
+                        binFile = os.path.join(os.path.abspath(a), file)
+                    else:
+                        print("Multiple brewpi .bin files found in directory! Cannot choose automatically")
+                        exit(1)
+        elif os.path.isfile(a):
             binFile = os.path.abspath(a)
-        if not os.path.exists(binFile):
-            print('ERROR: Binary file "%s" was not found!' % binFile)
+            print('Using binary file: %s' % binFile)
+        else:
+            print('ERROR: Binary file "%s" was not found!' % a)
             exit(1)
     # supply a system update directory
     if o in ('-s', '--system'):
@@ -108,18 +114,23 @@ for o, a in opts:
                     system2 = os.path.join(os.path.abspath(a), file)
         else:
             print('ERROR: System binaries location {0} is not a directory!' % a)
-        if not os.path.exists(system1):
+        if os.path.isfile(system1):
+            print('Using system part 1 path: %s' % system1)
+        else:
             print('ERROR: System binary 1 "%s" was not found!' % system1)
             exit(1)
-        if not os.path.exists(system2):
+        if os.path.isfile(system2):
+            print('Using system part 2 path: %s' % system2)
+        else:
             print('ERROR: System binary 2 "%s" was not found!' % system2)
             exit(1)
-    if o in ('--system1'):
+    if o in ('--system1',):
+        print('booooo')
         system1 = a
         if not os.path.exists(system1):
             print('ERROR: System binary 1 "%s" was not found!' % a)
             exit(1)
-    if o in ('--system2'):
+    if o in ('--system2',):
         system2 = a
         if not os.path.exists(system2):
             print('ERROR: System binary 2 "%s" was not found!' % a)
@@ -130,13 +141,13 @@ for o, a in opts:
     if o in ('-t', '--tag'):
         tag = a
         print "Will try to download release '{0}'".format(tag)
-    if o in ('--testmode'):
+    if o in ('--testmode',):
         testMode = True
         print "Will set device to test mode after flashing"
     if o in ('-a', '--autodfu'):
         autoDfu = True
         print "Will automatically reboot newly detected photons into DFU mode"
-    if o in ('--noreset'):
+    if o in ('--noreset',):
         noReset = True
 
 dfuPath = "dfu-util"
@@ -248,11 +259,9 @@ while(True):
                         exit(1)
                     else:
                         print "{0}\n".format(system2)
-
-
         if binFile:
             if type == 'core':
-                print "Now writing BrewPi firmware {0}".format(binFile)
+                print "Now writing BrewPi firmware {0} to Core".format(binFile)
                 p = subprocess.Popen(dfuPath + " -d 1d50:607f -a 0 -s 0x08005000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
             elif type == 'photon':
@@ -264,7 +273,7 @@ while(True):
                     p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8060000 -D {0}".format(system2), shell=True)
                     p.wait()
 
-                print "Now writing BrewPi firmware {0}".format(binFile)
+                print "Now writing BrewPi firmware {0} to Photon".format(binFile)
                 p = subprocess.Popen(dfuPath + " -d 0x2B04:0xD006 -a 0 -s 0x80A0000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
 
