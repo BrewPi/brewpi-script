@@ -91,9 +91,13 @@ class BackGroundSerial():
 
             if new_data:
                 self.buffer = self.buffer + new_data
-                line = self.__get_line_from_buffer()
-                if line:
-                    self.queue.put(line)
+                while True:
+                    line = self.__get_line_from_buffer()
+                    if line:
+                        self.queue.put(line)
+                    else:
+                        break
+                                  
 
             if self.error:
                 try:
@@ -121,7 +125,7 @@ class BackGroundSerial():
                 self.buffer = stripped_buffer
                 continue
             lines = self.buffer.partition('\n') # returns 3-tuple with line, separator, rest
-            if(lines[1] == ''):
+            if not lines[1]:
                 # '\n' not found, first element is incomplete line
                 self.buffer = lines[0]
                 return None
