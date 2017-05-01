@@ -422,7 +422,9 @@ prevTempJson = {
     "FridgeTemp": 0,
     "BeerAnn": None,
     "FridgeAnn": None,
-    "RoomTemp": None,
+    "Log1Temp": None,
+    "Log2Temp": None,
+    "Log3Temp": None,
     "State": None,
     "BeerSet": 0,
     "FridgeSet": 0}
@@ -435,7 +437,9 @@ def renameTempKey(key):
         "ft": "FridgeTemp",
         "fs": "FridgeSet",
         "fa": "FridgeAnn",
-        "rt": "RoomTemp",
+        "lt1": "Log1Temp",
+        "lt2": "Log2Temp",
+        "lt3": "Log3Temp",
         "s": "State",
         "t": "Time"}
     return rename.get(key, key)
@@ -771,7 +775,9 @@ while run:
                                            json.dumps(newRow['FridgeSet']) + ';' +
                                            json.dumps(newRow['FridgeAnn']) + ';' +
                                            json.dumps(newRow['State']) + ';' +
-                                           json.dumps(newRow['RoomTemp']) + '\n')
+                                           json.dumps(newRow['Log1Temp']) + ';' +
+                                           json.dumps(newRow['Log2Temp']) + ';' +
+                                           json.dumps(newRow['Log3Temp']) + '\n')
                             csvFile.write(lineToWrite)
                         except KeyError, e:
                             logMessage("KeyError in line from controller: %s" % str(e))
