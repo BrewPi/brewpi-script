@@ -80,16 +80,18 @@ class AvrInfo:
     shield_revC = "revC"
     spark_shield_v1 = "V1"
     spark_shield_v2 = "V2"
+    spark_shield_v3 = "V3"
 
-    shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_v1, 4: spark_shield_v2}
+    shields = {1: shield_revA, 2: shield_revC, 3: spark_shield_v1, 4: spark_shield_v2, 5: spark_shield_v3}
 
     board_leonardo = "leonardo"
     board_standard = "uno"
     board_mega = "mega"
     board_spark_core = "core"
     board_photon = "photon"
+    board_p1 = "P1"
 
-    boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core, 'y': board_photon}
+    boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core, 'y': board_photon, 'p': board_p1}
 
     family_arduino = "Arduino"
     family_spark = "Particle"
@@ -98,13 +100,15 @@ class AvrInfo:
                 board_standard: family_arduino,
                 board_mega: family_arduino,
                 board_spark_core: family_spark,
-                board_photon: family_spark}
+                board_photon: family_spark,
+                board_p1: family_spark}
 
     board_names = { board_leonardo: "Leonardo",
                 board_standard: "Uno",
                 board_mega: "Mega",
                 board_spark_core: "Core",
-                board_photon: "Photon"}
+                board_photon: "Photon",
+                board_p1: "P1"}
 
     def __init__(self, s=None):
         self.version = LooseVersion("0.0.0")
