@@ -124,8 +124,7 @@ for o, a in opts:
         else:
             print('ERROR: System binary 2 "%s" was not found!' % system2)
             exit(1)
-    if o in ('--system1',):
-        print('booooo')
+    if o in ('--system1',):       
         system1 = a
         if not os.path.exists(system1):
             print('ERROR: System binary 1 "%s" was not found!' % a)
@@ -220,8 +219,11 @@ while(True):
         elif DFUs[0] == '2b04:d006':
             type = 'photon'
             print "Device identified as Particle Photon"
+        elif DFUs[0] == '2b04:d008':
+            type = 'photon'
+            print "Device identified as Particle P1"
         else:
-            print "Could not identify device as Photon or Spark Core. Exiting"
+            print "Could not identify Particle device. Exiting"
             exit(1)
 
         # download latest binary from GitHub if file not specified
