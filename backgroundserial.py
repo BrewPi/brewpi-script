@@ -94,7 +94,6 @@ class BackGroundSerial():
                     line_from_buffer = self.__get_line_from_buffer()
                     if line_from_buffer:
                         self.queue.put(line_from_buffer)
-                        print(line_from_buffer)
                     else:
                         break
 
