@@ -124,8 +124,7 @@ for o, a in opts:
         else:
             print('ERROR: System binary 2 "%s" was not found!' % system2)
             exit(1)
-    if o in ('--system1',):
-        print('booooo')
+    if o in ('--system1',):       
         system1 = a
         if not os.path.exists(system1):
             print('ERROR: System binary 1 "%s" was not found!' % a)
@@ -195,9 +194,10 @@ else:
         print "Then try again."
         exit(1)
 
-firstLoop = True
 print "Detecting DFU devices"
-while(True):
+device_type = None
+first_loop = True
+while True:
     # list DFU devices to see whether a device is connected
     p = subprocess.Popen(dfuPath + " -l", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     p.wait()
@@ -215,42 +215,47 @@ while(True):
     elif len(DFUs) == 1:
 
         if DFUs[0] == '1d50:607f':
-            type = 'core'
+            device_type = 'core'
             print "Device identified as Spark Core"
         elif DFUs[0] == '2b04:d006':
-            type = 'photon'
+            device_type = 'photon'
             print "Device identified as Particle Photon"
+        elif DFUs[0] == '2b04:d008':
+            device_type = 'p1'
+            print "Device identified as Particle P1"
         else:
-            print "Could not identify device as Photon or Spark Core. Exiting"
+            print "Could not identify Particle device. Exiting"
             exit(1)
 
         # download latest binary from GitHub if file not specified
         if not binFile:
             if tag is None:
                 print "Downloading latest firmware..."
-                tag = releases.getLatestTag(type, False)
-                print "Latest stable version on GitHub: " + tag
+                tag = releases.getLatestTag(device_type, False)
+                if tag is None:
+                    print "No compatible version found on GitHub for {0}".format(device_type)
+                    exit(1)
+                print "Latest stable version on GitHub for {0}: {1}".format(device_type, tag)
             else:
                 print "Downloading release " + tag
 
-            binFile = releases.getBin(tag, [type, 'brewpi', '.bin'])
+            binFile = releases.getBin(tag, [device_type, 'brewpi', '.bin'])
             if binFile:
                 print "Firmware downloaded to " + binFile
             else:
-                print "Could not find download in release {0} with these words in the file name: {1}".format(tag, type)
+                print "Could not find download in release {0} with these words in the file name: {1}".format(tag, device_type)
                 exit(1)
 
-            if type == 'photon':
+            if device_type == 'photon' or device_type == 'p1':
                 if not releases.containsSystemImage(tag):
                     # if the release is a pre-release, also include pre-releases when searching for latest system image
                     prerelease = releases.findByTag(tag)['prerelease']
                     latestSystemTag = releases.getLatestTagForSystem(prerelease)
                 else:
-
                     latestSystemTag = tag
                 print ("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
-                system1 = releases.getBin(latestSystemTag, ['photon', 'system-part1', '.bin'])
-                system2 = releases.getBin(latestSystemTag, ['photon', 'system-part2', '.bin'])
+                system1 = releases.getBin(latestSystemTag, [device_type, 'system-part1', '.bin'])
+                system2 = releases.getBin(latestSystemTag, [device_type, 'system-part2', '.bin'])
                 if system1:
                     print "Downloaded new system firmware to:\n"
                     print "{0} and\n".format(system1)
@@ -260,21 +265,26 @@ while(True):
                     else:
                         print "{0}\n".format(system2)
         if binFile:
-            if type == 'core':
+            if device_type == 'core':
                 print "Now writing BrewPi firmware {0} to Core".format(binFile)
                 p = subprocess.Popen(dfuPath + " -d 1d50:607f -a 0 -s 0x08005000:leave -D {0}".format(binFile), shell=True)
                 p.wait()
-            elif type == 'photon':
+            elif device_type == 'photon' or device_type == 'p1':
+                pid_vid = {
+                    'photon': '2b04:d006',
+                    'p1': '2b04:d008'
+                }
+
                 if system1 and system2:
-                    print "First updating system firmware for the Photon, part 1: {0}".format(system1)
-                    p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8020000 -D {0}".format(system1), shell=True)
+                    print "Updating system firmware for the {0}, part 1: {1}".format(device_type, system1)
+                    p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x8020000 -D {1}".format(pid_vid[device_type], system1), shell=True)
                     p.wait()
-                    print "Continuing updating system firmware for the Photon, part 2: {0}".format(system2)
-                    p = subprocess.Popen(dfuPath + " -d 2b04:d006 -a 0 -s 0x8060000 -D {0}".format(system2), shell=True)
+                    print "Updating system firmware for the {0}, part 2: {1}".format(device_type, system2)
+                    p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x8060000 -D {1}".format(pid_vid[device_type], system2), shell=True)
                     p.wait()
 
-                print "Now writing BrewPi firmware {0} to Photon".format(binFile)
-                p = subprocess.Popen(dfuPath + " -d 0x2B04:0xD006 -a 0 -s 0x80A0000:leave -D {0}".format(binFile), shell=True)
+                print "Now writing BrewPi firmware {0} to {1}".format(binFile, device_type)
+                p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x80A0000:leave -D {1}".format(pid_vid[device_type], binFile), shell=True)
                 p.wait()
 
             print "Programming done"
@@ -284,28 +294,33 @@ while(True):
                 # reset EEPROM to defaults
                 configFile = util.scriptPath() + '/settings/config.cfg'
                 config = util.readCfgWithDefaults(configFile)
-                programmer = SerialProgrammer.create(config, type)
+                if 'socket:' in config['port']:
+                    print "Socket configured as serial port, using auto detect to find USB serial"
+                    config_copy = config
+                    config_copy['port'] = 'auto'
+
+                programmer = SerialProgrammer.create(config_copy, device_type)
 
                 # open serial port
                 print "Opening serial port"
-                if not programmer.open_serial_with_retry(config, 57600, 1):
+                if not programmer.open_serial_with_retry(config_copy, 57600, 1):
                     print "Could not open serial port after programming"
                 else:
                     programmer.fetch_version("Success! ")
                     time.sleep(5)
                     programmer.reset_settings(testMode)
-                    serialPorts = list(autoSerial.find_compatible_serial_ports()) # update serial ports here so device will not be seen as new
-
+                     # update serial ports here so device will not be seen as new
+                    serialPorts = list(autoSerial.find_compatible_serial_ports())
         else:
             print "found DFU device, but no binary specified for flashing"
         if not multi:
             break
     else:
-        if firstLoop:
+        if first_loop:
             print "Did not find any DFU devices."
             print "Is your Photon or Spark Core running in DFU mode (blinking yellow)?"
             print "Waiting until a DFU device is connected..."
-        firstLoop = False
+        first_loop = False
         if autoDfu:
             previousSerialPorts = serialPorts
             serialPorts = list(autoSerial.find_compatible_serial_ports())
@@ -328,7 +343,4 @@ while(True):
                     ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
                 else:
                     print "Automatically rebooting in DFU mode is not supported for {0}".format(name)
-
-
-
     time.sleep(1)
