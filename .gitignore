@@ -33,3 +33,5 @@ requirements.txt
 !.gitignore
 .idea/
 utils/downloads/
+
+\.vscode/
