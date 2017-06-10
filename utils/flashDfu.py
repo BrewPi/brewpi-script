@@ -294,9 +294,9 @@ while True:
                 # reset EEPROM to defaults
                 configFile = util.scriptPath() + '/settings/config.cfg'
                 config = util.readCfgWithDefaults(configFile)
+                config_copy = config
                 if 'socket:' in config['port']:
                     print "Socket configured as serial port, using auto detect to find USB serial"
-                    config_copy = config
                     config_copy['port'] = 'auto'
 
                 programmer = SerialProgrammer.create(config_copy, device_type)
