@@ -329,8 +329,8 @@ while True:
                 print "Found new serial port connected: {0}".format(newPorts[0])
                 port = newPorts[0][0]
                 name = newPorts[0][1]
-                if name == "Particle Photon":
-                    print "Putting Photon in DFU mode"
+                if name == "Particle Photon" or "Particle P1":
+                    print "Putting {0} in DFU mode".format(name)
                     ser = serial.Serial(port)
                     try:
                         ser.baudrate = 14400 # this triggers a reboot in DFU mode
