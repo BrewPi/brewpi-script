@@ -92,10 +92,11 @@ cc = dict()
 # Control variables (json string, sent directly to browser without decoding)
 cv = "{}"
 
+# All temperatures in the system and the current state
+temperatures = {}
+
 # listState = "", "d", "h", "dh" to reflect whether the list is up to date for installed (d) and available (h)
 deviceList = dict(listState="", installed=[], available=[])
-
-lcdText = ['Script starting up', ' ', ' ', ' ']
 
 # Read in command line arguments
 try:
@@ -347,7 +348,6 @@ if hwVersion is None:
                "Your controller is either not programmed or running a very old version of BrewPi. " +
                "Please upload a new version of BrewPi to your controller.")
     # script will continue so you can at least program the controller
-    lcdText = ['Could not receive', 'version from controller', 'Please (re)program', 'your controller']
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + ser.name + "\n")
@@ -409,7 +409,6 @@ s.settimeout(serialCheckInterval)
 
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
-prevLcdUpdate = time.time()
 prevSettingsUpdate = time.time()
 
 run = 1
@@ -469,14 +468,14 @@ while run:
             value = ""
         if messageType == "ack":  # acknowledge request
             conn.send('ack')
-        elif messageType == "lcd":  # lcd contents requested
-            conn.send(json.dumps(lcdText))
         elif messageType == "getMode":  # echo cs['mode'] setting
             conn.send(cs['mode'])
         elif messageType == "getFridge":  # echo fridge temperature setting
             conn.send(json.dumps(cs['fridgeSet']))
         elif messageType == "getBeer":  # echo fridge temperature setting
             conn.send(json.dumps(cs['beerSet']))
+        elif messageType == "getTemperatures":
+            conn.send(json.dumps(temperatures))
         elif messageType == "getControlConstants":
             conn.send(json.dumps(cc))
         elif messageType == "getControlSettings":
@@ -713,11 +712,6 @@ while run:
         if hwVersion is None:
             continue  # do nothing with the serial port when the controller has not been recognized
 
-        if(time.time() - prevLcdUpdate) > 5:
-            # request new LCD text
-            prevLcdUpdate += 5 # give the controller some time to respond
-            bg_ser.writeln('l')
-
         if(time.time() - prevSettingsUpdate) > 60:
             # Request Settings from controller to stay up to date
             # Controller should send updates on changes, this is a periodical update to ensure it is up to date
@@ -754,6 +748,8 @@ while run:
 
                         # process temperature line
                         newData = json.loads(line[2:])
+                        temperatures = newData # temperatures is sent to the web UI on request
+
                         # copy/rename keys
                         for key in newData:
                             prevTempJson[renameTempKey(key)] = newData[key]
@@ -788,10 +784,6 @@ while run:
                         # debug message received, should already been filtered out, but print anyway here.
                         logMessage("Finding a log message here should not be possible, report to the devs!")
                         logMessage("Line received was: {0}".format(line))
-                    elif line[0] == 'L':
-                        # lcd content received
-                        prevLcdUpdate = time.time()
-                        lcdText = json.loads(line[2:])
                     elif line[0] == 'C':
                         # Control constants received
                         cc = json.loads(line[2:])
