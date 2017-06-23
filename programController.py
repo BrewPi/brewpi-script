@@ -30,11 +30,17 @@ import sys
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
 def printStdErr(*objs):
-    print("", *objs, file=stderr)
+    print(*objs, file=stderr)
 
 def asbyte(v):
     return chr(v & 0xFF)
 
+def waitForReset(wait_time):
+    printStdErr("Waiting 15 seconds for device to reset and come back as serial port.")
+    for i in range(wait_time + 1):
+        time.sleep(1)
+        sys.stderr.write("{0}/15 \r".format(i), ) # overwrite same line
+    printStdErr("") # print newline
 
 class LightYModem:
     """
@@ -229,7 +235,7 @@ class SerialProgrammer:
 
             myDir = os.path.dirname(os.path.abspath(__file__))
             flashDfuPath = os.path.join(myDir, 'utils', 'flashDfu.py')
-            command = sys.executable + ' ' + flashDfuPath + " --autodfu --noreset --file={0}".format(os.path.dirname(hexFile))
+            command = sys.executable + ' ' + flashDfuPath + " --autodfu --noreset --file={0}".format(os.path.abspath(hexFile))
             if system1File is not None and system2File is not None:
                 systemParameters = " --system1={0} --system2={1}".format(system1File, system2File)
                 command = command + systemParameters
@@ -251,8 +257,7 @@ class SerialProgrammer:
                 if not self.flash_file(system1File):
                     return 0
 
-                printStdErr("Waiting for device to reset.")
-                time.sleep(15) # give time to reboot and process binary
+                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 1. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -263,8 +268,7 @@ class SerialProgrammer:
                 if not self.flash_file(system2File):
                     return 0
 
-                printStdErr("Waiting for device to reset.")
-                time.sleep(15) # give time to reboot and process binary
+                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 2. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -274,16 +278,18 @@ class SerialProgrammer:
                 if not self.flash_file(hexFile):
                     return 0
 
-                printStdErr("Waiting for device to reset.")
-                time.sleep(15) # give time to reboot and process binary
+                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing user part. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
                     return False
 
-        printStdErr("Waiting for device to reset.")
-        time.sleep(10) # give time to reboot
+        if self.ser:
+            self.ser.close
+            self.ser = None
 
+        waitForReset(15)
+        printStdErr("Now checking new version.")
         if not self.open_serial_with_retry(self.config, 57600, 0.2):
             printStdErr("Error opening serial port after programming. Program script will exit. Settings are not restored.")
             printStdErr("If your device stopped working, use flashDfu.py to restore it.")

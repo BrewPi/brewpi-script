@@ -20,6 +20,7 @@ import time
 from distutils.version import LooseVersion
 from BrewPiUtil import asciiToUnicode
 from serial import SerialException
+import re
 
 def getVersionFromSerial(ser):
     version = None
@@ -29,36 +30,35 @@ def getVersionFromSerial(ser):
     if not ser.isOpen():
         print "Cannot get version from serial port that is not open."
 
-    ser.timeout = 1
+    ser.timeout = 2
     ser.flushInput()
     ser.flushOutput()
-
     ser.write('n')  # request version info
     while retries < 10:
         retry = True
         while 1: # read all lines from serial
-            loopTime = time.time()
-            line = None
-            try:
-                line = ser.readline()
-            except SerialException as e:
-                pass
-            if line:
-                line = asciiToUnicode(line)
-                if line[0] == 'N':
-                    data = line.strip('\n')[2:]
-                    version = AvrInfo(data)
-                    if version and version.version != "0.0.0":
-                        retry = False
-                        break
-            if time.time() - loopTime >= ser.timeout:
-                # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
-                break
             if time.time() - startTime >= 10:
                 # try max 10 seconds
                 retry = False
                 break
-
+            line = None
+            read_time = time.time()
+            try:
+                line = ser.readline()
+            except SerialException:
+                continue
+            if line:
+                line = asciiToUnicode(line)
+                if line[0] == 'N':
+                    data = line.strip('\n')[2:]
+                    version_parsed = AvrInfo(data)
+                    if version_parsed and version_parsed.version != "0.0.0":
+                        retry = False
+                        version = version_parsed
+                        break
+            if time.time() - read_time >= ser.timeout:
+                # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
+                break
         if retry:
             ser.write('n')  # request version info
             # time.sleep(1) delay not needed because of blocking (timeout) readline
@@ -169,7 +169,9 @@ class AvrInfo:
             self.commit = j[AvrInfo.commit]
 
     def parseStringVersion(self, s):
-        self.version = LooseVersion(s)
+        pattern = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+.*")
+        if pattern.match(s): # check for valid string
+            self.version = LooseVersion(s)
 
     def toString(self):
         if self.version:
