@@ -736,6 +736,10 @@ while run:
             if line is not None:
                 try:
                     if line[0] == 'T':
+                        # process temperature line
+                        newData = json.loads(line[2:])
+                        temperatures = newData # temperatures is sent to the web UI on request
+
                         # print it to stdout
                         if outputTemperature:
                             print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
@@ -745,10 +749,6 @@ while run:
 
                         if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
                             continue  # skip if logging is paused or stopped
-
-                        # process temperature line
-                        newData = json.loads(line[2:])
-                        temperatures = newData # temperatures is sent to the web UI on request
 
                         # copy/rename keys
                         for key in newData:
