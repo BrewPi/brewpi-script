@@ -133,7 +133,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         return -1
 
     # default tag is latest stable tag, or latest unstable tag if no stable tag is found
-    default_choice = next((i for i, t in enumerate(compatibleTags) if t in stableTags), compatibleTags[0])
+    default_choice = next((i for i, t in enumerate(compatibleTags) if t in stableTags), 0)
     tag = compatibleTags[default_choice]
 
     if userInput:
