@@ -345,9 +345,9 @@ logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(ser)
 if hwVersion is None:
     logMessage("Warning: Cannot receive version number from controller. " +
-               "Your controller is either not programmed or running a very old version of BrewPi. " +
-               "Please upload a new version of BrewPi to your controller.")
-    # script will continue so you can at least program the controller
+               "This could be because your controller is not programmed or running a very old version of BrewPi." +
+               "This script will now exit.")
+    exit(1)
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + ser.name + "\n")
