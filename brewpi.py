@@ -98,6 +98,9 @@ temperatures = {}
 # listState = "", "d", "h", "dh" to reflect whether the list is up to date for installed (d) and available (h)
 deviceList = dict(listState="", installed=[], available=[])
 
+# lastSerialTraffic times how long ago data was succesfully received from the controller. If it has been over 60 seconds ago, we quit.
+lastSerialTraffic = time.time
+
 # Read in command line arguments
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hc:sqkfld",
@@ -330,15 +333,17 @@ def resumeLogging():
     else:
         return {'status': 1, 'statusMessage': "Logging was not paused."}
 
+logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
+
+logMessage("Connecting to controller...") 
 # bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
 ser = util.setupSerial(config, time_out=0)
 
 if not ser:
     exit(1)
 
-logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
-# wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
-time.sleep(float(config.get('startupDelay', 10)))
+# wait an optional startup delay after serial connect. Could be needed to skip a bootloader, default is no delay
+time.sleep(float(config.get('startupDelay', 0)))
 
 
 logMessage("Checking software version on controller... ")
@@ -410,6 +415,7 @@ s.settimeout(serialCheckInterval)
 prevDataTime = 0.0  # keep track of time between new data requests
 prevTimeOut = time.time()
 prevSettingsUpdate = time.time()
+prevSerialReceive = time.time()
 
 run = 1
 
@@ -712,28 +718,13 @@ while run:
         if hwVersion is None:
             continue  # do nothing with the serial port when the controller has not been recognized
 
-        if(time.time() - prevSettingsUpdate) > 60:
-            # Request Settings from controller to stay up to date
-            # Controller should send updates on changes, this is a periodical update to ensure it is up to date
-            prevSettingsUpdate += 5 # give the controller some time to respond
-            bg_ser.writeln('s')
-
-        # if no new data has been received for serialRequestInteval seconds
-        if (time.time() - prevDataTime) >= float(config['interval']):
-            bg_ser.writeln("t")  # request new from controller
-            prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
-
-        elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
-            #something is wrong: controller is not responding to data requests
-            logMessage("Error: controller is not responding to new data requests")
-
-
         while True:
             line = bg_ser.read_line()
             message = bg_ser.read_message()
             if line is None and message is None:
                 break
             if line is not None:
+                prevSerialReceive = time.time()
                 try:
                     if line[0] == 'T':
                         # process temperature line
@@ -796,6 +787,7 @@ while run:
                         # Control settings received
                         cv = line[2:] # keep as string, do not decode
                     elif line[0] == 'N':
+                        logMessage("version received")
                         pass  # version number received. Do nothing, just ignore
                     elif line[0] == 'h':
                         deviceList['available'] = json.loads(line[2:])
@@ -823,6 +815,25 @@ while run:
                 except Exception, e:  # catch all exceptions, because out of date file could cause errors
                     logMessage("Error while expanding log message '" + message + "'" + str(e))
 
+        if(time.time() - prevSettingsUpdate) > 60:
+            # Request Settings from controller to stay up to date
+            # Controller should send updates on changes, this is a periodical update to ensure it is up to date
+            prevSettingsUpdate += 5 # give the controller some time to respond
+            bg_ser.writeln('s')
+
+        # if no new data has been received for serialRequestInteval seconds
+        if (time.time() - prevDataTime) >= float(config['interval']):
+            bg_ser.writeln("t")  # request new from controller
+            prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
+
+        if (time.time() - prevSerialReceive > 30):
+            bg_ser.writeln("n")  # request version string to test whether we still have connection. The result is discarded above.
+            
+        if (time.time() - prevSerialReceive > 60):
+            #something is wrong: controller is not responding to data requests
+            logMessage("Error: controller is not responding anymore. Exiting script.")
+            sys.exit()
+        
         # Check for update from temperature profile
         if cs['mode'] == 'p':
             newTemp = temperatureProfile.getNewTemp(util.scriptPath())

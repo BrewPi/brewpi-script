@@ -53,18 +53,22 @@ class BackGroundSerial():
             return None
 
     def writeln(self, data):
-        self.write(data + "\n")
+        return self.write(data + "\n")
 
     def write(self, data):
         self.exit_on_fatal_error()
         # Prevent writing to a port in error state.
         # This will leave unclosed handles to serial on the system
+        written = 0
         if not self.error:
             try:
-                self.ser.write(data)
+                written = self.ser.write(data)
+                if written < len(data):
+                    self.error = True
             except (IOError, OSError, SerialException) as e:
                 logMessage('Serial Error: {0})'.format(str(e)))
                 self.error = True
+        return written
 
     def exit_on_fatal_error(self):
         if self.fatal_error is not None:
@@ -102,14 +106,18 @@ class BackGroundSerial():
                     # try to restore serial by closing and opening again
                     self.ser.close()
                     self.ser.open()
-                    self.error = False
+                    # test serial to see if it is restored by writing an empty line (which is ignored by the controller)
+                    if writeln("") > 0:
+                        self.error = False
+                    else:
+                        self.fatal_error = 'Lost serial connection. Cannot write to serial'
+
                 except (ValueError, OSError, SerialException) as e:
                     if self.ser.isOpen():
                         self.ser.flushInput() # will help to close open handles
                         self.ser.flushOutput() # will help to close open handles
                     self.ser.close()
                     self.fatal_error = 'Lost serial connection. Error: {0})'.format(str(e))
-                    self.run = False
 
             # max 10 ms delay. At baud 57600, max 576 characters are received while waiting
             time.sleep(0.01)
