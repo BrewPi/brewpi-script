@@ -107,7 +107,7 @@ class BackGroundSerial():
                     self.ser.close()
                     self.ser.open()
                     # test serial to see if it is restored by writing an empty line (which is ignored by the controller)
-                    if writeln("") > 0:
+                    if self.writeln("") > 0:
                         self.error = False
                     else:
                         self.fatal_error = 'Lost serial connection. Cannot write to serial'
