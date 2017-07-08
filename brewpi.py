@@ -379,12 +379,7 @@ if ser is not None:
     # set up background serial processing, which will continuously read data from serial and put whole lines in a queue
     bg_ser = BackGroundSerial(ser)
     bg_ser.start()
-    # request settings from controller, processed later when reply is received
-    bg_ser.writeln('s')  # request control settings cs
-    bg_ser.writeln('c')  # request control constants cc
-    bg_ser.writeln('v')  # request control variables cv
-    # answer from controller is received asynchronously later.
-
+    
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows))
@@ -411,10 +406,12 @@ s.listen(10)  # Create a backlog queue for up to 10 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(serialCheckInterval)
 
-
-prevDataTime = 0.0  # keep track of time between new data requests
-prevTimeOut = time.time()
-prevSettingsUpdate = time.time()
+# set all times to zero to force updating them
+prevDataTime = 0.0
+prevLogTime = 0.0
+prevTimeOut = 0.0
+prevSettingsUpdate = 0.0
+# except timeout for serial not responding
 prevSerialReceive = time.time()
 
 run = 1
@@ -731,46 +728,47 @@ while run:
                         newData = json.loads(line[2:])
                         temperatures = newData # temperatures is sent to the web UI on request
 
-                        # print it to stdout
-                        if outputTemperature:
-                            print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
+                        if (time.time() - prevLogTime) > float(config['interval']):
+                            # store time of last new data for interval check
+                            prevLogTime = time.time()
 
-                        # store time of last new data for interval check
-                        prevDataTime = time.time()
+                            # print it to stdout
+                            if outputTemperature:
+                                print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
 
-                        if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
-                            continue  # skip if logging is paused or stopped
+                            if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
+                                continue  # skip if logging is paused or stopped
 
-                        # copy/rename keys
-                        for key in newData:
-                            prevTempJson[renameTempKey(key)] = newData[key]
+                            # copy/rename keys
+                            for key in newData:
+                                prevTempJson[renameTempKey(key)] = newData[key]
 
-                        newRow = prevTempJson
-                        # add to JSON file
-                        brewpiJson.addRow(localJsonFileName, newRow)
-                        # copy to www dir.
-                        # Do not write directly to www dir to prevent blocking www file.
-                        shutil.copyfile(localJsonFileName, wwwJsonFileName)
-                        #write csv file too
-                        csvFile = open(localCsvFileName, "a")
-                        try:
-                            lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-                                           json.dumps(newRow['BeerTemp']) + ';' +
-                                           json.dumps(newRow['BeerSet']) + ';' +
-                                           json.dumps(newRow['BeerAnn']) + ';' +
-                                           json.dumps(newRow['FridgeTemp']) + ';' +
-                                           json.dumps(newRow['FridgeSet']) + ';' +
-                                           json.dumps(newRow['FridgeAnn']) + ';' +
-                                           json.dumps(newRow['State']) + ';' +
-                                           json.dumps(newRow['Log1Temp']) + ';' +
-                                           json.dumps(newRow['Log2Temp']) + ';' +
-                                           json.dumps(newRow['Log3Temp']) + '\n')
-                            csvFile.write(lineToWrite)
-                        except KeyError, e:
-                            logMessage("KeyError in line from controller: %s" % str(e))
+                            newRow = prevTempJson
+                            # add to JSON file
+                            brewpiJson.addRow(localJsonFileName, newRow)
+                            # copy to www dir.
+                            # Do not write directly to www dir to prevent blocking www file.
+                            shutil.copyfile(localJsonFileName, wwwJsonFileName)
+                            #write csv file too
+                            csvFile = open(localCsvFileName, "a")
+                            try:
+                                lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+                                            json.dumps(newRow['BeerTemp']) + ';' +
+                                            json.dumps(newRow['BeerSet']) + ';' +
+                                            json.dumps(newRow['BeerAnn']) + ';' +
+                                            json.dumps(newRow['FridgeTemp']) + ';' +
+                                            json.dumps(newRow['FridgeSet']) + ';' +
+                                            json.dumps(newRow['FridgeAnn']) + ';' +
+                                            json.dumps(newRow['State']) + ';' +
+                                            json.dumps(newRow['Log1Temp']) + ';' +
+                                            json.dumps(newRow['Log2Temp']) + ';' +
+                                            json.dumps(newRow['Log3Temp']) + '\n')
+                                csvFile.write(lineToWrite)
+                            except KeyError, e:
+                                logMessage("KeyError in line from controller: %s" % str(e))
 
-                        csvFile.close()
-                        shutil.copyfile(localCsvFileName, wwwCsvFileName)
+                            csvFile.close()
+                            shutil.copyfile(localCsvFileName, wwwCsvFileName)
                     elif line[0] == 'D':
                         # debug message received, should already been filtered out, but print anyway here.
                         logMessage("Finding a log message here should not be possible, report to the devs!")
@@ -787,7 +785,6 @@ while run:
                         # Control settings received
                         cv = line[2:] # keep as string, do not decode
                     elif line[0] == 'N':
-                        logMessage("version received")
                         pass  # version number received. Do nothing, just ignore
                     elif line[0] == 'h':
                         deviceList['available'] = json.loads(line[2:])
@@ -821,13 +818,10 @@ while run:
             prevSettingsUpdate += 5 # give the controller some time to respond
             bg_ser.writeln('s')
 
-        # if no new data has been received for serialRequestInteval seconds
-        if (time.time() - prevDataTime) >= float(config['interval']):
-            bg_ser.writeln("t")  # request new from controller
-            prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
-
-        if (time.time() - prevSerialReceive > 30):
-            bg_ser.writeln("n")  # request version string to test whether we still have connection. The result is discarded above.
+        # update temperatures every 5 seconds
+        if (time.time() - prevDataTime) >= 5:
+            bg_ser.writeln("t")  # request new temperatures from controller
+            prevDataTime = time.time()
             
         if (time.time() - prevSerialReceive > 60):
             #something is wrong: controller is not responding to data requests
