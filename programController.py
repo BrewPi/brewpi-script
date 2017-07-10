@@ -61,15 +61,19 @@ class LightYModem:
     - file size (ascii) followed by space?
     """
 
-    packet_len = 1024
-    stx = 2
+    soh = 1  # 128 byte blocks
+    stx = 2  # 1K blocks
     eot = 4
     ack = 6
     nak = 0x15
-    ca =  0x18
-    crc16 = 0x43
-    abort1 = 0x41
-    abort2 = 0x61
+    ca = 0x18  # 24
+    crc16 = 0x43  # 67  'C
+    abort1 = 0x41  # 65  'A'
+    abort2 = 0x61  # 97 'a'
+
+    packet_len = 128
+    expected_packet_len = packet_len + 5
+    packet_mark = soh
 
     def __init__(self):
         self.seq = None
@@ -91,9 +95,9 @@ class LightYModem:
         data = data.ljust(LightYModem.packet_len)
         seqchr = asbyte(self.seq & 0xFF)
         seqchr_neg = asbyte((-self.seq-1) & 0xFF)
-        crc16 = '\x00\x00'
-        packet = asbyte(LightYModem.stx) + seqchr + seqchr_neg + data + crc16
-        if len(packet)!=1029:
+        crc16 = b'\x00\x00'
+        packet = asbyte(LightYModem.packet_mark) + seqchr + seqchr_neg + data + crc16
+        if len(packet)!= LightYModem.expected_packet_len:
             raise Exception("packet length is wrong!")
 
         self.ymodem.write(packet)
@@ -145,27 +149,11 @@ class LightYModem:
         return response
 
 
-def fetchBoardSettings(boardsFile, boardType):
-    boardSettings = {}
-    for line in boardsFile:
-        if line.startswith(boardType):
-            setting = line.replace(boardType + '.', '', 1).strip()  # strip board name, period and \n
-            [key, sign, val] = setting.rpartition('=')
-            boardSettings[key] = val
-    return boardSettings
-
-
-def loadBoardsFile(arduinohome):
-    boardsFileContent = None
-    try:
-        boardsFileContent = open(arduinohome + 'hardware/arduino/boards.txt', 'rb').readlines()
-    except IOError:
-        printStdErr("Could not read boards.txt from Arduino, probably because Arduino has not been installed")
-        printStdErr("Please install it with: sudo apt-get install arduino-core")
-    return boardsFileContent
-
 def programController(config, boardType, hexFile, system1File, system2File, useDfu, restoreWhat):
     programmer = SerialProgrammer.create(config, boardType)
+    if programmer is None:
+        printStdErr("Couldn't detect a compatible board to program")
+        return 0
     return programmer.program(hexFile, system1File, system2File, useDfu, restoreWhat)
 
 
@@ -176,7 +164,7 @@ def json_decode_response(line):
         printStdErr("JSON decode error: " + str(e))
         printStdErr("Line received was: " + line)
 
-msg_map = { "a" : "Arduino" }
+msg_map = { "a" : "unknown board type" }
 
 class SerialProgrammer:
     @staticmethod
@@ -187,9 +175,11 @@ class SerialProgrammer:
         elif boardType == 'photon':
             msg_map["a"] = "Photon"
             programmer = SparkProgrammer(config, boardType)
+        elif boardType == 'P1':
+            msg_map["a"] = "P1"
+            programmer = SparkProgrammer(config, boardType)
         else:
-            msg_map["a"] = "Arduino"
-            programmer = ArduinoProgrammer(config, boardType)
+            programmer = None
         return programmer
 
     def __init__(self, config):
@@ -257,7 +247,6 @@ class SerialProgrammer:
                 if not self.flash_file(system1File):
                     return 0
 
-                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 1. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -268,7 +257,6 @@ class SerialProgrammer:
                 if not self.flash_file(system2File):
                     return 0
 
-                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 2. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -278,7 +266,6 @@ class SerialProgrammer:
                 if not self.flash_file(hexFile):
                     return 0
 
-                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing user part. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -446,7 +433,7 @@ class SerialProgrammer:
         if setTestMode:
             self.ser.write('j{mode:t}\n')
         time.sleep(5)  # resetting EEPROM takes a while, wait 5 seconds
-        # read log messages from arduino
+        # read log messages from controller
         while 1:  # read all lines on serial interface
             line = self.ser.readline()
             if line:  # line available?
@@ -532,7 +519,7 @@ class SerialProgrammer:
             ser.write("U" + json.dumps(device) + "\n")
 
             requestTime = time.time()
-            # read log messages from arduino
+            # read log messages from controller
             while 1:  # read all lines on serial interface
                 line = ser.readline()
                 if line:  # line available?
@@ -552,10 +539,8 @@ class SparkProgrammer(SerialProgrammer):
         self.boardType = boardType
 
     def flash_file(self, hexFile):
-        self.ser.write('F')
-        line = self.ser.readline()
-        printStdErr(line)
-        time.sleep(0.2)
+        self.ser.write("F\n")
+        time.sleep(1)
 
         file = open(hexFile, 'rb')
         result = LightYModem().transfer(file, self.ser, stderr)
@@ -564,113 +549,3 @@ class SparkProgrammer(SerialProgrammer):
         printStdErr("File flashed successfully" if success else "Problem flashing file: " + str(result) +
                                                                 "\nPlease try again.")
         return success
-
-
-class ArduinoProgrammer(SerialProgrammer):
-    def __init__(self, config, boardType):
-        SerialProgrammer.__init__(self, config)
-        self.boardType = boardType
-
-    def delay_serial_open(self):
-        if self.boardType == "uno":
-            time.sleep(5)  # give the arduino some time to reboot in case of an Arduino UNO
-
-    def reset_leonardo(self):
-        if self.ser:
-            self.ser.close()
-        del self.ser
-        self.ser = None
-        if self.open_serial(self.config, 1200, None):
-            self.ser.close()
-            time.sleep(2)  # give the bootloader time to start up
-            self.ser = None
-            return True
-        else:
-            printStdErr("Could not open serial port at 1200 baud to reset Arduino Leonardo")
-            return False
-
-
-    def flash_file(self, hexFile):
-        config, boardType = self.config, self.boardType
-        printStdErr("Loading programming settings from board.txt")
-        arduinohome = config.get('arduinoHome', '/usr/share/arduino/')  # location of Arduino sdk
-        avrdudehome = config.get('avrdudeHome', arduinohome + 'hardware/tools/')  # location of avr tools
-        avrsizehome = config.get('avrsizeHome', '')  # default to empty string because avrsize is on path
-        avrconf = config.get('avrConf', avrdudehome + 'avrdude.conf')  # location of global avr conf
-
-        boardsFile = loadBoardsFile(arduinohome)
-        if not boardsFile:
-            return False
-        boardSettings = fetchBoardSettings(boardsFile, boardType)
-
-        # parse the Arduino board file to get the right program settings
-        for line in boardsFile:
-            if line.startswith(boardType):
-                # strip board name, period and \n
-                setting = line.replace(boardType + '.', '', 1).strip()
-                [key, sign, val] = setting.rpartition('=')
-                boardSettings[key] = val
-
-        printStdErr("Checking hex file size with avr-size...")
-
-        # start programming the Arduino
-        avrsizeCommand = avrsizehome + 'avr-size ' + "\"" + hexFile + "\""
-
-        # check program size against maximum size
-        p = sub.Popen(avrsizeCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True)
-        output, errors = p.communicate()
-        if errors != "":
-            printStdErr('avr-size error: ' + errors)
-            return False
-
-        programSize = output.split()[7]
-        printStdErr(('Program size: ' + programSize +
-                     ' bytes out of max ' + boardSettings['upload.maximum_size']))
-
-        # Another check just to be sure!
-        if int(programSize) > int(boardSettings['upload.maximum_size']):
-            printStdErr("ERROR: program size is bigger than maximum size for your Arduino " + boardType)
-            return False
-
-        hexFileDir = os.path.dirname(hexFile)
-        hexFileLocal = os.path.basename(hexFile)
-
-        if boardType == 'leonardo':
-            if not self.reset_leonardo():
-                return False
-
-        time.sleep(1)
-        # Get serial port while in bootloader
-        bootLoaderPort = util.findSerialPort(bootLoader=True)
-        if not bootLoaderPort:
-            printStdErr("ERROR: could not find port in bootloader")
-
-        programCommand = (avrdudehome + 'avrdude' +
-                          ' -F ' +  # override device signature check
-                          ' -e ' +  # erase flash and eeprom before programming. This prevents issues with corrupted EEPROM
-                          ' -p ' + boardSettings['build.mcu'] +
-                          ' -c ' + boardSettings['upload.protocol'] +
-                          ' -b ' + boardSettings['upload.speed'] +
-                          ' -P ' + bootLoaderPort +
-                          ' -U ' + 'flash:w:' + "\"" + hexFileLocal + "\"" +
-                          ' -C ' + avrconf)
-
-        printStdErr("Programming Arduino with avrdude: " + programCommand)
-
-
-        p = sub.Popen(programCommand, stdout=sub.PIPE, stderr=sub.PIPE, shell=True, cwd=hexFileDir)
-        output, errors = p.communicate()
-
-        # avrdude only uses stderr, append its output to the returnString
-        printStdErr("Result of invoking avrdude:\n" + errors)
-
-        if("bytes of flash verified" in errors):
-            printStdErr("Avrdude done, programming succesful!")
-        else:
-            printStdErr("There was an error while programming.")
-            return False
-
-        printStdErr("Giving the Arduino a few seconds to power up...")
-        self.delay(6)
-        return True
-
