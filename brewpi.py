@@ -81,7 +81,7 @@ from backgroundserial import BackGroundSerial
 # Settings will be read from controller, initialize with same defaults as controller
 # This is mainly to show what's expected. Will all be overwritten on the first update from the controller
 
-compatibleHwVersion = "0.4.0"
+compatibleHwVersion = "0.5.0"
 
 # Control Settings
 cs = dict(mode='b', beerSet=20.0, fridgeSet=20.0)
@@ -92,10 +92,14 @@ cc = dict()
 # Control variables (json string, sent directly to browser without decoding)
 cv = "{}"
 
+# All temperatures in the system and the current state
+temperatures = {}
+
 # listState = "", "d", "h", "dh" to reflect whether the list is up to date for installed (d) and available (h)
 deviceList = dict(listState="", installed=[], available=[])
 
-lcdText = ['Script starting up', ' ', ' ', ' ']
+# lastSerialTraffic times how long ago data was succesfully received from the controller. If it has been over 60 seconds ago, we quit.
+lastSerialTraffic = time.time
 
 # Read in command line arguments
 try:
@@ -329,25 +333,26 @@ def resumeLogging():
     else:
         return {'status': 1, 'statusMessage': "Logging was not paused."}
 
+logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
+
+logMessage("Connecting to controller...") 
 # bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
 ser = util.setupSerial(config, time_out=0)
 
 if not ser:
     exit(1)
 
-logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
-# wait for 10 seconds to allow an Uno to reboot (in case an Uno is being used)
-time.sleep(float(config.get('startupDelay', 10)))
+# wait an optional startup delay after serial connect. Could be needed to skip a bootloader, default is no delay
+time.sleep(float(config.get('startupDelay', 0)))
 
 
 logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(ser)
 if hwVersion is None:
     logMessage("Warning: Cannot receive version number from controller. " +
-               "Your controller is either not programmed or running a very old version of BrewPi. " +
-               "Please upload a new version of BrewPi to your controller.")
-    # script will continue so you can at least program the controller
-    lcdText = ['Could not receive', 'version from controller', 'Please (re)program', 'your controller']
+               "This could be because your controller is not programmed or running a very old version of BrewPi." +
+               "This script will now exit.")
+    exit(1)
 else:
     logMessage("Found " + hwVersion.toExtendedString() + \
                " on port " + ser.name + "\n")
@@ -374,12 +379,7 @@ if ser is not None:
     # set up background serial processing, which will continuously read data from serial and put whole lines in a queue
     bg_ser = BackGroundSerial(ser)
     bg_ser.start()
-    # request settings from controller, processed later when reply is received
-    bg_ser.writeln('s')  # request control settings cs
-    bg_ser.writeln('c')  # request control constants cc
-    bg_ser.writeln('v')  # request control variables cv
-    # answer from controller is received asynchronously later.
-
+    
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
 useInetSocket = bool(config.get('useInetSocket', is_windows))
@@ -406,11 +406,13 @@ s.listen(10)  # Create a backlog queue for up to 10 connections
 # blocking socket functions wait 'serialCheckInterval' seconds
 s.settimeout(serialCheckInterval)
 
-
-prevDataTime = 0.0  # keep track of time between new data requests
-prevTimeOut = time.time()
-prevLcdUpdate = time.time()
-prevSettingsUpdate = time.time()
+# set all times to zero to force updating them
+prevDataTime = 0.0
+prevLogTime = 0.0
+prevTimeOut = 0.0
+prevSettingsUpdate = 0.0
+# except timeout for serial not responding
+prevSerialReceive = time.time()
 
 run = 1
 
@@ -422,7 +424,9 @@ prevTempJson = {
     "FridgeTemp": 0,
     "BeerAnn": None,
     "FridgeAnn": None,
-    "RoomTemp": None,
+    "Log1Temp": None,
+    "Log2Temp": None,
+    "Log3Temp": None,
     "State": None,
     "BeerSet": 0,
     "FridgeSet": 0}
@@ -435,7 +439,9 @@ def renameTempKey(key):
         "ft": "FridgeTemp",
         "fs": "FridgeSet",
         "fa": "FridgeAnn",
-        "rt": "RoomTemp",
+        "lt1": "Log1Temp",
+        "lt2": "Log2Temp",
+        "lt3": "Log3Temp",
         "s": "State",
         "t": "Time"}
     return rename.get(key, key)
@@ -465,14 +471,14 @@ while run:
             value = ""
         if messageType == "ack":  # acknowledge request
             conn.send('ack')
-        elif messageType == "lcd":  # lcd contents requested
-            conn.send(json.dumps(lcdText))
         elif messageType == "getMode":  # echo cs['mode'] setting
             conn.send(cs['mode'])
         elif messageType == "getFridge":  # echo fridge temperature setting
             conn.send(json.dumps(cs['fridgeSet']))
         elif messageType == "getBeer":  # echo fridge temperature setting
             conn.send(json.dumps(cs['beerSet']))
+        elif messageType == "getTemperatures":
+            conn.send(json.dumps(temperatures))
         elif messageType == "getControlConstants":
             conn.send(json.dumps(cc))
         elif messageType == "getControlSettings":
@@ -709,83 +715,64 @@ while run:
         if hwVersion is None:
             continue  # do nothing with the serial port when the controller has not been recognized
 
-        if(time.time() - prevLcdUpdate) > 5:
-            # request new LCD text
-            prevLcdUpdate += 5 # give the controller some time to respond
-            bg_ser.writeln('l')
-
-        if(time.time() - prevSettingsUpdate) > 60:
-            # Request Settings from controller to stay up to date
-            # Controller should send updates on changes, this is a periodical update to ensure it is up to date
-            prevSettingsUpdate += 5 # give the controller some time to respond
-            bg_ser.writeln('s')
-
-        # if no new data has been received for serialRequestInteval seconds
-        if (time.time() - prevDataTime) >= float(config['interval']):
-            bg_ser.writeln("t")  # request new from controller
-            prevDataTime += 5 # give the controller some time to respond to prevent requesting twice
-
-        elif (time.time() - prevDataTime) > float(config['interval']) + 2 * float(config['interval']):
-            #something is wrong: controller is not responding to data requests
-            logMessage("Error: controller is not responding to new data requests")
-
-
         while True:
             line = bg_ser.read_line()
             message = bg_ser.read_message()
             if line is None and message is None:
                 break
             if line is not None:
+                prevSerialReceive = time.time()
                 try:
                     if line[0] == 'T':
-                        # print it to stdout
-                        if outputTemperature:
-                            print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
-
-                        # store time of last new data for interval check
-                        prevDataTime = time.time()
-
-                        if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
-                            continue  # skip if logging is paused or stopped
-
                         # process temperature line
                         newData = json.loads(line[2:])
-                        # copy/rename keys
-                        for key in newData:
-                            prevTempJson[renameTempKey(key)] = newData[key]
+                        temperatures = newData # temperatures is sent to the web UI on request
 
-                        newRow = prevTempJson
-                        # add to JSON file
-                        brewpiJson.addRow(localJsonFileName, newRow)
-                        # copy to www dir.
-                        # Do not write directly to www dir to prevent blocking www file.
-                        shutil.copyfile(localJsonFileName, wwwJsonFileName)
-                        #write csv file too
-                        csvFile = open(localCsvFileName, "a")
-                        try:
-                            lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
-                                           json.dumps(newRow['BeerTemp']) + ';' +
-                                           json.dumps(newRow['BeerSet']) + ';' +
-                                           json.dumps(newRow['BeerAnn']) + ';' +
-                                           json.dumps(newRow['FridgeTemp']) + ';' +
-                                           json.dumps(newRow['FridgeSet']) + ';' +
-                                           json.dumps(newRow['FridgeAnn']) + ';' +
-                                           json.dumps(newRow['State']) + ';' +
-                                           json.dumps(newRow['RoomTemp']) + '\n')
-                            csvFile.write(lineToWrite)
-                        except KeyError, e:
-                            logMessage("KeyError in line from controller: %s" % str(e))
+                        if (time.time() - prevLogTime) > float(config['interval']):
+                            # store time of last new data for interval check
+                            prevLogTime = time.time()
 
-                        csvFile.close()
-                        shutil.copyfile(localCsvFileName, wwwCsvFileName)
+                            # print it to stdout
+                            if outputTemperature:
+                                print(time.strftime("%b %d %Y %H:%M:%S  ") + line[2:])
+
+                            if config['dataLogging'] == 'paused' or config['dataLogging'] == 'stopped':
+                                continue  # skip if logging is paused or stopped
+
+                            # copy/rename keys
+                            for key in newData:
+                                prevTempJson[renameTempKey(key)] = newData[key]
+
+                            newRow = prevTempJson
+                            # add to JSON file
+                            brewpiJson.addRow(localJsonFileName, newRow)
+                            # copy to www dir.
+                            # Do not write directly to www dir to prevent blocking www file.
+                            shutil.copyfile(localJsonFileName, wwwJsonFileName)
+                            #write csv file too
+                            csvFile = open(localCsvFileName, "a")
+                            try:
+                                lineToWrite = (time.strftime("%b %d %Y %H:%M:%S;") +
+                                            json.dumps(newRow['BeerTemp']) + ';' +
+                                            json.dumps(newRow['BeerSet']) + ';' +
+                                            json.dumps(newRow['BeerAnn']) + ';' +
+                                            json.dumps(newRow['FridgeTemp']) + ';' +
+                                            json.dumps(newRow['FridgeSet']) + ';' +
+                                            json.dumps(newRow['FridgeAnn']) + ';' +
+                                            json.dumps(newRow['State']) + ';' +
+                                            json.dumps(newRow['Log1Temp']) + ';' +
+                                            json.dumps(newRow['Log2Temp']) + ';' +
+                                            json.dumps(newRow['Log3Temp']) + '\n')
+                                csvFile.write(lineToWrite)
+                            except KeyError, e:
+                                logMessage("KeyError in line from controller: %s" % str(e))
+
+                            csvFile.close()
+                            shutil.copyfile(localCsvFileName, wwwCsvFileName)
                     elif line[0] == 'D':
                         # debug message received, should already been filtered out, but print anyway here.
                         logMessage("Finding a log message here should not be possible, report to the devs!")
                         logMessage("Line received was: {0}".format(line))
-                    elif line[0] == 'L':
-                        # lcd content received
-                        prevLcdUpdate = time.time()
-                        lcdText = json.loads(line[2:])
                     elif line[0] == 'C':
                         # Control constants received
                         cc = json.loads(line[2:])
@@ -825,6 +812,22 @@ while run:
                 except Exception, e:  # catch all exceptions, because out of date file could cause errors
                     logMessage("Error while expanding log message '" + message + "'" + str(e))
 
+        if(time.time() - prevSettingsUpdate) > 60:
+            # Request Settings from controller to stay up to date
+            # Controller should send updates on changes, this is a periodical update to ensure it is up to date
+            prevSettingsUpdate += 5 # give the controller some time to respond
+            bg_ser.writeln('s')
+
+        # update temperatures every 5 seconds
+        if (time.time() - prevDataTime) >= 5:
+            bg_ser.writeln("t")  # request new temperatures from controller
+            prevDataTime = time.time()
+            
+        if (time.time() - prevSerialReceive > 60):
+            #something is wrong: controller is not responding to data requests
+            logMessage("Error: controller is not responding anymore. Exiting script.")
+            sys.exit()
+        
         # Check for update from temperature profile
         if cs['mode'] == 'p':
             newTemp = temperatureProfile.getNewTemp(util.scriptPath())

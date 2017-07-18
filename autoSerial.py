@@ -17,7 +17,8 @@ known_devices = [
     {'vid': 0x2a03, 'pid': 0x0043, 'name': "Arduino Uno"},
     {'vid': 0x2a03, 'pid': 0x0001, 'name': "Arduino Uno"},
     {'vid': 0x1D50, 'pid': 0x607D, 'name': "Particle Core"},
-    {'vid': 0x2B04, 'pid': 0xC006, 'name': "Particle Photon"}
+    {'vid': 0x2B04, 'pid': 0xC006, 'name': "Particle Photon"},
+    {'vid': 0x2B04, 'pid': 0xC008, 'name': "Particle P1"}
 ]
 
 def recognised_device_name(device):

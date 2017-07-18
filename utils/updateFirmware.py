@@ -78,7 +78,9 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
                 return 0
             if "Particle" in name:
                 family = "Particle"
-                if "Photon" in name:
+                if "P1" in name:
+                    board = 'p1'
+                elif "Photon" in name:
                     board = 'photon'
                 elif "Core" in name:
                     board = 'core'
@@ -133,7 +135,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         return -1
 
     # default tag is latest stable tag, or latest unstable tag if no stable tag is found
-    default_choice = next((i for i, t in enumerate(compatibleTags) if t in stableTags), compatibleTags[0])
+    default_choice = next((i for i, t in enumerate(compatibleTags) if t in stableTags), 0)
     tag = compatibleTags[default_choice]
 
     if userInput:
@@ -205,16 +207,16 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         printStdErr("Error: Device family {0} not recognized".format(family))
         return -1
 
-    if board == "photon":
+    if board == "photon" or board == "p1":
         if hwVersion:
             oldVersion = hwVersion.version.vstring
         else:
             oldVersion = "0.0.0"
-        latestSystemTag = releases.getLatestTagForSystem(prerelease=beta, since=oldVersion)
+        latestSystemTag = releases.getLatestTagForSystem(board, prerelease=beta, since=oldVersion)
         if latestSystemTag is not None:
-            printStdErr("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
-            system1 = releases.getBin(latestSystemTag, ['photon', 'system-part1', '.bin'])
-            system2 = releases.getBin(latestSystemTag, ['photon', 'system-part2', '.bin'])
+            printStdErr("Updated system firmware for the {0} found in release {1}".format(board, latestSystemTag))
+            system1 = releases.getBin(latestSystemTag, [board, 'system-part1', '.bin'])
+            system2 = releases.getBin(latestSystemTag, [board, 'system-part2', '.bin'])
             if system1:
                 printStdErr("Downloaded new system firmware to:\n")
                 printStdErr("{0}\nand\n".format(system1))

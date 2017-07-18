@@ -23,7 +23,7 @@
 	A copy of this file is included with the python script, so it can parse it to extract the log strings.
 	The python script receives the messages as a few IDs and values in a JSON string.
 	It uses this file to expand that to the full message.
-	Not storing the full strings, but only the ID on the Arduino saves a lot of PROGMEM space.
+	Not storing the full strings, but only the ID saves a lot of program memory space.
 	At startup the python script extracts the version number from this file and compares it to its own local copy.
 	It will give a warning when the two strings do not match.
 */
@@ -61,7 +61,7 @@ enum errorMessages{
 enum warningMessages{
 // PiLink.cpp
 	MSG(WARNING_COULD_NOT_PROCESS_SETTING, "Could not process setting"),
-	MSG(WARNING_INVALID_COMMAND, "Invalid command received by Arduino: %c", character),
+	MSG(WARNING_INVALID_COMMAND, "Invalid command received by controller: %c", character),
 
 // OneWireTempSensor.cpp	
 	MSG(WARNING_TEMP_SENSOR_DISCONNECTED, "Temperature sensor disconnected pin %d, address %s", pinNr, addressString),
@@ -72,7 +72,11 @@ enum warningMessages{
 // TempSensorFallback.cpp
 	MSG(FALLING_BACK_ON_BACKUP_SENSOR, "Falling back on backup sensor."),
 
-	MSG(DS2413_DISCONNECTED, "OneWire actuator (DS2413) disconnected, address %s", addressString)
+// DS2413.cpp
+	MSG(DS2413_DISCONNECTED, "OneWire device (DS2413) disconnected, address %s", addressString),
+
+// DS2408.cpp
+	MSG(DS2408_DISCONNECTED, "OneWire device (DS2408) disconnected, address %s", addressString)
 
 }; // END enum warningMessages
 
@@ -107,9 +111,11 @@ enum infoMessages{
 	MSG(INFO_POSITIVE_DRIFT, "No peak detected. Drifting up after heating, current temp: %s, estimated peak: %s. Previous heat estimator: %s, New heat estimator: %s..", temperature, temperature, estimator, estimator),
 	MSG(INFO_NEGATIVE_DRIFT, "No peak detected. Drifting down after cooling, current temp: %s, estimated peak: %s. Previous cool estimator: %s, New cool estimator: %s..", temperature, temperature, estimator, estimator),
 
-	// TempSensorFallback.cpp
+// TempSensorFallback.cpp
     MSG(BACK_ON_MAIN_SENSOR, "Back on main sensor instead of backup sensor."),
 
-	// DS2413.cpp
-	MSG(DS2413_CONNECTED, "OneWire actuator (DS2413) connected, address %s", addressString)
+// DS2413.cpp
+	MSG(DS2413_CONNECTED, "OneWire device (DS2413) connected, address %s", addressString),
+// DS2408.cpp
+	MSG(DS2408_CONNECTED, "OneWire device (DS2408) connected, address %s", addressString)
 }; // END enum infoMessages
