@@ -212,7 +212,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
             oldVersion = hwVersion.version.vstring
         else:
             oldVersion = "0.0.0"
-        latestSystemTag = releases.getLatestTagForSystem(prerelease=beta, since=oldVersion)
+        latestSystemTag = releases.getLatestTagForSystem(board, prerelease=beta, since=oldVersion)
         if latestSystemTag is not None:
             printStdErr("Updated system firmware for the {0} found in release {1}".format(board, latestSystemTag))
             system1 = releases.getBin(latestSystemTag, [board, 'system-part1', '.bin'])
