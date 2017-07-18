@@ -130,7 +130,7 @@ def getPinList(boardType, shieldType):
                    {'val': 11, 'text': 'Output 2 (A1)', 'type': 'act'},
                    {'val': 10, 'text': 'Output 3 (A0)', 'type': 'act'},
                    {'val': 0, 'text': 'OneWire', 'type': 'onewire'}]
-    elif boardType == "P1" and shieldType == "V3":
+    elif boardType == "p1" and shieldType == "V3":
         pinList = [{'val': 25, 'text': 'Output Bottom 1', 'type': 'act'},
                    {'val': 24, 'text': 'Output Bottom 2', 'type': 'act'},
                    {'val': 4, 'text': 'Output Top 1', 'type': 'act'},
@@ -160,7 +160,7 @@ def pinListTest():
     print getPinListJson("core", "V2")
     print getPinListJson("photon", "V1")
     print getPinListJson("photon", "V2")
-    print getPinListJson("P1", "V3")
+    print getPinListJson("p1", "V3")
 
 if __name__ == "__main__":
     pinListTest()

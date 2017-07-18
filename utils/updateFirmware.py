@@ -79,7 +79,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
             if "Particle" in name:
                 family = "Particle"
                 if "P1" in name:
-                    board = 'P1'
+                    board = 'p1'
                 elif "Photon" in name:
                     board = 'photon'
                 elif "Core" in name:
@@ -207,12 +207,12 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         printStdErr("Error: Device family {0} not recognized".format(family))
         return -1
 
-    if board == "photon" or board == "P1":
+    if board == "photon" or board == "p1":
         if hwVersion:
             oldVersion = hwVersion.version.vstring
         else:
             oldVersion = "0.0.0"
-        latestSystemTag = releases.getLatestTagForSystem(prerelease=beta, since=oldVersion)
+        latestSystemTag = releases.getLatestTagForSystem(board, prerelease=beta, since=oldVersion)
         if latestSystemTag is not None:
             printStdErr("Updated system firmware for the {0} found in release {1}".format(board, latestSystemTag))
             system1 = releases.getBin(latestSystemTag, [board, 'system-part1', '.bin'])

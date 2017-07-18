@@ -113,15 +113,15 @@ class gitHubReleases:
                     return tag
         return None
 
-    def containsSystemImage(self, tag):
+    def containsSystemImage(self, board, tag):
         """
         Check wether the release contains a new system image for the Photon
         :param tag: release tag
         :return: True if release contains a system image
         """
-        return self.getBinUrl(tag, ['photon', 'system-part1', '.bin']) is not None
+        return self.getBinUrl(tag, [board, 'system-part1', '.bin']) is not None
 
-    def getLatestTagForSystem(self, prerelease, since = "0.0.0"):
+    def getLatestTagForSystem(self, board, prerelease, since = "0.0.0"):
         """
         Query what the latest tag was for which a system image was included
         :param prerelease: True if pre-releases should be included
@@ -135,7 +135,7 @@ class gitHubReleases:
                 continue
             if not prerelease and release["prerelease"] == True:
                 continue
-            if self.containsSystemImage(tag):
+            if self.containsSystemImage(board, tag):
                 return tag
         return None
 
@@ -153,15 +153,15 @@ class gitHubReleases:
 if __name__ == "__main__":
     # test code
     releases = gitHubReleases("https://api.github.com/repos/BrewPi/firmware")
-    latest = releases.getLatestTag('core', False)
-    print "Latest tag: " + latest
+    latest = releases.getLatestTag('p1', False)
+    print "Latest tag: " + str(latest)
     print "Downloading binary for latest tag"
-    localFileName = releases.getBin(latest, ["core", "bin"])
+    localFileName = releases.getBin(latest, ["p1", "bin"])
     if localFileName:
         print "Latest binary downloaded to " + localFileName
 
     print "Stable releases: ", releases.getTags(prerelease=False)
     print "All releases: ", releases.getTags(prerelease=True)
 
-    print "Latest stable system image in: ", releases.getLatestTagForSystem(prerelease=False)
-    print "Latest beta system image in: ", releases.getLatestTagForSystem(prerelease=True)
+    print "Latest stable system image in: ", releases.getLatestTagForSystem('p1', prerelease=False)
+    print "Latest beta system image in: ", releases.getLatestTagForSystem('p1', prerelease=True)

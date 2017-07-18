@@ -175,7 +175,7 @@ class SerialProgrammer:
         elif boardType == 'photon':
             msg_map["a"] = "Photon"
             programmer = SparkProgrammer(config, boardType)
-        elif boardType == 'P1':
+        elif boardType == 'p1':
             msg_map["a"] = "P1"
             programmer = SparkProgrammer(config, boardType)
         else:
