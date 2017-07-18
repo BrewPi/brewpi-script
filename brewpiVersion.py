@@ -92,7 +92,7 @@ class AvrInfo:
     board_mega = "mega"
     board_spark_core = "core"
     board_photon = "photon"
-    board_p1 = "P1"
+    board_p1 = "p1"
 
     boards = {'l': board_leonardo, 's': board_standard, 'm': board_mega, 'x': board_spark_core, 'y': board_photon, 'p': board_p1}
 
@@ -111,7 +111,7 @@ class AvrInfo:
                 board_mega: "Mega",
                 board_spark_core: "Core",
                 board_photon: "Photon",
-                board_p1: "P1"}
+                board_p1: "p1"}
 
     def __init__(self, s=None):
         self.version = LooseVersion("0.0.0")

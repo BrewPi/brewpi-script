@@ -53,7 +53,29 @@ def printHelp():
         print "--testmode\t set controller to test mode after flashing"
         print "--noreset\t do not reset EEPROM after flashing"
 
-
+def enterDfuMode():
+    global serialPorts
+    previousSerialPorts = serialPorts
+    serialPorts = list(autoSerial.find_compatible_serial_ports())
+    newPorts = list(set(serialPorts) - set(previousSerialPorts))
+    if len(newPorts):
+        print "Found new serial port connected: {0}".format(newPorts[0])
+        port = newPorts[0][0]
+        name = newPorts[0][1]
+        if name == "Particle Photon" or "Particle P1":
+            print "Putting {0} in DFU mode".format(name)
+            ser = serial.Serial(port)
+            try:
+                ser.baudrate = 14400 # this triggers a reboot in DFU mode
+                ser.baudrate = 57600 # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
+                ser.close()
+            except serial.serialutil.SerialException, ValueError:
+                pass # because device reboots while reconfiguring an exception is thrown, ignore
+            if ser.isOpen():
+                ser.close()
+            ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
+        else:
+            print "Automatically rebooting in DFU mode is not supported for {0}".format(name)
 
 # Read in command line arguments
 try:
@@ -247,7 +269,7 @@ while True:
                 exit(1)
 
             if device_type == 'photon' or device_type == 'p1':
-                if not releases.containsSystemImage(tag):
+                if not releases.containsSystemImage(device_type, tag):
                     # if the release is a pre-release, also include pre-releases when searching for latest system image
                     prerelease = releases.findByTag(tag)['prerelease']
                     latestSystemTag = releases.getLatestTagForSystem(prerelease)
@@ -282,7 +304,7 @@ while True:
                     print "Updating system firmware for the {0}, part 2: {1}".format(device_type, system2)
                     p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x8060000 -D {1}".format(pid_vid[device_type], system2), shell=True)
                     p.wait()
-
+                                        
                 print "Now writing BrewPi firmware {0} to {1}".format(binFile, device_type)
                 p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x80A0000:leave -D {1}".format(pid_vid[device_type], binFile), shell=True)
                 p.wait()
@@ -322,25 +344,5 @@ while True:
             print "Waiting until a DFU device is connected..."
         first_loop = False
         if autoDfu:
-            previousSerialPorts = serialPorts
-            serialPorts = list(autoSerial.find_compatible_serial_ports())
-            newPorts = list(set(serialPorts) - set(previousSerialPorts))
-            if len(newPorts):
-                print "Found new serial port connected: {0}".format(newPorts[0])
-                port = newPorts[0][0]
-                name = newPorts[0][1]
-                if name == "Particle Photon" or "Particle P1":
-                    print "Putting {0} in DFU mode".format(name)
-                    ser = serial.Serial(port)
-                    try:
-                        ser.baudrate = 14400 # this triggers a reboot in DFU mode
-                        ser.baudrate = 57600 # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
-                        ser.close()
-                    except serial.serialutil.SerialException, ValueError:
-                        pass # because device reboots while reconfiguring an exception is thrown, ignore
-                    if ser.isOpen():
-                        ser.close()
-                    ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
-                else:
-                    print "Automatically rebooting in DFU mode is not supported for {0}".format(name)
+            enterDfuMode()
     time.sleep(1)

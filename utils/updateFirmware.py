@@ -79,7 +79,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
             if "Particle" in name:
                 family = "Particle"
                 if "P1" in name:
-                    board = 'P1'
+                    board = 'p1'
                 elif "Photon" in name:
                     board = 'photon'
                 elif "Core" in name:
@@ -207,7 +207,7 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         printStdErr("Error: Device family {0} not recognized".format(family))
         return -1
 
-    if board == "photon" or board == "P1":
+    if board == "photon" or board == "p1":
         if hwVersion:
             oldVersion = hwVersion.version.vstring
         else:
