@@ -240,6 +240,7 @@ class SerialProgrammer:
         else:
             if not self.ser:
                 if not self.open_serial(self.config, 57600, 0.2):
+                    printStdErr("Could not open serial port to flash the firmware.")
                     return 0
             self.delay_serial_open()
             if system1File:
@@ -539,9 +540,10 @@ class SparkProgrammer(SerialProgrammer):
         self.boardType = boardType
 
     def flash_file(self, hexFile):
+        printStdErr("Triggering a firmware update with the ymodem protocol on the controller")
         self.ser.write("F\n")
         time.sleep(1)
-
+        printStdErr("Flashing file {0}".format(hexFile))
         file = open(hexFile, 'rb')
         result = LightYModem().transfer(file, self.ser, stderr)
         file.close()
