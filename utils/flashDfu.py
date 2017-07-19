@@ -272,7 +272,7 @@ while True:
                 if not releases.containsSystemImage(device_type, tag):
                     # if the release is a pre-release, also include pre-releases when searching for latest system image
                     prerelease = releases.findByTag(tag)['prerelease']
-                    latestSystemTag = releases.getLatestTagForSystem(prerelease)
+                    latestSystemTag = releases.getLatestTagForSystem(device_type, prerelease)
                 else:
                     latestSystemTag = tag
                 print ("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
