@@ -205,17 +205,7 @@ class SerialProgrammer:
             if self.fetch_current_version():
                 self.retrieve_settings_from_serial()
                 self.save_settings_to_file()
-
-        running_as_root = False
-        try:
-            running_as_root = os.getuid() == 0
-        except AttributeError:
-            pass # not running on Linux, use serial
-        if running_as_root and self.boardType == "photon":
-            # default to DFU mode when possible on the Photon. Serial is not always stable
-            printStdErr("\nFound a Photon and running as root/sudo, using DFU mode to flash firmware.")
-            useDfu = True
-
+        
         if useDfu:
             printStdErr("\nTrying to automatically reboot into DFU mode and update your firmware.")
             printStdErr("\nIf the Photon does not reboot into DFU mode automatically, please put it in DFU mode manually.")
