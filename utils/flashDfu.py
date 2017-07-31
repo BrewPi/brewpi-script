@@ -35,8 +35,6 @@ import autoSerial
 import serial
 from programController import SerialProgrammer
 
-releases = gitHubReleases("https://api.github.com/repos/brewpi/firmware")
-
 serialPorts = []
 
 def printHelp():
@@ -74,6 +72,7 @@ def enterDfuMode():
             if ser.isOpen():
                 ser.close()
             ser.baudrate = 57600 # don't leave serial port at 14400, or a reboot will be triggered later
+            time.sleep(1)
         else:
             print "Automatically rebooting in DFU mode is not supported for {0}".format(name)
 
@@ -251,6 +250,7 @@ while True:
 
         # download latest binary from GitHub if file not specified
         if not binFile:
+            releases = gitHubReleases("https://api.github.com/repos/brewpi/firmware")
             if tag is None:
                 print "Downloading latest firmware..."
                 tag = releases.getLatestTag(device_type, False)
@@ -275,6 +275,7 @@ while True:
                     latestSystemTag = releases.getLatestTagForSystem(device_type, prerelease)
                 else:
                     latestSystemTag = tag
+
                 print ("Updated system firmware for the photon found in release {0}".format(latestSystemTag))
                 system1 = releases.getBin(latestSystemTag, [device_type, 'system-part1', '.bin'])
                 system2 = releases.getBin(latestSystemTag, [device_type, 'system-part2', '.bin'])
@@ -301,13 +302,16 @@ while True:
                     print "Updating system firmware for the {0}, part 1: {1}".format(device_type, system1)
                     p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x8020000 -D {1}".format(pid_vid[device_type], system1), shell=True)
                     p.wait()
+                    time.sleep(1)
                     print "Updating system firmware for the {0}, part 2: {1}".format(device_type, system2)
                     p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x8060000 -D {1}".format(pid_vid[device_type], system2), shell=True)
                     p.wait()
-                                        
+                    time.sleep(1)
+
                 print "Now writing BrewPi firmware {0} to {1}".format(binFile, device_type)
                 p = subprocess.Popen(dfuPath + " -d {0} -a 0 -s 0x80A0000:leave -D {1}".format(pid_vid[device_type], binFile), shell=True)
                 p.wait()
+                time.sleep(1)
 
             print "Programming done"
 
@@ -322,9 +326,8 @@ while True:
                     config_copy['port'] = 'auto'
 
                 programmer = SerialProgrammer.create(config_copy, device_type)
-
                 # open serial port
-                print "Opening serial port"
+                print "Opening serial port to reset factory defaults"
                 if not programmer.open_serial_with_retry(config_copy, 57600, 1):
                     print "Could not open serial port after programming"
                 else:
