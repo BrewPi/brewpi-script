@@ -18,7 +18,6 @@ class BackGroundSerial():
         self.thread = None
         self.error = False
         self.fatal_error = None
-        self.run = False
 
     # public interface only has 4 functions: start/stop/read_line/write
     def start(self):
@@ -26,17 +25,14 @@ class BackGroundSerial():
         # without the timeout loosing the serial port goes undetected.
         self.ser.write_timeout = 2
         self.ser.inter_byte_timeout = 0.01 # necessary because of bug in in_waiting with sockets
-        self.run = True
         if not self.thread:
             self.thread = threading.Thread(target=self.__listen_thread)
             self.thread.setDaemon(True)
             self.thread.start()
 
     def stop(self):
-        self.run = False
-        if self.thread:
-            self.thread.join() # wait for background thread to terminate
-            self.thread = None
+        self.thread.run = False
+        self.thread = None
 
     def read_line(self):
         self.exit_on_fatal_error()
@@ -80,7 +76,8 @@ class BackGroundSerial():
             sys.exit("Terminating due to fatal serial error")
 
     def __listen_thread(self):
-        while self.run:
+        run = True
+        while run:
             new_data = ""
             if not self.error:
                 try:
