@@ -31,8 +31,9 @@ class BackGroundSerial():
             self.thread.start()
 
     def stop(self):
-        self.thread.run = False
-        self.thread = None
+        if self.thread is not None:
+            self.thread.run = False
+            self.thread = None
 
     def read_line(self):
         self.exit_on_fatal_error()

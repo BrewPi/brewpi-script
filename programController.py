@@ -67,7 +67,7 @@ class LightYModem:
     ack = 6
     nak = 0x15
     ca = 0x18  # 24
-    crc16 = 0x43  # 67  'C
+    crc16 = 0x43  # 67  'C'
     abort1 = 0x41  # 65  'A'
     abort2 = 0x61  # 97 'a'
 
@@ -94,17 +94,16 @@ class LightYModem:
         # pad string to 1024 chars
         data = data.ljust(LightYModem.packet_len)
         seqchr = asbyte(self.seq & 0xFF)
-        seqchr_neg = asbyte((-self.seq-1) & 0xFF)
+        seqchr_neg = asbyte((0 - self.seq - 1) & 0xFF)
         crc16 = b'\x00\x00'
         packet = asbyte(LightYModem.packet_mark) + seqchr + seqchr_neg + data + crc16
         if len(packet)!= LightYModem.expected_packet_len:
             raise Exception("packet length is wrong!")
-
+        printStdErr("sending packet nr %d " % (self.seq))
         self.ymodem.write(packet)
         self.ymodem.flush()
         response = self._read_response()
         if response==LightYModem.ack:
-            printStdErr("sent packet nr %d " % (self.seq))
             self.seq += 1
         return response
 
@@ -121,12 +120,21 @@ class LightYModem:
         data = file.read(LightYModem.packet_len)
         if len(data):
             response = self._send_ymodem_packet(data)
+        if response == LightYModem.nak:
+            time.sleep(1)
+            self.ymodem.flush()
+            response = self._send_ymodem_packet(data) # resend requested
         return response
 
     def send_filename_header(self, name, size):
         self.seq = 0
         packet = name + asbyte(0) + str(size) + ' '
-        return self._send_ymodem_packet(packet)
+        response = self._send_ymodem_packet(packet)
+        if response == LightYModem.nak:
+            time.sleep(1)
+            self.ymodem.flush()
+            response = self._send_ymodem_packet(packet) # resend requested
+        return response
 
     def transfer(self, file, ymodem, output):
         self.ymodem = ymodem
@@ -139,11 +147,11 @@ class LightYModem:
         size = file.tell()
         file.seek(0, os.SEEK_SET)
         response = self.send_filename_header("binary", size)
-        while response==LightYModem.ack:
+        while response == LightYModem.ack:
             response = self.send_packet(file, output)
 
         file.close()
-        if response==LightYModem.eot:
+        if response == LightYModem.eot:
             self._send_close()
 
         return response
@@ -231,13 +239,14 @@ class SerialProgrammer:
             if not self.ser:
                 if not self.open_serial(self.config, 57600, 0.2):
                     printStdErr("Could not open serial port to flash the firmware.")
-                    return 0
+                    return False
             self.delay_serial_open()
             if system1File:
                 printStdErr("Flashing system part 1.")
                 if not self.flash_file(system1File):
-                    return 0
+                    return False
 
+                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 1. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -246,8 +255,9 @@ class SerialProgrammer:
             if system2File:
                 printStdErr("Flashing system part 2.")
                 if not self.flash_file(system2File):
-                    return 0
+                    return False
 
+                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing system part 2. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
@@ -255,23 +265,15 @@ class SerialProgrammer:
 
             if(hexFile):
                 if not self.flash_file(hexFile):
-                    return 0
+                    return False
 
+                waitForReset(15)
                 if not self.open_serial_with_retry(self.config, 57600, 0.2):
                     printStdErr("Error opening serial port after flashing user part. Program script will exit.")
                     printStdErr("If your device stopped working, use flashDfu.py to restore it.")
                     return False
 
-        if self.ser:
-            self.ser.close
-            self.ser = None
-
-        waitForReset(15)
         printStdErr("Now checking new version.")
-        if not self.open_serial_with_retry(self.config, 57600, 0.2):
-            printStdErr("Error opening serial port after programming. Program script will exit. Settings are not restored.")
-            printStdErr("If your device stopped working, use flashDfu.py to restore it.")
-            return False
 
         self.fetch_new_version()
         self.reset_settings()
@@ -528,11 +530,35 @@ class SparkProgrammer(SerialProgrammer):
     def __init__(self, config, boardType):
         SerialProgrammer.__init__(self, config)
         self.boardType = boardType
+        self.triggered = False
 
-    def flash_file(self, hexFile):
+    def trigger(self):
         printStdErr("Triggering a firmware update with the ymodem protocol on the controller")
         self.ser.write("F\n")
         time.sleep(1)
+        self.triggered = True
+
+    def wait_until_ready(self, timeout=60):
+        """
+        sends ' ' (space) and waits for the corresponding ACK message. Once we have 3 of these in a row we can be fairly
+        certain the device is ready for ymodem.
+        :param channel:
+        :param timeout:
+        :return:
+        """
+        success_count = 0
+        while ymodem.readline():  # flush any existing data
+            success_count = 0
+
+        while success_count < 2:
+            self.ser.write(b' ')
+            result = self.ser.read()
+            if result and result[0]==LightYModem.ack:
+                success_count += 1
+
+    def flash_file(self, hexFile):
+        self.trigger()
+
         printStdErr("Flashing file {0}".format(hexFile))
         file = open(hexFile, 'rb')
         result = LightYModem().transfer(file, self.ser, stderr)
