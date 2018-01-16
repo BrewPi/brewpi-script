@@ -1,16 +1,20 @@
 # ======= settings above this line have been added automatically =======
-# uncomment settings here, these override the settings in defaults.cfg
+# if you uncomment settings here, these override the settings in defaults.cfg
 
+# ==== connection to BrewPi Spark ====
+# For usb, leave this set to auto
+# For wifi, comment the first line, and uncomment and edit the second line to match the ip address of the BrewPi Spark.
+# The IP address is shown on the display of the BrewPi Spark. Do not edit the port (6666).
+
+port = auto
+# port = socket://192.168.1.100:6666
+
+# You normally should not have to edit the settings below.
+
+# altport = /dev/ttyACM1
 # scriptPath = /home/brewpi/
 # wwwPath = /var/www/html
-# port = /dev/ttyACM0
-# altport = /dev/ttyACM1
-# boardType = p1
-# startupDelay = 1.0
 # debug = true
-
-# On a standard pi installation, the defaults should work.
-# If you are using a different linux flavor or Windows, you can set the tool locations here
 
 # on Windows, the scripts defaults to an Internet socket instead of a system socket.
 # useInetSocket=true
