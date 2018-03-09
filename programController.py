@@ -136,21 +136,21 @@ class LightYModem:
             response = self._send_ymodem_packet(packet) # resend requested
         return response
 
-    def transfer(self, file, ymodem, output):
+    def transfer(self, binFile, ymodem, output):
         self.ymodem = ymodem
         """
-        file: the file to transfer via ymodem
+        binFile: the file to transfer via ymodem
         ymodem: the ymodem endpoint (a file-like object supporting write)
         output: a stream for output messages
         """
-        file.seek(0, os.SEEK_END)
-        size = file.tell()
-        file.seek(0, os.SEEK_SET)
-        response = self.send_filename_header("binary", size)
-        while response == LightYModem.ack:
-            response = self.send_packet(file, output)
+        binFile.seek(0, os.SEEK_END)
+        size = binFile.tell()
+        binFile.seek(0, os.SEEK_SET)
+        response = self.send_filename_header("binFile", size)
+        while response==LightYModem.ack or response == 67:
+            response = self.send_packet(binFile, output)
 
-        file.close()
+        binFile.close()
         if response == LightYModem.eot:
             self._send_close()
 

@@ -215,7 +215,13 @@ else:
         print "Then try again."
         exit(1)
 
-print "Detecting DFU devices"
+
+print "WARNING: It is not possible to update the bootloader with DFU. If the new release requires an updated bootloader, the photon will automatically download it from the Particle cloud."
+print "This does require a WiFi connection on the Photon."
+print "If the photon does not have WiFi credentials, it will start in listening mode (blinking blue)."
+print "Please use the Particle phone app to set up WiFi. Your photon will hang in safe mode until the bootloader is updated from the cloud."
+print "If the photon has invalid WiFi credentials, it will hang blinking green. Hold the setup button for 5 seconds to trigger listening mode."
+print "\nDetecting DFU devices"
 device_type = None
 first_loop = True
 while True:
@@ -324,6 +330,8 @@ while True:
                 if 'socket:' in config['port']:
                     print "Socket configured as serial port, using auto detect to find USB serial"
                     config_copy['port'] = 'auto'
+
+                raw_input("Press Enter to continue...")
 
                 programmer = SerialProgrammer.create(config_copy, device_type)
                 # open serial port
