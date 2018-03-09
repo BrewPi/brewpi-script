@@ -190,6 +190,7 @@ if distutils.spawn.find_executable('dfu-util') is None:
             dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
             if not os.path.exists(downloadDir):
                 os.makedirs(downloadDir, 0777)
+            releases = gitHubReleases("https://api.github.com/repos/brewpi/firmware")
             releases.download(dfuUrl, downloadDir)
             os.chmod(dfuPath, 0777) # make executable
         else:
