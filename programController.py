@@ -100,8 +100,10 @@ class LightYModem:
         crc16 = b'\x00\x00'
         packet = asbyte(LightYModem.packet_mark) + seqchr + seqchr_neg + data + crc16
         if len(packet)!= LightYModem.expected_packet_len:
-            raise Exception("packet length is wrong!")
-        printStdErr("sending packet nr %d " % (self.seq))
+            raise Exception("\npacket length is wrong!")
+        
+        sys.stderr.write("sending packet nr {0} \r".format(self.seq)) # overwrite same line
+            
         self.ymodem.write(packet)
         self.ymodem.flush()
         response = self._read_response()
