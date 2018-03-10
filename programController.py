@@ -270,10 +270,10 @@ class SerialProgrammer:
             if(hexFile):
                 if not self.flash_file(hexFile):
                     return False
+                waitForReset(15)
 
             self.close_serial()
-
-        time.sleep(10) # give time to reboot
+        
         printStdErr("Now checking new version.")
         self.open_bg_serial()
 
@@ -478,15 +478,19 @@ class SerialProgrammer:
             setting =  restoredSettings[key]
             command = "j{" + json.dumps(key) + ":" + json.dumps(setting) + "}\n"
             self.bg_ser.write(command)
-            
-            # read log messages from controller
-            requestTime = time.time()
-            while 1:  # read log messages
-                message = self.bg_ser.read_message()
-                if message:
-                    printStdErr(message)
-                if time.time() - requestTime > 5:  # wait max 5 seconds for an answer
-                    break
+            time.sleep(0.1)
+        
+            message = self.bg_ser.read_message()
+            if message:
+                printStdErr(message)
+
+        time.sleep(1)
+        while True:  # read remaining log messages
+            message = self.bg_ser.read_message()
+            if message:
+                printStdErr(message)
+            else:
+                break
 
     def restore_devices(self):
         self.open_bg_serial()
