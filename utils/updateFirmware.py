@@ -23,6 +23,7 @@ import subprocess
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..") # append parent directory to be able to import files
 import autoSerial
+from backgroundserial import BackGroundSerial
 
 # print everything in this file to stderr so it ends up in the correct log file for the web UI
 def printStdErr(*objs):
@@ -51,63 +52,58 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
     shield = None
     board = None
     family = None
-    ser = None
-
+    
     ### Get version number
     printStdErr("\nChecking current firmware version...")
-    try:
-        ser = util.setupSerial(config)
-        hwVersion = brewpiVersion.getVersionFromSerial(ser)
+    bg_ser = BackGroundSerial(config.get('port', 'auto'))    
+    hwVersion = brewpiVersion.getVersionFromSerial(bg_ser)
+    
+    if hwVersion is not None:
         family = hwVersion.family
         shield = hwVersion.shield
         board = hwVersion.board
+    else:
+        printStdErr("Unable to receive version from controller.\n"
+                    "Is your controller unresponsive and do you wish to try restoring your firmware? [y/N]: ")
+        choice = raw_input()
+        if not any(choice == x for x in ["yes", "Yes", "YES", "yes", "y", "Y"]):
+            printStdErr("Please make sure your controller is connected properly and try again.")
+            return 0
+        port, name = autoSerial.detect_port()
+        if not port:
+            printStdErr("Could not find compatible device in available serial ports.")
+            return 0
+        if "Particle" in name:
+            family = "Particle"
+            if "P1" in name:
+                board = 'p1'
+            elif "Photon" in name:
+                board = 'photon'
+            elif "Core" in name:
+                board = 'core'
+        elif "Arduino" in name:
+            family = "Arduino"
+            if "Leonardo" in name:
+                board = 'leonardo'
+            elif "Uno" in name:
+                board = 'uno'
 
-        printStdErr("Found " + hwVersion.toExtendedString() + \
-               " on port " + ser.name + "\n")
-    except:
-        if hwVersion is None:
-            printStdErr("Unable to receive version from controller.\n"
-                        "Is your controller unresponsive and do you wish to try restoring your firmware? [y/N]: ")
-            choice = raw_input()
-            if not any(choice == x for x in ["yes", "Yes", "YES", "yes", "y", "Y"]):
-                printStdErr("Please make sure your controller is connected properly and try again.")
-                return 0
-            port, name = autoSerial.detect_port()
-            if not port:
-                printStdErr("Could not find compatible device in available serial ports.")
-                return 0
-            if "Particle" in name:
-                family = "Particle"
-                if "P1" in name:
-                    board = 'p1'
-                elif "Photon" in name:
-                    board = 'photon'
-                elif "Core" in name:
-                    board = 'core'
-            elif "Arduino" in name:
-                family = "Arduino"
-                if "Leonardo" in name:
-                    board = 'leonardo'
-                elif "Uno" in name:
-                    board = 'uno'
-
-            if board is None:
-                printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable.")
-                return -1
+        if board is None:
+            printStdErr("Unable to connect to controller, perhaps it is disconnected or otherwise unavailable.")
+            return -1
+        else:
+            printStdErr("Will try to restore the firmware on your %s" % name)
+            if family == "Arduino":
+                printStdErr("Assuming a Rev C shield. If this is not the case, please program your Arduino manually")
+                shield = 'RevC'
             else:
-                printStdErr("Will try to restore the firmware on your %s" % name)
-                if family == "Arduino":
-                    printStdErr("Assuming a Rev C shield. If this is not the case, please program your Arduino manually")
-                    shield = 'RevC'
-                else:
-                    printStdErr("Please put your controller in DFU mode now by holding the setup button during reset, until the LED blinks yellow.")
-                    printStdErr("Press Enter when ready.")
-                    choice = raw_input()
-                    useDfu = True # use dfu mode when board is not responding to serial
+                printStdErr("Please put your controller in DFU mode now by holding the setup button during reset, until the LED blinks yellow.")
+                printStdErr("Press Enter when ready.")
+                choice = raw_input()
+                useDfu = True # use dfu mode when board is not responding to serial
 
-    if ser:
-        ser.close()  # close serial port
-        ser = None
+    bg_ser.stop()
+    del bg_ser
 
     if hwVersion:
         printStdErr("Current firmware version on controller: " + hwVersion.toString())
