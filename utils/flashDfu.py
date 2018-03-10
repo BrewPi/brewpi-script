@@ -50,6 +50,7 @@ def printHelp():
         print "--autodfu\t automatically reboot photon in DFU mode by opening serial port at 14400 baud"
         print "--testmode\t set controller to test mode after flashing"
         print "--noreset\t do not reset EEPROM after flashing"
+        print "--trigger\t only trigger DFU mode and exit"
 
 def enterDfuMode():
     global serialPorts
@@ -80,7 +81,7 @@ def enterDfuMode():
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
                                ['help', 'file=', 'system=', 'system1=', 'system2=',
-                                'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
+                                'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset', 'trigger'])
 except getopt.GetoptError:
     print("Unknown parameter")
     printHelp()
@@ -169,6 +170,9 @@ for o, a in opts:
         print "Will automatically reboot newly detected photons into DFU mode"
     if o in ('--noreset',):
         noReset = True
+    if o in ('--trigger',):
+        enterDfuMode()
+        exit()
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
