@@ -4,35 +4,40 @@ import threading
 import Queue
 import sys
 import time
-from BrewPiUtil import printStdErr
-from BrewPiUtil import logMessage
-from serial import SerialException
+from BrewPiUtil import printStdErr, logMessage
+from serial import SerialException, serial_for_url
 from expandLogMessage import filterOutLogMessages
+import autoSerial
 
 class BackGroundSerial():
-    def __init__(self, serial_port):
+    def __init__(self, port):
         self.buffer = ''
-        self.ser = serial_port
+        self.port = port
+        self.ser = None
         self.queue = Queue.Queue()
         self.messages = Queue.Queue()
         self.thread = None
-        self.error = False
         self.fatal_error = None
+        self.stop_event = threading.Event()
+        self.start()
 
     # public interface only has 4 functions: start/stop/read_line/write
     def start(self):
-        # write timeout will occur when there are problems with the serial port.
-        # without the timeout loosing the serial port goes undetected.
-        self.ser.write_timeout = 2
-        self.ser.inter_byte_timeout = 0.01 # necessary because of bug in in_waiting with sockets
+        self.stop_event.clear()
         if not self.thread:
-            self.thread = threading.Thread(target=self.__listen_thread)
+            self.thread = threading.Thread(target=self.__listen_thread, kwargs={'stop_event': self.stop_event})
             self.thread.setDaemon(True)
             self.thread.start()
 
     def stop(self):
+        self.stop_event.set()
         if self.thread is not None:
-            self.thread.run = False
+            start = time.time()
+            while(self.thread.isAlive()):
+                time.sleep(0.1) # give time to close
+                if time.time() - start > 5:
+                    self.fatal_error = "Cannot stop Serial background thread"
+                    break
             self.thread = None
 
     def read_line(self):
@@ -57,30 +62,39 @@ class BackGroundSerial():
         # Prevent writing to a port in error state.
         # This will leave unclosed handles to serial on the system
         written = 0
-        if not self.error:
+        if self.ser:
             try:
                 written = self.ser.write(data)
-                if written < len(data):
-                    self.error = True
             except (IOError, OSError, SerialException) as e:
                 logMessage('Serial Error: {0})'.format(str(e)))
-                self.error = True
         return written
 
     def exit_on_fatal_error(self):
         if self.fatal_error is not None:
             self.stop()
             logMessage(self.fatal_error)
-            if self.ser is not None:
-                self.ser.close()
-            del self.ser # this helps to fully release the port to the OS
             sys.exit("Terminating due to fatal serial error")
 
-    def __listen_thread(self):
-        run = True
-        while run:
-            new_data = ""
-            if not self.error:
+    def __listen_thread(self, stop_event):
+        while not stop_event.is_set():
+            if not self.ser:
+                if self.port == 'auto':
+                    serial_port = autoSerial.detect_port(False)
+                else:
+                    serial_port = self.port
+                try:
+                    self.ser = serial_for_url(serial_port, baudrate=57600, timeout=0.1, write_timeout=0.1)
+                    self.ser.inter_byte_timeout = 0.01 # necessary because of bug in in_waiting with sockets
+                    self.ser.flushInput()
+                    self.ser.flushOutput()
+                    logMessage('Serial (re)connected at port: {0}'.format(str(serial_port)))
+                except (IOError, OSError, SerialException) as e:
+                    if self.ser:
+                        self.ser.close()
+                        self.ser = None
+                    time.sleep(1)
+            else:
+                new_data = ""
                 try:
                     while self.ser.in_waiting > 0:
                         # for sockets, in_waiting returns 1 instead of the actual number of bytes
@@ -88,44 +102,32 @@ class BackGroundSerial():
                         new_data = new_data + self.ser.read(self.ser.in_waiting)
                 except (IOError, OSError, SerialException) as e:
                     logMessage('Serial Error: {0})'.format(str(e)))
-                    self.error = True
-
-            if len(new_data) > 0:
-                self.buffer = self.buffer + new_data
-                while True:
-                    line_from_buffer = self.__get_line_from_buffer()
-                    if line_from_buffer:
-                        self.queue.put(line_from_buffer)
-                    else:
-                        break
-
-            if self.error:
-                try:
-                    # try to restore serial by closing and opening again
                     self.ser.close()
-                    self.ser.open()
-                    # test serial to see if it is restored by writing an empty line (which is ignored by the controller)
-                    if self.writeln("") > 0:
-                        self.error = False
-                    else:
-                        self.fatal_error = 'Lost serial connection. Cannot write to serial'
+                    self.ser = None
 
-                except (ValueError, OSError, SerialException) as e:
-                    if self.ser.isOpen():
-                        self.ser.flushInput() # will help to close open handles
-                        self.ser.flushOutput() # will help to close open handles
-                    self.ser.close()
-                    self.fatal_error = 'Lost serial connection. Error: {0})'.format(str(e))
+                if len(new_data) > 0:
+                    self.buffer = self.buffer + new_data
+                    while True:
+                        line_from_buffer = self.__get_line_from_buffer()
+                        if line_from_buffer:
+                            self.queue.put(line_from_buffer)
+                        else:
+                            break                   
 
             # max 10 ms delay. At baud 57600, max 576 characters are received while waiting
             time.sleep(0.01)
+
+        logMessage('Background thread for serial stopped')
+        if self.ser:
+            self.ser.close()
+            self.ser = None
 
     def __get_line_from_buffer(self):
         while '\n' in self.buffer:
             stripped_buffer, messages = filterOutLogMessages(self.buffer)
             if len(messages) > 0:
                 for message in messages:
-                    self.messages.put(message[2:]) # remove D: and add to queue
+                    self.messages.put(message)
                 self.buffer = stripped_buffer
                 continue
             lines = self.buffer.partition('\n') # returns 3-tuple with line, separator, rest
@@ -150,12 +152,8 @@ if __name__ == '__main__':
 
     config_file = util.addSlash(sys.path[0]) + 'settings/config.cfg'
     config = util.readCfgWithDefaults(config_file)
-    ser = util.setupSerial(config, time_out=0)
-    if not ser:
-        printStdErr("Could not open Serial Port")
-        exit()
-
-    bg_ser = BackGroundSerial(ser)
+    
+    bg_ser = BackGroundSerial('auto')
     bg_ser.start()
 
     success = 0

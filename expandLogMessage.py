@@ -62,7 +62,12 @@ def getVersion():
 
 def expandLogMessage(logMessageJsonString):
     expanded = ""
-    logMessageJson = json.loads(logMessageJsonString)
+    try: 
+        logMessageJson = json.loads(logMessageJsonString.lstrip("D:"))
+    except Exception, e:  # catch all exceptions, because out of date file could cause errors 
+        print("Error while expanding log message '" + logMessageJsonString + "'" + str(e))
+        return ""
+
     logId = int(logMessageJson['logID'])
     logType = logMessageJson['logType']
     values = logMessageJson['V']
@@ -113,8 +118,10 @@ def filterOutLogMessages(input_string):
     # removes log messages from string received from Serial
     # log messages are sometimes printed in the middle of a JSON string, which causes decode errors
     # this function filters them out and prints them
-    m = re.compile("D:\{.*?\}\r?\n")
-    log_messages = m.findall(input_string)
+
+    m = re.compile(r"D:\{.*?\}\r?\n")
+    log_messages_raw = m.findall(input_string)
+    log_messages = map(expandLogMessage, log_messages_raw)
     stripped = m.sub('', input_string)
 
     return (stripped, log_messages)

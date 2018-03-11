@@ -106,16 +106,10 @@ def removeDontRunFile(path='/var/www/do_not_run_brewpi'):
     else:
         print("File do_not_run_brewpi does not exist at " + path)
 
-def findSerialPort(bootLoader):
-    (port, name) = autoSerial.detect_port(bootLoader)
-    return port
 
 def setupSerial(config, baud_rate=57600, time_out=0.1):
     ser = None
-    dumpSerial = config.get('dumpSerial', False)
 
-    error1 = None
-    error2 = None
     # open serial port
     tries = 0
     logMessage("Opening serial port")
@@ -125,7 +119,7 @@ def setupSerial(config, baud_rate=57600, time_out=0.1):
             if portSetting == None or portSetting == 'None' or portSetting == "none":
                 continue  # skip None setting
             if portSetting == "auto":
-                port = findSerialPort(bootLoader=False)
+                (port, name) = autoSerial.detect_port(False)
                 if not port:
                     error = "Could not find compatible serial devices \n"
                     continue # continue with altport
@@ -149,23 +143,6 @@ def setupSerial(config, baud_rate=57600, time_out=0.1):
         ser.flushOutput()
     else:
          logMessage("Errors while opening serial port: \n" + error)
-
-    # yes this is monkey patching, but I don't see how to replace the methods on a dynamically instantiated type any other way
-    if dumpSerial:
-        ser.readOriginal = ser.read
-        ser.writeOriginal = ser.write
-
-        def readAndDump(size=1):
-            r = ser.readOriginal(size)
-            sys.stdout.write(r)
-            return r
-
-        def writeAndDump(data):
-            ser.writeOriginal(data)
-            sys.stderr.write(data)
-
-        ser.read = readAndDump
-        ser.write = writeAndDump
 
     return ser
 

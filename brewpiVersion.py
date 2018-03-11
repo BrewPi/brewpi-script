@@ -22,33 +22,16 @@ from BrewPiUtil import asciiToUnicode
 from serial import SerialException
 import re
 
-def getVersionFromSerial(ser):
+def getVersionFromSerial(bg_ser):
     version = None
     retries = 0
-    oldTimeOut = ser.timeout
-    startTime = time.time()
-    if not ser.isOpen():
-        print "Cannot get version from serial port that is not open."
-
-    ser.timeout = 2
-    ser.flushInput()
-    ser.flushOutput()
-    ser.write('n')  # request version info
+    startTime = time.time()    
+    bg_ser.writeln('n')  # request version info
     while retries < 10:
         retry = True
-        while 1: # read all lines from serial
-            if time.time() - startTime >= 10:
-                # try max 10 seconds
-                retry = False
-                break
-            line = None
-            read_time = time.time()
-            try:
-                line = ser.readline()
-            except SerialException:
-                continue
+        while True: # read all lines from serial
+            line = bg_ser.read_line()
             if line:
-                line = asciiToUnicode(line)
                 if line[0] == 'N':
                     data = line.strip('\n')[2:]
                     version_parsed = AvrInfo(data)
@@ -56,16 +39,17 @@ def getVersionFromSerial(ser):
                         retry = False
                         version = version_parsed
                         break
-            if time.time() - read_time >= ser.timeout:
-                # have read entire buffer, now just reading data as it comes in. Break to prevent an endless loop.
+            else:
                 break
+        if time.time() - startTime >= 30:
+            # try max 30 seconds
+            retry = False
         if retry:
-            ser.write('n')  # request version info
-            # time.sleep(1) delay not needed because of blocking (timeout) readline
+            bg_ser.writeln('n')  # request version info
             retries += 1
+            time.sleep(1)
         else:
             break
-    ser.timeout = oldTimeOut # restore previous serial timeout value
     return version
 
 

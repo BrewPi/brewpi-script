@@ -336,26 +336,19 @@ def resumeLogging():
 logMessage("Notification: Script started for beer '" + urllib.unquote(config['beerName']) + "'")
 
 logMessage("Connecting to controller...") 
-# bytes are read from nonblocking serial into this buffer and processed when the buffer contains a full line.
-ser = util.setupSerial(config, time_out=0)
 
-if not ser:
-    exit(1)
-
-# wait an optional startup delay after serial connect. Could be needed to skip a bootloader, default is no delay
-time.sleep(float(config.get('startupDelay', 0)))
-
+# set up background serial processing, which will continuously read data from serial and put whole lines in a queue
+bg_ser = BackGroundSerial(config.get('port', 'auto'))
 
 logMessage("Checking software version on controller... ")
-hwVersion = brewpiVersion.getVersionFromSerial(ser)
+hwVersion = brewpiVersion.getVersionFromSerial(bg_ser)
 if hwVersion is None:
     logMessage("Warning: Cannot receive version number from controller. " +
                "This could be because your controller is not programmed or running a very old version of BrewPi." +
                "This script will now exit.")
     exit(1)
 else:
-    logMessage("Found " + hwVersion.toExtendedString() + \
-               " on port " + ser.name + "\n")
+    logMessage("Found " + hwVersion.toExtendedString())
     if LooseVersion( hwVersion.toString() ) < LooseVersion(compatibleHwVersion):
         logMessage("Warning: minimum BrewPi version compatible with this script is " +
                    compatibleHwVersion +
@@ -369,16 +362,6 @@ else:
         exit("\n ERROR: the newest version of BrewPi is not compatible with Arduino. \n" +
             "You can use our legacy branch with your Arduino, in which we only include the backwards compatible changes. \n" +
             "To change to the legacy branch, run: sudo ~/brewpi-tools/updater.py --ask , and choose the legacy branch.")
-
-
-bg_ser = None
-
-if ser is not None:
-    ser.flush()
-
-    # set up background serial processing, which will continuously read data from serial and put whole lines in a queue
-    bg_ser = BackGroundSerial(ser)
-    bg_ser.start()
     
 # create a listening socket to communicate with PHP
 is_windows = sys.platform.startswith('win')
@@ -634,10 +617,7 @@ while run:
         elif messageType == "programController" or messageType == "programArduino":
             if bg_ser is not None:
                 bg_ser.stop()
-            if ser is not None:
-                if ser.isOpen():
-                    ser.close()  # close serial port before programming
-                ser = None
+            
             try:
                 programParameters = json.loads(value)
                 hexFile = programParameters['fileName']
@@ -806,11 +786,7 @@ while run:
                     logMessage("Line received was: " + line)
 
             if message is not None:
-                try:
-                    expandedMessage = expandLogMessage.expandLogMessage(message)
-                    logMessage("Controller debug message: " + expandedMessage)
-                except Exception, e:  # catch all exceptions, because out of date file could cause errors
-                    logMessage("Error while expanding log message '" + message + "'" + str(e))
+                logMessage("Controller debug message: " + message)
 
         if(time.time() - prevSettingsUpdate) > 60:
             # Request Settings from controller to stay up to date
@@ -843,9 +819,6 @@ while run:
 if bg_ser:
     bg_ser.stop()
 
-if ser:
-    if ser.isOpen():
-        ser.close()  # close port
 if conn:
     conn.shutdown(socket.SHUT_RDWR)  # close socket
     conn.close()

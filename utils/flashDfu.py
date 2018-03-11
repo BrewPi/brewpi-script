@@ -50,6 +50,7 @@ def printHelp():
         print "--autodfu\t automatically reboot photon in DFU mode by opening serial port at 14400 baud"
         print "--testmode\t set controller to test mode after flashing"
         print "--noreset\t do not reset EEPROM after flashing"
+        print "--trigger\t only trigger DFU mode and exit"
 
 def enterDfuMode():
     global serialPorts
@@ -80,7 +81,7 @@ def enterDfuMode():
 try:
     opts, args = getopt.getopt(sys.argv[1:], "hf:t:ma",
                                ['help', 'file=', 'system=', 'system1=', 'system2=',
-                                'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset'])
+                                'multi', 'tag=', 'testmode', 'autodfu', 'testmode', 'noreset', 'trigger'])
 except getopt.GetoptError:
     print("Unknown parameter")
     printHelp()
@@ -169,6 +170,9 @@ for o, a in opts:
         print "Will automatically reboot newly detected photons into DFU mode"
     if o in ('--noreset',):
         noReset = True
+    if o in ('--trigger',):
+        enterDfuMode()
+        exit()
 
 dfuPath = "dfu-util"
 # check whether dfu-util can be found
@@ -190,6 +194,7 @@ if distutils.spawn.find_executable('dfu-util') is None:
             dfuUrl = "http://dfu-util.sourceforge.net/releases/dfu-util-0.7-binaries/linux-armel/dfu-util"
             if not os.path.exists(downloadDir):
                 os.makedirs(downloadDir, 0777)
+            releases = gitHubReleases("https://api.github.com/repos/brewpi/firmware")
             releases.download(dfuUrl, downloadDir)
             os.chmod(dfuPath, 0777) # make executable
         else:
@@ -215,7 +220,13 @@ else:
         print "Then try again."
         exit(1)
 
-print "Detecting DFU devices"
+
+print "WARNING: It is not possible to update the bootloader with DFU. If the new release requires an updated bootloader, the photon will automatically download it from the Particle cloud."
+print "This does require a WiFi connection on the Photon."
+print "If the photon does not have WiFi credentials, it will start in listening mode (blinking blue)."
+print "Please use the Particle phone app to set up WiFi. Your photon will hang in safe mode until the bootloader is updated from the cloud."
+print "If the photon has invalid WiFi credentials, it will hang blinking green. Hold the setup button for 5 seconds to trigger listening mode."
+print "\nDetecting DFU devices"
 device_type = None
 first_loop = True
 while True:
@@ -324,6 +335,8 @@ while True:
                 if 'socket:' in config['port']:
                     print "Socket configured as serial port, using auto detect to find USB serial"
                     config_copy['port'] = 'auto'
+
+                raw_input("Press Enter to continue...")
 
                 programmer = SerialProgrammer.create(config_copy, device_type)
                 # open serial port
