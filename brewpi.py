@@ -340,13 +340,10 @@ logMessage("Connecting to controller...")
 # set up background serial processing, which will continuously read data from serial and put whole lines in a queue
 bg_ser = BackGroundSerial(config.get('port', 'auto'))
 
-logMessage("Checking software version on controller... ")
 hwVersion = brewpiVersion.getVersionFromSerial(bg_ser)
 if hwVersion is None:
     logMessage("Warning: Cannot receive version number from controller. " +
-               "This could be because your controller is not programmed or running a very old version of BrewPi." +
-               "This script will now exit.")
-    exit(1)
+               "Check your port setting in the Maintenance Panel or in settings/config.cfg.")
 else:
     logMessage("Found " + hwVersion.toExtendedString())
     if LooseVersion( hwVersion.toString() ) < LooseVersion(compatibleHwVersion):
@@ -566,6 +563,12 @@ while run:
                     continue
                 logMessage("Notification: Interval changed to " +
                            str(newInterval) + " seconds")
+        elif messageType == "portAddress":  # new port setting received
+            config = util.configSet(configFile, 'port', str(value))
+            logMessage("Port setting changed to: " + str(value))
+            bg_ser.stop()
+            bg_ser.port = str(value)
+            bg_ser.start()
         elif messageType == "startNewBrew":  # new beer name
             newName = value
             result = startNewBrew(newName)
@@ -692,10 +695,13 @@ while run:
         # Do serial communication and update settings every SerialCheckInterval
         prevTimeOut = time.time()
 
-        if hwVersion is None:
-            continue  # do nothing with the serial port when the controller has not been recognized
-
         while True:
+            if not bg_ser.connected():
+                temperatures['Error'] = "Connection to BrewPi Spark interrupted."
+                break
+            else:
+                temperatures.pop('Error', None)
+
             line = bg_ser.read_line()
             message = bg_ser.read_message()
             if line is None and message is None:
@@ -798,11 +804,6 @@ while run:
         if (time.time() - prevDataTime) >= 5:
             bg_ser.writeln("t")  # request new temperatures from controller
             prevDataTime = time.time()
-            
-        if (time.time() - prevSerialReceive > 60):
-            #something is wrong: controller is not responding to data requests
-            logMessage("Error: controller is not responding anymore. Exiting script.")
-            sys.exit()
         
         # Check for update from temperature profile
         if cs['mode'] == 'p':

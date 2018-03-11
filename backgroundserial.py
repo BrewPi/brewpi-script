@@ -40,6 +40,9 @@ class BackGroundSerial():
                     break
             self.thread = None
 
+    def connected(self):
+        return self.ser is not None
+
     def read_line(self):
         self.exit_on_fatal_error()
         try:
@@ -76,10 +79,11 @@ class BackGroundSerial():
             sys.exit("Terminating due to fatal serial error")
 
     def __listen_thread(self, stop_event):
+        logMessage('Background thread for serial started')
         while not stop_event.is_set():
             if not self.ser:
                 if self.port == 'auto':
-                    serial_port = autoSerial.detect_port(False)
+                    (serial_port, name) = autoSerial.detect_port(False)
                 else:
                     serial_port = self.port
                 try:
