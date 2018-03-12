@@ -647,14 +647,19 @@ while run:
                 bg_ser.writeln("d{}")  # request installed devices
                 bg_ser.writeln("h{u:-1}")  # request available, but not installed devices
         elif messageType == "getDeviceList":
-            if deviceList['listState'] in ["dh", "hd"]:
-                response = dict(board=hwVersion.board,
-                                shield=hwVersion.shield,
-                                deviceList=deviceList,
-                                pinList=pinList.getPinList(hwVersion.board, hwVersion.shield))
-                conn.send(json.dumps(response))
+            if hwVersion is None:
+                hwVersion = brewpiVersion.getVersionFromSerial(bg_ser)
+            if hwVersion is None:
+                conn.send("Cannot communicate with BrewPi Spark")
             else:
-                conn.send("device-list-not-up-to-date")
+                if deviceList['listState'] in ["dh", "hd"]:
+                    response = dict(board=hwVersion.board,
+                                    shield=hwVersion.shield,
+                                    deviceList=deviceList,
+                                    pinList=pinList.getPinList(hwVersion.board, hwVersion.shield))
+                    conn.send(json.dumps(response))
+                else:
+                    conn.send("device-list-not-up-to-date")
         elif messageType == "applyDevice":
             try:
                 configStringJson = json.loads(value)  # load as JSON to check syntax
@@ -671,14 +676,19 @@ while run:
                 continue
             bg_ser.writeln("d" + json.dumps(configStringJson))
         elif messageType == "getVersion":
-            if hwVersion:
-                response = hwVersion.__dict__
-                # replace LooseVersion with string, because it is not JSON serializable
-                response['version'] = hwVersion.toString()
+            if hwVersion is None:
+                hwVersion = brewpiVersion.getVersionFromSerial(bg_ser)
+            if hwVersion is None:
+                conn.send("Cannot communicate with BrewPi Spark")
             else:
-                response = {}
-            response_str = json.dumps(response)
-            conn.send(response_str)
+                if hwVersion:
+                    response = hwVersion.__dict__
+                    # replace LooseVersion with string, because it is not JSON serializable
+                    response['version'] = hwVersion.toString()
+                else:
+                    response = {}
+                response_str = json.dumps(response)
+                conn.send(response_str)
         elif messageType == "resetController":
             logMessage("Resetting controller to factory defaults")
             bg_ser.writeln("E")
