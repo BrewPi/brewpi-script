@@ -20,6 +20,7 @@ class BackGroundSerial():
         self.fatal_error = None
         self.stop_event = threading.Event()
         self.start()
+        self.error = None
 
     # public interface only has 4 functions: start/stop/read_line/write
     def start(self):
@@ -87,15 +88,21 @@ class BackGroundSerial():
                 else:
                     serial_port = self.port
                 try:
-                    self.ser = serial_for_url(serial_port, baudrate=57600, timeout=0.1, write_timeout=0.1)
-                    self.ser.inter_byte_timeout = 0.01 # necessary because of bug in in_waiting with sockets
-                    self.ser.flushInput()
-                    self.ser.flushOutput()
-                    logMessage('Serial (re)connected at port: {0}'.format(str(serial_port)))
+                    if serial_port is not None:
+                        self.ser = serial_for_url(serial_port, baudrate=57600, timeout=0.1, write_timeout=0.1)
+                        self.ser.inter_byte_timeout = 0.01 # necessary because of bug in in_waiting with sockets
+                        self.ser.flushInput()
+                        self.ser.flushOutput()
+                        logMessage('Serial (re)connected at port: {0}'.format(str(serial_port)))
                 except (IOError, OSError, SerialException) as e:
                     if self.ser:
                         self.ser.close()
                         self.ser = None
+                    error = str(e)
+                    if error != self.error:
+                        #only print once
+                        self.error = error
+                        logMessage('Error opening serial: {0}'.format(self.error))
                     time.sleep(1)
             else:
                 new_data = ""
