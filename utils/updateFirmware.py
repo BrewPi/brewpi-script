@@ -69,10 +69,11 @@ def updateFromGitHub(userInput, beta, useDfu, restoreSettings = True, restoreDev
         if not any(choice == x for x in ["yes", "Yes", "YES", "yes", "y", "Y"]):
             printStdErr("Please make sure your controller is connected properly and try again.")
             return 0
-        port, name = autoSerial.detect_port()
+        port = autoSerial.detect_port()
         if not port:
             printStdErr("Could not find compatible device in available serial ports.")
             return 0
+        name = autoSerial.recognized_device_name(port)
         if "Particle" in name:
             family = "Particle"
             if "P1" in name:

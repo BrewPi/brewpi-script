@@ -118,15 +118,12 @@ def setupSerial(config, baud_rate=57600, time_out=0.1):
         for portSetting in [config['port'], config['altport']]:
             if portSetting == None or portSetting == 'None' or portSetting == "none":
                 continue  # skip None setting
-            if portSetting == "auto":
-                (port, name) = autoSerial.detect_port(False)
-                if not port:
-                    error = "Could not find compatible serial devices \n"
-                    continue # continue with altport
-            else:
-                port = portSetting
+            port = autoSerial.find_port(portSetting)
+            if not port:
+                error = "Could not find compatible serial devices \n"
+                continue # continue with altport
             try:
-                ser = serial.serial_for_url(port, baudrate=baud_rate, timeout=time_out, write_timeout=0)
+                ser = serial.serial_for_url(port.device, baudrate=baud_rate, timeout=time_out, write_timeout=0)
                 if ser:
                     break
             except (IOError, OSError, serial.SerialException) as e:
