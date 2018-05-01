@@ -69,16 +69,16 @@ def detect_port(bootLoader = False):
 def find_port(identifier):
     port = None
     if 'socket://' in identifier:
-        return { 'device': identifier, 'name': 'WiFi Spark', 'serial_number': 'unkown' }
+        return { 'device': identifier, 'name': 'WiFi Spark', 'serial_number': 'unknown' }
     if identifier == 'auto':
-        port = detect_port()
-        if 'Arduino' in recognized_device_name(port):
+        p = detect_port()
+        if 'Arduino' in recognized_device_name(p):
             print "This version of BrewPi is not compatible with Arduino. Please check out the legacy branch instead."
             return None
-        return port
+        return { 'device': p.device, 'name': p.name, 'serial_number': p.serial_number, 'product': p.product }
     for p in find_compatible_serial_ports():
         if p.serial_number == identifier or p.device == identifier or p.name == identifier :
-            return p
+            return { 'device': p.device, 'name': p.name, 'serial_number': p.serial_number, 'product': p.product }
     return None
 
 
