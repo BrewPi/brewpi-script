@@ -21,20 +21,22 @@ known_devices = [
     {'vid': 0x2B04, 'pid': 0xC008, 'name': "Particle P1"}
 ]
 
-def recognised_device_name(device):
-    for known in known_devices:
-        if device.vid == known['vid'] and device.pid == known['pid']: # match on VID, PID
-            return known['name']
+
+def recognized_device_name(device):
+    if device is not None:
+        for known in known_devices:
+            if device.vid == known['vid'] and device.pid == known['pid']: # match on VID, PID
+                return known['name']
     return None
 
 def find_compatible_serial_ports(bootLoader = False):
     ports = find_all_serial_ports()
     for p in ports:
-        name = recognised_device_name(p)
+        name = recognized_device_name(p)
         if name is not None:
             if "Bootloader" in name and not bootLoader:
                 continue
-            yield (p[0], name)
+            yield p
 
 
 def find_all_serial_ports():
@@ -51,7 +53,7 @@ def detect_port(bootLoader = False):
     :return: first detected serial port as tuple: (port, name)
     :rtype:
     """
-    port = (None, None)
+    port = None
     ports = find_compatible_serial_ports(bootLoader=bootLoader)
     try:
         port = ports.next()
@@ -64,24 +66,57 @@ def detect_port(bootLoader = False):
         pass
     return port
 
-def configure_serial_for_device(s, d):
-    """ configures the serial connection for the given device.
-    :param s the Serial instance to configure
-    :param d the device (port, name, details) to configure the serial port
-    """
-    # for now, all devices connect at 57600 baud with defaults for parity/stop bits etc.
-    s.setBaudrate(57600)
+
+def find_port(identifier):
+    p = None
+    if 'socket://' in identifier:
+        return { 'device': identifier, 'name': 'WiFi Spark', 'serial_number': 'unknown' }
+    if identifier == 'auto':
+        p = detect_port()
+        if p is not None:
+            name = recognized_device_name(p)
+            if name is not None and 'Arduino' in name:
+                print "This version of BrewPi is not compatible with Arduino. Please check out the legacy branch instead."
+                return None
+    for p in find_compatible_serial_ports():
+        if p.serial_number == identifier or p.device == identifier or p.name == identifier :
+            break
+    if p is not None:
+        return { 'device': p.device, 'name': p.name or p.device, 'serial_number': p.serial_number, 'product': p.product or recognized_device_name(p)}
+
+
+def find_serial_numbers():
+    serial_numbers = []
+    for p in find_compatible_serial_ports():
+        if p.serial_number:
+            serial_numbers.append(p.serial_number)
+    return serial_numbers
 
 
 if __name__ == '__main__':
     print "All ports:"
     for p in find_all_serial_ports():
         try:
-            print "{0}, VID:{1:04x}, PID:{2:04x}".format(str(p), (p.vid), (p.pid))
+            print "{0}, VID:{1:04x}, PID:{2:04x}, SER:{3}".format(str(p), p.vid, p.pid, p.serial_number)
         except ValueError:
             # could not convert pid and vid to hex
             print "{0}, VID:{1}, PID:{2}".format(str(p), (p.vid), (p.pid))
     print "Compatible ports: "
     for p in find_compatible_serial_ports():
         print p
-    print "Selected port: {0}".format(detect_port())
+
+    print "\nChosen for 2f0031000547343232363230"
+    print(find_port("2f0031000547343232363230"))
+    print "\nChosen for ttyACM0"
+    print(find_port("ttyACM0"))
+    print "\nChosen for /dev/ttyACM0:"
+    print(find_port("/dev/ttyACM0"))
+    print "\nChosen for auto:"
+    print(find_port("auto"))
+    print "\nChosen for socket://192.168.1.100:6666"
+    print(find_port("socket://192.168.1.100:6666"))
+    print "\nChosen for wrong_port:"
+    print(find_port("wrong_port"))
+
+    print "\nAll compatible serial numbers"
+    print find_serial_numbers()

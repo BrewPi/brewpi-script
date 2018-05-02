@@ -20,6 +20,7 @@ import sys
 
 from BrewPiUtil import printStdErr
 from BrewPiUtil import logMessage
+from autoSerial import find_serial_numbers
 
 # Check needed software dependencies to nudge users to fix their setup
 if sys.version_info < (2, 7):
@@ -569,6 +570,8 @@ while run:
             bg_ser.stop()
             bg_ser.port = str(value)
             bg_ser.start()
+        elif messageType == "getSerialDevicesAvailable":
+            conn.send(json.dumps(['auto'] + find_serial_numbers()))            
         elif messageType == "startNewBrew":  # new beer name
             newName = value
             result = startNewBrew(newName)

@@ -59,11 +59,11 @@ def enterDfuMode():
     newPorts = list(set(serialPorts) - set(previousSerialPorts))
     if len(newPorts):
         print "Found new serial port connected: {0}".format(newPorts[0])
-        port = newPorts[0][0]
-        name = newPorts[0][1]
+        device = newPorts[0].device
+        name = autoSerial.recognized_device_name(newPorts[0])
         if name == "Particle Photon" or "Particle P1":
             print "Putting {0} in DFU mode".format(name)
-            ser = serial.Serial(port)
+            ser = serial.Serial(device)
             try:
                 ser.baudrate = 14400 # this triggers a reboot in DFU mode
                 ser.baudrate = 57600 # don't leave serial port at 14400, or a second reboot into DFU will be triggered later
