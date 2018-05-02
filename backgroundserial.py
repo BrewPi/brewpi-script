@@ -86,17 +86,22 @@ class BackGroundSerial():
                 serial_port = autoSerial.find_port(self.port)
                 try:
                     if serial_port is not None:
-                        logMessage('attempting to connect to' + str(serial_port))
                         self.ser = serial_for_url(serial_port['device'], baudrate=57600, timeout=0.1, write_timeout=0.1)
                         self.ser.inter_byte_timeout = 0.01 # necessary because of bug in in_waiting with sockets
                         self.ser.flushInput()
                         self.ser.flushOutput()
-                        logMessage('Serial (re)connected for {0} [{1}] at port: {2}'.format(
-                            serial_port.get('product', 'unknown product'), 
-                            serial_port.get('serial_number', 'unknown serial number'),
-                            serial_port.get('name', 'unknown name')
+                        if "socket://" in serial_port['device']:
+                            logMessage('Serial (re)connected over WiFi at {0}'.format(
+                                serial_port.get('device') or "unknown location"
+                                )
                             )
-                        )
+                        else:
+                            logMessage('Serial (re)connected for {0} [{1}] at port: {2}'.format(
+                                serial_port.get('product') or 'unknown product', 
+                                serial_port.get('serial_number') or 'unknown serial number',
+                                serial_port.get('name') or 'unknown location'
+                                )
+                            )
                 except (IOError, OSError, SerialException) as e:
                     if self.ser:
                         self.ser.close()

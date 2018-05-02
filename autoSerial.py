@@ -23,9 +23,10 @@ known_devices = [
 
 
 def recognized_device_name(device):
-    for known in known_devices:
-        if device.vid == known['vid'] and device.pid == known['pid']: # match on VID, PID
-            return known['name']
+    if device is not None:
+        for known in known_devices:
+            if device.vid == known['vid'] and device.pid == known['pid']: # match on VID, PID
+                return known['name']
     return None
 
 def find_compatible_serial_ports(bootLoader = False):
@@ -67,19 +68,21 @@ def detect_port(bootLoader = False):
 
 
 def find_port(identifier):
-    port = None
+    p = None
     if 'socket://' in identifier:
         return { 'device': identifier, 'name': 'WiFi Spark', 'serial_number': 'unknown' }
     if identifier == 'auto':
         p = detect_port()
-        if 'Arduino' in recognized_device_name(p):
-            print "This version of BrewPi is not compatible with Arduino. Please check out the legacy branch instead."
-            return None
-        return { 'device': p.device, 'name': p.name, 'serial_number': p.serial_number, 'product': p.product }
+        if p is not None:
+            name = recognized_device_name(p)
+            if name is not None and 'Arduino' in name:
+                print "This version of BrewPi is not compatible with Arduino. Please check out the legacy branch instead."
+                return None
     for p in find_compatible_serial_ports():
         if p.serial_number == identifier or p.device == identifier or p.name == identifier :
-            return { 'device': p.device, 'name': p.name, 'serial_number': p.serial_number, 'product': p.product }
-    return None
+            break
+    if p is not None:
+        return { 'device': p.device, 'name': p.name or p.device, 'serial_number': p.serial_number, 'product': p.product or recognized_device_name(p)}
 
 
 def find_serial_numbers():
