@@ -123,7 +123,7 @@ def setupSerial(config, baud_rate=57600, time_out=0.1):
                 error = "Could not find compatible serial devices \n"
                 continue # continue with altport
             try:
-                ser = serial.serial_for_url(port.device, baudrate=baud_rate, timeout=time_out, write_timeout=0)
+                ser = serial.serial_for_url(port['device'], baudrate=baud_rate, timeout=time_out, write_timeout=0)
                 if ser:
                     break
             except (IOError, OSError, serial.SerialException) as e:
