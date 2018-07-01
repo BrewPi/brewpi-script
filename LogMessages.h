@@ -29,7 +29,7 @@
 */
 
 /* bump this version number when changing this file and copy the new version to the brewpi-script repository. */
-#define BREWPI_LOG_MESSAGES_VERSION 3
+#define BREWPI_LOG_MESSAGES_VERSION 4
 
 #define MSG(errorID, errorString, ...) errorID
 
@@ -64,7 +64,7 @@ enum warningMessages{
 	MSG(WARNING_INVALID_COMMAND, "Invalid command received by controller: %c", character),
 
 // OneWireTempSensor.cpp	
-	MSG(WARNING_TEMP_SENSOR_DISCONNECTED, "Temperature sensor disconnected pin %d, address %s", pinNr, addressString),
+	MSG(WARNING_TEMP_SENSOR_DISCONNECTED, "Temperature sensor disconnected, address %s", addressString),
 
 // SettingsManager.cpp	
 	MSG(WARNING_START_IN_SAFE_MODE, "EEPROM Settings not available. Starting in safe mode."),
@@ -76,16 +76,18 @@ enum warningMessages{
 	MSG(DS2413_DISCONNECTED, "OneWire device (DS2413) disconnected, address %s", addressString),
 
 // DS2408.cpp
-	MSG(DS2408_DISCONNECTED, "OneWire device (DS2408) disconnected, address %s", addressString)
+	MSG(DS2408_DISCONNECTED, "OneWire device (DS2408) disconnected, address %s", addressString),
+// BrewPi.cpp
+	MSG(SYSTEM_RESET, "System was reset, reason: %d, data: %d", resetReason, resetReasonData),
 
 }; // END enum warningMessages
 
 // Info messages
 enum infoMessages{
 // OneWireTempSensor.cpp
-	MSG(INFO_TEMP_SENSOR_CONNECTED, "Temp sensor connected on pin %d, address %s", pinNr, addressString),
-	MSG(INFO_TEMP_SENSOR_DISCONNECTED, "Temp sensor disconnected on pin %d, address %s", pinNr, addressString),
-	MSG(INFO_TEMP_SENSOR_INITIALIZED, "Sensor initialized: pin %d %s %s", pinNr, addressString, temperature),
+	MSG(INFO_TEMP_SENSOR_CONNECTED, "Temp sensor connected on pin %d, address %s", addressString),
+	MSG(INFO_TEMP_SENSOR_DISCONNECTED, "Temp sensor disconnected on pin %d, address %s", addressString),
+	MSG(INFO_TEMP_SENSOR_INITIALIZED, "Sensor initialized: %s %s", addressString, temperature),
 
 // DeviceManager.cpp
 	MSG(INFO_UNINSTALL_TEMP_SENSOR, "uninstalling temperature sensor with function %d", config.deviceFunction),
@@ -112,10 +114,10 @@ enum infoMessages{
 	MSG(INFO_NEGATIVE_DRIFT, "No peak detected. Drifting down after cooling, current temp: %s, estimated peak: %s. Previous cool estimator: %s, New cool estimator: %s..", temperature, temperature, estimator, estimator),
 
 // TempSensorFallback.cpp
-    MSG(BACK_ON_MAIN_SENSOR, "Back on main sensor instead of backup sensor."),
+  MSG(BACK_ON_MAIN_SENSOR, "Back on main sensor instead of backup sensor."),
 
 // DS2413.cpp
 	MSG(DS2413_CONNECTED, "OneWire device (DS2413) connected, address %s", addressString),
 // DS2408.cpp
-	MSG(DS2408_CONNECTED, "OneWire device (DS2408) connected, address %s", addressString)
+	MSG(DS2408_CONNECTED, "OneWire device (DS2408) connected, address %s", addressString),
 }; // END enum infoMessages

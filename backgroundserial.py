@@ -102,6 +102,7 @@ class BackGroundSerial():
                                 serial_port.get('name') or 'unknown location'
                                 )
                             )
+                        self.writeln('r') # ask device to print reset reason if disconnection was due to reset
                 except (IOError, OSError, SerialException) as e:
                     if self.ser:
                         self.ser.close()
